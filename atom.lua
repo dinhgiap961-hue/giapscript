@@ -24,19 +24,23 @@ local function getMonster()
 end
 
 -- =======================================================
--- TỰ ĐỘNG SỬA MENU KAVO ĐỂ VUỐT ĐƯỢC TRÊN ĐIỆN THOẠI
+-- ÉP MENU KAVO PHẢI VUỐT ĐƯỢC MƯỢT MÀ TRÊN ĐIỆN THOẠI
 -- =======================================================
-pcall(function()
-    local coreGui = game:GetService("CoreGui")
-    local mainFrame = coreGui:FindFirstChild("Atom Max Hub") or coreGui:FindFirstChild("KavoL")
-    if mainFrame then
-        for _, v in ipairs(mainFrame:GetDescendants()) do
-            if v:IsA("ScrollingFrame") then
-                v.CanvasSize = UDim2.new(0, 0, 0, 1200) -- Mở rộng vùng cuộn
-                v.ScrollingEnabled = true
-                v.ScrollBarThickness = 6
+task.spawn(function()
+    while task.wait(1) do
+        pcall(function()
+            local coreGui = game:GetService("CoreGui")
+            local mainFrame = coreGui:FindFirstChild("Atom Max Hub") or coreGui:FindFirstChild("KavoL")
+            if mainFrame then
+                for _, v in ipairs(mainFrame:GetDescendants()) do
+                    if v:IsA("ScrollingFrame") then
+                        v.CanvasSize = UDim2.new(0, 0, 0, 1500) -- Tạo vùng cuộn siêu rộng
+                        v.ScrollingEnabled = true
+                        v.ScrollBarThickness = 8
+                    end
+                end
             end
-        end
+        end)
     end
 end)
 
@@ -141,50 +145,56 @@ Tab:NewToggle("Treo Trên Đầu Boss", "Bay cao an toàn, đứng im khi hết 
     end)
 end)
 
--- 6. NÚT RIÊNG BIỆT 1: TỰ ĐỘNG BẤM TIẾP TỤC / REPLAY KHI XONG TRẬN
-Tab:NewToggle("Auto Next Raid", "Tự động bấm chơi lại khi hết trận", function(s)
+-- =======================================================
+-- NÚT 1: AUTO NEXT RAID (CHUYỂN CẢNH KHÔNG BỊ KẸT)
+-- =======================================================
+Tab:NewToggle("Auto Next Raid", "Tự động tạo phòng mới khi bị sút về sảnh PVE", function(s)
     _G.RaidNext = s
     task.spawn(function()
         while _G.RaidNext do
             pcall(function()
-                local guis = {Plr.PlayerGui, game:GetService("CoreGui")}
-                for _, parent in ipairs(guis) do
-                    for _, v in ipairs(parent:GetDescendants()) do
-                        if (v:IsA("TextButton") or v:IsA("ImageButton")) and v.Visible and v.AbsoluteSize.X > 0 then
-                            local n = string.lower(v.Name)
-                            local t = string.lower(v:IsA("TextButton") and v.Text or "")
-                            if string.find(n, "replay") or string.find(n, "retry") or string.find(n, "again") or string.find(n, "next") or
-                               string.find(t, "replay") or string.find(t, "retry") or string.find(t, "again") or string.find(t, "next") or string.find(t, "chơi lại") or string.find(t, "tiếp tục") then
+                -- Quét hệ thống UI phòng Dungeon đặc trưng của Dragon Blox V2
+                local pGui = Plr:FindFirstChild("PlayerGui")
+                if pGui then
+                    -- Quét các bảng nút điều khiển phòng chờ hiển thị tại sảnh chính
+                    for _, v in ipairs(pGui:GetDescendants()) do
+                        if v:IsA("TextButton") and v.Visible then
+                            local txt = string.lower(v.Text)
+                            local name = string.lower(v.Name)
+                            
+                            -- Nếu thấy nút "Create" hoặc "Tạo Phòng" Dungeon mới thì tự bấm
+                            if string.find(txt, "create") or string.find(name, "create") or string.find(txt, "tạo") then
                                 v:Activate()
-                                local pos = v.AbsolutePosition + (v.AbsoluteSize / 2)
-                                VU:ClickButton1(Vector2.new(pos.X, pos.Y))
+                                VU:ClickButton1(Vector2.new(v.AbsolutePosition.X + v.AbsoluteSize.X/2, v.AbsolutePosition.Y + v.AbsoluteSize.Y/2))
                             end
                         end
                     end
                 end
             end)
-            task.wait(1)
+            task.wait(1.5)
         end
     end)
 end)
 
--- 7. NÚT RIÊNG BIỆT 2: TỰ ĐỘNG BẤM BẮT ĐẦU TRẬN / VÀO PHÒNG MỚI
-Tab:NewToggle("Auto Start Raid", "Tự động bấm Start trận ở phòng chờ", function(s)
+-- =======================================================
+-- NÚT 2: AUTO START RAID (TỰ BẤM BẮT ĐẦU TRONG PHÒNG CHỜ)
+-- =======================================================
+Tab:NewToggle("Auto Start Raid", "Tự bấm nút Bắt đầu/Sẵn sàng để vào trận", function(s)
     _G.RaidStart = s
     task.spawn(function()
         while _G.RaidStart do
             pcall(function()
-                local guis = {Plr.PlayerGui, game:GetService("CoreGui")}
-                for _, parent in ipairs(guis) do
-                    for _, v in ipairs(parent:GetDescendants()) do
-                        if (v:IsA("TextButton") or v:IsA("ImageButton")) and v.Visible and v.AbsoluteSize.X > 0 then
-                            local n = string.lower(v.Name)
-                            local t = string.lower(v:IsA("TextButton") and v.Text or "")
-                            if string.find(n, "start") or string.find(n, "teleport") or string.find(n, "join") or string.find(n, "enter") or
-                               string.find(t, "start") or string.find(t, "bắt đầu") or string.find(t, "vào trận") or string.find(t, "sẵn sàng") then
+                local pGui = Plr:FindFirstChild("PlayerGui")
+                if pGui then
+                    for _, v in ipairs(pGui:GetDescendants()) do
+                        if (v:IsA("TextButton") or v:IsA("ImageButton")) and v.Visible then
+                            local txt = string.lower(v:IsA("TextButton") and v.Text or "")
+                            local name = string.lower(v.Name)
+                            
+                            -- Quét các từ khóa bắt đầu trận đấu của hệ thống Dungeon phòng chờ
+                            if string.find(txt, "start") or string.find(name, "start") or string.find(txt, "bắt đầu") or string.find(txt, "ready") or string.find(txt, "sẵn sàng") then
                                 v:Activate()
-                                local pos = v.AbsolutePosition + (v.AbsoluteSize / 2)
-                                VU:ClickButton1(Vector2.new(pos.X, pos.Y))
+                                VU:ClickButton1(Vector2.new(v.AbsolutePosition.X + v.AbsoluteSize.X/2, v.AbsolutePosition.Y + v.AbsoluteSize.Y/2))
                             end
                         end
                     end
