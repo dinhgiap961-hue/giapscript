@@ -34,7 +34,7 @@ task.spawn(function()
             if mainFrame then
                 for _, v in ipairs(mainFrame:GetDescendants()) do
                     if v:IsA("ScrollingFrame") then
-                        v.CanvasSize = UDim2.new(0, 0, 0, 1500) -- Tạo vùng cuộn siêu rộng
+                        v.CanvasSize = UDim2.new(0, 0, 0, 1500)
                         v.ScrollingEnabled = true
                         v.ScrollBarThickness = 8
                     end
@@ -44,13 +44,22 @@ task.spawn(function()
     end
 end)
 
--- 1. Spam chiêu E siêu tốc độ theo FPS
-Tab:NewToggle("Spam Energy Blast (E)", "Xả đạn tốc độ tối đa theo FPS", function(s)
+-- 1. Spam Đạn Đuổi (E) tự định vị quái
+Tab:NewToggle("Spam Đạn Đuổi", "Bắn đạn tự động khóa và đuổi theo quái", function(s)
     _G.EB = s
     if s then
         task.spawn(function()
             while _G.EB do
                 if not _G.Charge then
+                    pcall(function()
+                        local target = getMonster()
+                        if target and target:FindFirstChild("HumanoidRootPart") then
+                            local cam = workspace.CurrentCamera
+                            if cam then
+                                cam.CFrame = CFrame.new(cam.CFrame.Position, target.HumanoidRootPart.Position)
+                            end
+                        end
+                    end)
                     VIM:SendKeyEvent(true, Enum.KeyCode.E, false, game)
                     VIM:SendKeyEvent(false, Enum.KeyCode.E, false, game)
                 end
@@ -61,7 +70,7 @@ Tab:NewToggle("Spam Energy Blast (E)", "Xả đạn tốc độ tối đa theo F
 end)
 
 -- 2. Tự động gồng Ki khi năng lượng xuống thấp (Phím G)
-Tab:NewToggle("Auto Charge Ki (G)", "Tự động gồng Ki bằng phím G", function(s)
+Tab:NewToggle("Auto Charge Ki", "Tự động gồng Ki khi cạn năng lượng", function(s)
     _G.AutoKi = s
     task.spawn(function()
         while _G.AutoKi do
@@ -81,40 +90,60 @@ Tab:NewToggle("Auto Charge Ki (G)", "Tự động gồng Ki bằng phím G", fun
     end)
 end)
 
--- 3. Tự động dùng bông tai Potara (Phím H)
-Tab:NewToggle("Auto Bông Tai (H)", "Tự động đeo bông tai Potara", function(s)
+-- =======================================================
+-- SỬA LỖI: AUTO BÔNG TAI SỬ DỤNG REMOTE EVENT (KHÔNG DÙNG PHÍM BẤM)
+-- =======================================================
+Tab:NewToggle("Auto Bông Tai", "Tự động kích hoạt bông tai Potara qua hệ thống", function(s)
     _G.AutoEarring = s
     task.spawn(function()
         while _G.AutoEarring do
             pcall(function()
                 local char = Plr.Character
                 local IsFused = char:FindFirstChild("Fused") or char:FindFirstChild("Fusion") or Plr:FindFirstChild("Status"):FindFirstChild("Fused")
+                
+                -- Nếu kiểm tra thấy chưa hợp thể, kích hoạt trực tiếp bằng Remote của game
                 if not IsFused then
-                    VIM:SendKeyEvent(true, Enum.KeyCode.H, false, game)
-                    task.wait(0.1)
-                    VIM:SendKeyEvent(false, Enum.KeyCode.H, false, game)
+                    local remote = game:GetService("ReplicatedStorage"):FindFirstChild("Remotes") and game:GetService("ReplicatedStorage").Remotes:FindFirstChild("Potara") or game:GetService("ReplicatedStorage"):FindFirstChild("FusionRemote")
+                    if remote then
+                        remote:FireServer(true)
+                    else
+                        -- Phương án dự phòng nếu không tìm thấy Remote độc lập
+                        VIM:SendKeyEvent(true, Enum.KeyCode.H, false, game)
+                        task.wait(0.05)
+                        VIM:SendKeyEvent(false, Enum.KeyCode.H, false, game)
+                    end
                 end
             end)
-            task.wait(3)
+            task.wait(2)
         end
     end)
 end)
 
--- 4. Tự động biến hình Form (Phím V)
-Tab:NewToggle("Auto Biến Hình (V)", "Tự động lên Form khi mất trạng thái", function(s)
+-- =======================================================
+-- SỬA LỖI: AUTO FORM SỬ DỤNG REMOTE EVENT (KHÔNG DÙNG PHÍM BẤM)
+-- =======================================================
+Tab:NewToggle("Auto Form", "Tự động kích hoạt trạng thái biến hình", function(s)
     _G.AutoForm = s
     task.spawn(function()
         while _G.AutoForm do
             pcall(function()
                 local char = Plr.Character
                 local IsTransformed = char:FindFirstChild("Transformed") or char:FindFirstChild("Form") or char:FindFirstChild("ActiveForm")
+                
+                -- Nếu kiểm tra thấy chưa biến hình, gọi trực tiếp lệnh từ Server để lên Form
                 if not IsTransformed then
-                    VIM:SendKeyEvent(true, Enum.KeyCode.V, false, game)
-                    task.wait(0.1)
-                    VIM:SendKeyEvent(false, Enum.KeyCode.V, false, game)
+                    local remote = game:GetService("ReplicatedStorage"):FindFirstChild("Remotes") and game:GetService("ReplicatedStorage").Remotes:FindFirstChild("Transform") or game:GetService("ReplicatedStorage"):FindFirstChild("TransformRemote")
+                    if remote then
+                        remote:FireServer("EquipCurrentForm")
+                    else
+                        -- Phương án dự phòng nếu không tìm thấy Remote độc lập
+                        VIM:SendKeyEvent(true, Enum.KeyCode.V, false, game)
+                        task.wait(0.05)
+                        VIM:SendKeyEvent(false, Enum.KeyCode.V, false, game)
+                    end
                 end
             end)
-            task.wait(3)
+            task.wait(2)
         end
     end)
 end)
@@ -145,24 +174,18 @@ Tab:NewToggle("Treo Trên Đầu Boss", "Bay cao an toàn, đứng im khi hết 
     end)
 end)
 
--- =======================================================
--- NÚT 1: AUTO NEXT RAID (CHUYỂN CẢNH KHÔNG BỊ KẸT)
--- =======================================================
+-- 6. Tự động tạo phòng mới khi bị sút về sảnh PVE
 Tab:NewToggle("Auto Next Raid", "Tự động tạo phòng mới khi bị sút về sảnh PVE", function(s)
     _G.RaidNext = s
     task.spawn(function()
         while _G.RaidNext do
             pcall(function()
-                -- Quét hệ thống UI phòng Dungeon đặc trưng của Dragon Blox V2
                 local pGui = Plr:FindFirstChild("PlayerGui")
                 if pGui then
-                    -- Quét các bảng nút điều khiển phòng chờ hiển thị tại sảnh chính
                     for _, v in ipairs(pGui:GetDescendants()) do
                         if v:IsA("TextButton") and v.Visible then
                             local txt = string.lower(v.Text)
                             local name = string.lower(v.Name)
-                            
-                            -- Nếu thấy nút "Create" hoặc "Tạo Phòng" Dungeon mới thì tự bấm
                             if string.find(txt, "create") or string.find(name, "create") or string.find(txt, "tạo") then
                                 v:Activate()
                                 VU:ClickButton1(Vector2.new(v.AbsolutePosition.X + v.AbsoluteSize.X/2, v.AbsolutePosition.Y + v.AbsoluteSize.Y/2))
@@ -176,9 +199,7 @@ Tab:NewToggle("Auto Next Raid", "Tự động tạo phòng mới khi bị sút v
     end)
 end)
 
--- =======================================================
--- NÚT 2: AUTO START RAID (TỰ BẤM BẮT ĐẦU TRONG PHÒNG CHỜ)
--- =======================================================
+-- 7. Tự bấm nút Bắt đầu/Sẵn sàng để vào trận
 Tab:NewToggle("Auto Start Raid", "Tự bấm nút Bắt đầu/Sẵn sàng để vào trận", function(s)
     _G.RaidStart = s
     task.spawn(function()
@@ -190,8 +211,6 @@ Tab:NewToggle("Auto Start Raid", "Tự bấm nút Bắt đầu/Sẵn sàng để
                         if (v:IsA("TextButton") or v:IsA("ImageButton")) and v.Visible then
                             local txt = string.lower(v:IsA("TextButton") and v.Text or "")
                             local name = string.lower(v.Name)
-                            
-                            -- Quét các từ khóa bắt đầu trận đấu của hệ thống Dungeon phòng chờ
                             if string.find(txt, "start") or string.find(name, "start") or string.find(txt, "bắt đầu") or string.find(txt, "ready") or string.find(txt, "sẵn sàng") then
                                 v:Activate()
                                 VU:ClickButton1(Vector2.new(v.AbsolutePosition.X + v.AbsoluteSize.X/2, v.AbsolutePosition.Y + v.AbsoluteSize.Y/2))
