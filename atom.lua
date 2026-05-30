@@ -60,7 +60,6 @@ Tab:NewToggle("Spam Đạn Đuổi", "Bắn đạn tự động khóa và đuổ
                         if target and target:FindFirstChild("HumanoidRootPart") then
                             local cam = workspace.CurrentCamera
                             if cam then
-                                -- Tối ưu góc quay mượt mà, không giật màn hình
                                 cam.CFrame = CFrame.new(cam.CFrame.Position, target.HumanoidRootPart.Position)
                             end
                         end
@@ -68,7 +67,7 @@ Tab:NewToggle("Spam Đạn Đuổi", "Bắn đạn tự động khóa và đuổ
                     VIM:SendKeyEvent(true, Enum.KeyCode.E, false, game)
                     VIM:SendKeyEvent(false, Enum.KeyCode.E, false, game)
                 end
-                task.wait(0.03) -- Đồng bộ tốc độ xả đạn mượt, chống văng game trên mobile
+                task.wait(0.03)
             end
         end)
     end
@@ -115,7 +114,7 @@ Tab:NewToggle("Auto Bông Tai", "Tự động kích hoạt bông tai Potara qua 
                     end
                 end
             end)
-            task.wait(2.5) -- Tăng giãn cách tránh spam quá tải dữ liệu server
+            task.wait(2.5)
         end
     end)
 end)
@@ -140,7 +139,7 @@ Tab:NewToggle("Auto Form", "Tự động kích hoạt trạng thái biến hình
                     end
                 end
             end)
-            task.wait(2.5) -- Tăng giãn cách tránh lag ping
+            task.wait(2.5)
         end
     end)
 end)
@@ -171,8 +170,10 @@ Tab:NewToggle("Treo Trên Đầu Boss", "Bay cao an toàn, đứng im khi hết 
     end)
 end)
 
--- 6. Tự động tạo phòng mới khi bị sút về sảnh PVE
-Tab:NewToggle("Auto Next Raid", "Tự động tạo phòng mới khi bị sút về sảnh PVE", function(s)
+-- =======================================================
+-- CẬP NHẬT: AUTO NEXT PVE RAID SỬA LỖI GIAO DIỆN MỚI
+-- =======================================================
+Tab:NewToggle("Auto Next Raid", "Tự động tạo phòng mới hoặc bấm kế tiếp khi xong trận", function(s)
     _G.RaidNext = s
     task.spawn(function()
         while _G.RaidNext do
@@ -180,24 +181,34 @@ Tab:NewToggle("Auto Next Raid", "Tự động tạo phòng mới khi bị sút v
                 local pGui = Plr:FindFirstChild("PlayerGui")
                 if pGui then
                     for _, v in ipairs(pGui:GetDescendants()) do
-                        if v:IsA("TextButton") and v.Visible then
-                            local txt = string.lower(v.Text)
+                        if (v:IsA("TextButton") or v:IsA("ImageButton")) and v.Visible and v.AbsoluteSize.X > 0 then
+                            local txt = string.lower(v:IsA("TextButton") and v.Text or "")
                             local name = string.lower(v.Name)
-                            if string.find(txt, "create") or string.find(name, "create") or string.find(txt, "tạo") then
+                            
+                            -- Quét mở rộng từ khóa phòng chờ mới cập nhật của game
+                            if string.find(txt, "create") or string.find(name, "create") or 
+                               string.find(txt, "tạo") or string.find(txt, "next") or 
+                               string.find(name, "next") or string.find(txt, "kế tiếp") or 
+                               string.find(txt, "leave") or string.find(name, "leave") or
+                               string.find(txt, "thoát") or string.find(txt, "teleport") then
+                                
                                 v:Activate()
-                                VU:ClickButton1(Vector2.new(v.AbsolutePosition.X + v.AbsolutePosition.X/2, v.AbsolutePosition.Y + v.AbsoluteSize.Y/2))
+                                VU:ActivateServer()
+                                VU:ClickButton1(Vector2.new(v.AbsolutePosition.X + v.AbsoluteSize.X/2, v.AbsolutePosition.Y + v.AbsoluteSize.Y/2))
                             end
                         end
                     end
                 end
             end)
-            task.wait(2)
+            task.wait(1) -- Quét nhanh hơn để tránh bị kẹt màn hình nhận thưởng
         end
     end)
 end)
 
--- 7. Tự bấm nút Bắt đầu/Sẵn sàng để vào trận
-Tab:NewToggle("Auto Start Raid", "Tự bấm nút Bắt đầu/Sẵn sàng để vào trận", function(s)
+-- =======================================================
+-- CẬP NHẬT: AUTO START / READY SỬA LỖI GIAO DIỆN MỚI
+-- =======================================================
+Tab:NewToggle("Auto Start Raid", "Tự bấm nút Bắt đầu / Sẵn sàng để vào trận ngay", function(s)
     _G.RaidStart = s
     task.spawn(function()
         while _G.RaidStart do
@@ -205,18 +216,26 @@ Tab:NewToggle("Auto Start Raid", "Tự bấm nút Bắt đầu/Sẵn sàng để
                 local pGui = Plr:FindFirstChild("PlayerGui")
                 if pGui then
                     for _, v in ipairs(pGui:GetDescendants()) do
-                        if (v:IsA("TextButton") or v:IsA("ImageButton")) and v.Visible then
+                        if (v:IsA("TextButton") or v:IsA("ImageButton")) and v.Visible and v.AbsoluteSize.X > 0 then
                             local txt = string.lower(v:IsA("TextButton") and v.Text or "")
                             local name = string.lower(v.Name)
-                            if string.find(txt, "start") or string.find(name, "start") or string.find(txt, "bắt đầu") or string.find(txt, "ready") or string.find(txt, "sẵn sàng") then
+                            
+                            -- Thêm các bộ lọc từ khóa của nút bắt đầu chuẩn phiên bản mới
+                            if string.find(txt, "start") or string.find(name, "start") or 
+                               string.find(txt, "bắt đầu") or string.find(txt, "ready") or 
+                               string.find(name, "ready") or string.find(txt, "sẵn sàng") or 
+                               string.find(name, "play") or string.find(txt, "play") or
+                               string.find(name, "join") or string.find(txt, "vào trận") then
+                                
                                 v:Activate()
+                                VU:ActivateServer()
                                 VU:ClickButton1(Vector2.new(v.AbsolutePosition.X + v.AbsoluteSize.X/2, v.AbsolutePosition.Y + v.AbsoluteSize.Y/2))
                             end
                         end
                     end
                 end
             end)
-            task.wait(1.5)
+            task.wait(1)
         end
     end)
 end)
