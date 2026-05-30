@@ -10,7 +10,12 @@ local RunService = game:GetService("RunService")
 local Plat = Instance.new("Part", workspace)
 Plat.Size = Vector3.new(10,1,10) Plat.Anchored = true Plat.Transparency = 1 Plat.CanCollide = true
 
+-- Bộ nhớ đệm tối ưu quét quái chống lag CPU
+local lastTarget = nil
 local function getMonster()
+    if lastTarget and lastTarget:FindFirstChild("Humanoid") and lastTarget.Humanoid.Health > 0 and lastTarget:FindFirstChild("HumanoidRootPart") then
+        return lastTarget
+    end
     local target, dist = nil, math.huge
     for _, v in ipairs(workspace:GetDescendants()) do
         if v:IsA("Model") and v:FindFirstChild("HumanoidRootPart") and v:FindFirstChild("Humanoid") and v.Name ~= Plr.Name then
@@ -20,12 +25,11 @@ local function getMonster()
             end
         end
     end
+    lastTarget = target
     return target
 end
 
--- =======================================================
 -- ÉP MENU KAVO PHẢI VUỐT ĐƯỢC MƯỢT MÀ TRÊN ĐIỆN THOẠI
--- =======================================================
 task.spawn(function()
     while task.wait(1) do
         pcall(function()
@@ -44,7 +48,7 @@ task.spawn(function()
     end
 end)
 
--- 1. Spam Đạn Đuổi (E) tự định vị quái
+-- 1. Spam Đạn Đuổi (E) tự định vị quái (Đã tối ưu mượt góc quay)
 Tab:NewToggle("Spam Đạn Đuổi", "Bắn đạn tự động khóa và đuổi theo quái", function(s)
     _G.EB = s
     if s then
@@ -56,6 +60,7 @@ Tab:NewToggle("Spam Đạn Đuổi", "Bắn đạn tự động khóa và đuổ
                         if target and target:FindFirstChild("HumanoidRootPart") then
                             local cam = workspace.CurrentCamera
                             if cam then
+                                -- Tối ưu góc quay mượt mà, không giật màn hình
                                 cam.CFrame = CFrame.new(cam.CFrame.Position, target.HumanoidRootPart.Position)
                             end
                         end
@@ -63,13 +68,13 @@ Tab:NewToggle("Spam Đạn Đuổi", "Bắn đạn tự động khóa và đuổ
                     VIM:SendKeyEvent(true, Enum.KeyCode.E, false, game)
                     VIM:SendKeyEvent(false, Enum.KeyCode.E, false, game)
                 end
-                RunService.Stepped:Wait()
+                task.wait(0.03) -- Đồng bộ tốc độ xả đạn mượt, chống văng game trên mobile
             end
         end)
     end
 end)
 
--- 2. Tự động gồng Ki khi năng lượng xuống thấp (Phím G)
+-- 2. Tự động gồng Ki khi năng lượng xuống thấp
 Tab:NewToggle("Auto Charge Ki", "Tự động gồng Ki khi cạn năng lượng", function(s)
     _G.AutoKi = s
     task.spawn(function()
@@ -90,9 +95,7 @@ Tab:NewToggle("Auto Charge Ki", "Tự động gồng Ki khi cạn năng lượng
     end)
 end)
 
--- =======================================================
--- SỬA LỖI: AUTO BÔNG TAI SỬ DỤNG REMOTE EVENT (KHÔNG DÙNG PHÍM BẤM)
--- =======================================================
+-- 3. Auto Bông Tai bằng Remote Event (Chống đè phím)
 Tab:NewToggle("Auto Bông Tai", "Tự động kích hoạt bông tai Potara qua hệ thống", function(s)
     _G.AutoEarring = s
     task.spawn(function()
@@ -101,27 +104,23 @@ Tab:NewToggle("Auto Bông Tai", "Tự động kích hoạt bông tai Potara qua 
                 local char = Plr.Character
                 local IsFused = char:FindFirstChild("Fused") or char:FindFirstChild("Fusion") or Plr:FindFirstChild("Status"):FindFirstChild("Fused")
                 
-                -- Nếu kiểm tra thấy chưa hợp thể, kích hoạt trực tiếp bằng Remote của game
                 if not IsFused then
                     local remote = game:GetService("ReplicatedStorage"):FindFirstChild("Remotes") and game:GetService("ReplicatedStorage").Remotes:FindFirstChild("Potara") or game:GetService("ReplicatedStorage"):FindFirstChild("FusionRemote")
                     if remote then
                         remote:FireServer(true)
                     else
-                        -- Phương án dự phòng nếu không tìm thấy Remote độc lập
                         VIM:SendKeyEvent(true, Enum.KeyCode.H, false, game)
                         task.wait(0.05)
                         VIM:SendKeyEvent(false, Enum.KeyCode.H, false, game)
                     end
                 end
             end)
-            task.wait(2)
+            task.wait(2.5) -- Tăng giãn cách tránh spam quá tải dữ liệu server
         end
     end)
 end)
 
--- =======================================================
--- SỬA LỖI: AUTO FORM SỬ DỤNG REMOTE EVENT (KHÔNG DÙNG PHÍM BẤM)
--- =======================================================
+-- 4. Auto Form bằng Remote Event (Chống đè phím)
 Tab:NewToggle("Auto Form", "Tự động kích hoạt trạng thái biến hình", function(s)
     _G.AutoForm = s
     task.spawn(function()
@@ -130,20 +129,18 @@ Tab:NewToggle("Auto Form", "Tự động kích hoạt trạng thái biến hình
                 local char = Plr.Character
                 local IsTransformed = char:FindFirstChild("Transformed") or char:FindFirstChild("Form") or char:FindFirstChild("ActiveForm")
                 
-                -- Nếu kiểm tra thấy chưa biến hình, gọi trực tiếp lệnh từ Server để lên Form
                 if not IsTransformed then
                     local remote = game:GetService("ReplicatedStorage"):FindFirstChild("Remotes") and game:GetService("ReplicatedStorage").Remotes:FindFirstChild("Transform") or game:GetService("ReplicatedStorage"):FindFirstChild("TransformRemote")
                     if remote then
                         remote:FireServer("EquipCurrentForm")
                     else
-                        -- Phương án dự phòng nếu không tìm thấy Remote độc lập
                         VIM:SendKeyEvent(true, Enum.KeyCode.V, false, game)
                         task.wait(0.05)
                         VIM:SendKeyEvent(false, Enum.KeyCode.V, false, game)
                     end
                 end
             end)
-            task.wait(2)
+            task.wait(2.5) -- Tăng giãn cách tránh lag ping
         end
     end)
 end)
@@ -188,13 +185,13 @@ Tab:NewToggle("Auto Next Raid", "Tự động tạo phòng mới khi bị sút v
                             local name = string.lower(v.Name)
                             if string.find(txt, "create") or string.find(name, "create") or string.find(txt, "tạo") then
                                 v:Activate()
-                                VU:ClickButton1(Vector2.new(v.AbsolutePosition.X + v.AbsoluteSize.X/2, v.AbsolutePosition.Y + v.AbsoluteSize.Y/2))
+                                VU:ClickButton1(Vector2.new(v.AbsolutePosition.X + v.AbsolutePosition.X/2, v.AbsolutePosition.Y + v.AbsoluteSize.Y/2))
                             end
                         end
                     end
                 end
             end)
-            task.wait(1.5)
+            task.wait(2)
         end
     end)
 end)
@@ -219,7 +216,7 @@ Tab:NewToggle("Auto Start Raid", "Tự bấm nút Bắt đầu/Sẵn sàng để
                     end
                 end
             end)
-            task.wait(1)
+            task.wait(1.5)
         end
     end)
 end)
