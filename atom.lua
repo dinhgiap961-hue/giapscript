@@ -23,6 +23,23 @@ local function getMonster()
     return target
 end
 
+-- =======================================================
+-- TỰ ĐỘNG SỬA MENU KAVO ĐỂ VUỐT ĐƯỢC TRÊN ĐIỆN THOẠI
+-- =======================================================
+pcall(function()
+    local coreGui = game:GetService("CoreGui")
+    local mainFrame = coreGui:FindFirstChild("Atom Max Hub") or coreGui:FindFirstChild("KavoL")
+    if mainFrame then
+        for _, v in ipairs(mainFrame:GetDescendants()) do
+            if v:IsA("ScrollingFrame") then
+                v.CanvasSize = UDim2.new(0, 0, 0, 1200) -- Mở rộng vùng cuộn
+                v.ScrollingEnabled = true
+                v.ScrollBarThickness = 6
+            end
+        end
+    end
+end)
+
 -- 1. Spam chiêu E siêu tốc độ theo FPS
 Tab:NewToggle("Spam Energy Blast (E)", "Xả đạn tốc độ tối đa theo FPS", function(s)
     _G.EB = s
@@ -60,7 +77,45 @@ Tab:NewToggle("Auto Charge Ki (G)", "Tự động gồng Ki bằng phím G", fun
     end)
 end)
 
--- 3. Treo trên đầu Boss né skill + Tự đứng im khi xong trận
+-- 3. Tự động dùng bông tai Potara (Phím H)
+Tab:NewToggle("Auto Bông Tai (H)", "Tự động đeo bông tai Potara", function(s)
+    _G.AutoEarring = s
+    task.spawn(function()
+        while _G.AutoEarring do
+            pcall(function()
+                local char = Plr.Character
+                local IsFused = char:FindFirstChild("Fused") or char:FindFirstChild("Fusion") or Plr:FindFirstChild("Status"):FindFirstChild("Fused")
+                if not IsFused then
+                    VIM:SendKeyEvent(true, Enum.KeyCode.H, false, game)
+                    task.wait(0.1)
+                    VIM:SendKeyEvent(false, Enum.KeyCode.H, false, game)
+                end
+            end)
+            task.wait(3)
+        end
+    end)
+end)
+
+-- 4. Tự động biến hình Form (Phím V)
+Tab:NewToggle("Auto Biến Hình (V)", "Tự động lên Form khi mất trạng thái", function(s)
+    _G.AutoForm = s
+    task.spawn(function()
+        while _G.AutoForm do
+            pcall(function()
+                local char = Plr.Character
+                local IsTransformed = char:FindFirstChild("Transformed") or char:FindFirstChild("Form") or char:FindFirstChild("ActiveForm")
+                if not IsTransformed then
+                    VIM:SendKeyEvent(true, Enum.KeyCode.V, false, game)
+                    task.wait(0.1)
+                    VIM:SendKeyEvent(false, Enum.KeyCode.V, false, game)
+                end
+            end)
+            task.wait(3)
+        end
+    end)
+end)
+
+-- 5. Treo trên đầu Boss né skill + Tự đứng im khi xong trận
 Tab:NewToggle("Treo Trên Đầu Boss", "Bay cao an toàn, đứng im khi hết quái", function(s)
     _G.Tp = s
     task.spawn(function()
@@ -86,26 +141,20 @@ Tab:NewToggle("Treo Trên Đầu Boss", "Bay cao an toàn, đứng im khi hết 
     end)
 end)
 
--- 4. TỰ ĐỘNG BẤM REPLAY/NEXT (BẢN ĐÃ SỬA LỖI - QUÉT SÂU)
-Tab:NewToggle("Auto Next Raid", "Tự động kích hoạt trận mới", function(s)
-    _G.Raid = s
+-- 6. NÚT RIÊNG BIỆT 1: TỰ ĐỘNG BẤM TIẾP TỤC / REPLAY KHI XONG TRẬN
+Tab:NewToggle("Auto Next Raid", "Tự động bấm chơi lại khi hết trận", function(s)
+    _G.RaidNext = s
     task.spawn(function()
-        while _G.Raid do
+        while _G.RaidNext do
             pcall(function()
-                -- Quét diện rộng toàn bộ CoreGui và PlayerGui để tránh bỏ sót nút
                 local guis = {Plr.PlayerGui, game:GetService("CoreGui")}
                 for _, parent in ipairs(guis) do
                     for _, v in ipairs(parent:GetDescendants()) do
-                        if (v:IsA("TextButton") or v:IsA("ImageButton")) and v.AbsoluteSize.X > 0 then
-                            -- Thu thập tên nút, văn bản hiển thị để đối chiếu từ khóa công phá
+                        if (v:IsA("TextButton") or v:IsA("ImageButton")) and v.Visible and v.AbsoluteSize.X > 0 then
                             local n = string.lower(v.Name)
                             local t = string.lower(v:IsA("TextButton") and v.Text or "")
-                            
-                            -- Bộ từ khóa nhận diện tất cả các kiểu nút Chơi lại / Tiếp tục trong các game Anime
-                            if string.find(n, "replay") or string.find(n, "retry") or string.find(n, "again") or string.find(n, "next") or string.find(n, "teleport") or string.find(n, "start") or
+                            if string.find(n, "replay") or string.find(n, "retry") or string.find(n, "again") or string.find(n, "next") or
                                string.find(t, "replay") or string.find(t, "retry") or string.find(t, "again") or string.find(t, "next") or string.find(t, "chơi lại") or string.find(t, "tiếp tục") then
-                                
-                                -- Ép kích hoạt nút bằng mọi cách (Cả lệnh nội bộ lẫn giả lập click tọa độ ảo)
                                 v:Activate()
                                 local pos = v.AbsolutePosition + (v.AbsoluteSize / 2)
                                 VU:ClickButton1(Vector2.new(pos.X, pos.Y))
@@ -114,12 +163,39 @@ Tab:NewToggle("Auto Next Raid", "Tự động kích hoạt trận mới", functi
                     end
                 end
             end)
-            task.wait(1) -- Quét liên tục mỗi giây khi hết trận
+            task.wait(1)
         end
     end)
 end)
 
--- 5. Nút sửa lỗi mất Joystick di chuyển trên điện thoại
+-- 7. NÚT RIÊNG BIỆT 2: TỰ ĐỘNG BẤM BẮT ĐẦU TRẬN / VÀO PHÒNG MỚI
+Tab:NewToggle("Auto Start Raid", "Tự động bấm Start trận ở phòng chờ", function(s)
+    _G.RaidStart = s
+    task.spawn(function()
+        while _G.RaidStart do
+            pcall(function()
+                local guis = {Plr.PlayerGui, game:GetService("CoreGui")}
+                for _, parent in ipairs(guis) do
+                    for _, v in ipairs(parent:GetDescendants()) do
+                        if (v:IsA("TextButton") or v:IsA("ImageButton")) and v.Visible and v.AbsoluteSize.X > 0 then
+                            local n = string.lower(v.Name)
+                            local t = string.lower(v:IsA("TextButton") and v.Text or "")
+                            if string.find(n, "start") or string.find(n, "teleport") or string.find(n, "join") or string.find(n, "enter") or
+                               string.find(t, "start") or string.find(t, "bắt đầu") or string.find(t, "vào trận") or string.find(t, "sẵn sàng") then
+                                v:Activate()
+                                local pos = v.AbsolutePosition + (v.AbsoluteSize / 2)
+                                VU:ClickButton1(Vector2.new(pos.X, pos.Y))
+                            end
+                        end
+                    end
+                end
+            end)
+            task.wait(1)
+        end
+    end)
+end)
+
+-- 8. Nút sửa lỗi mất Joystick di chuyển trên điện thoại
 Tab:NewButton("Hiện Nút Di Chuyển", "Fix lỗi ẩn mất nút di chuyển", function()
     pcall(function()
         local tg = Plr.PlayerGui:FindFirstChild("TouchGui")
