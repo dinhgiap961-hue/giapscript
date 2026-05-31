@@ -1,5 +1,5 @@
 -- ============================================================================
--- DRAGON BLOX V2 - PREMIUM HUB (ATOM MAX - ANTI-LAG & FPS BOOST PACK)
+-- DRAGON BLOX V2 - PREMIUM HUB (ATOM MAX - HARDCORE MAX SPEED SPAM E)
 -- ============================================================================
 
 -- 1. KHỞI TẠO HỆ THỐNG VÀ KIỂM TRA KẾT NỐI UI
@@ -9,7 +9,7 @@ local Window = Library.CreateLib("Dragon Blox V2 | Ultimate Hub", "BloodTheme")
 -- Thông báo khởi chạy hệ thống thành công dưới góc màn hình
 game:GetService("StarterGui"):SetCore("SendNotification", {
     Title = "Atom System",
-    Text = "Tối ưu hóa lag thành công! Bấm 'Atom Max' để ẩn/hiện menu.",
+    Text = "Đã kích hoạt chế độ Max Tốc Độ! Bấm 'Atom Max' để ẩn/hiện menu.",
     Duration = 5
 })
 
@@ -30,6 +30,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VirtualUser = game:GetService("VirtualUser")
 local CoreGui = game:GetService("CoreGui")
 local InputManager = game:GetService("VirtualInputManager")
+local RunService = game:GetService("RunService")
 
 -- Tự động cập nhật lại Character khi nhân vật bị reset hoặc hồi sinh
 LocalPlayer.CharacterAdded:Connect(function(char)
@@ -159,7 +160,7 @@ MainSection:NewToggle("Auto Farm Mobs (Level)", "Tự động tiêu diệt quái
     end
 end)
 
--- Auto Boss V1: Tự bay cao 30 Studs + Khóa Aim cứng hướng thẳng vào Boss + Tự đấm trúng liên tục không cần nhấn
+-- Auto Boss V1: Tự bay cao 30 Studs + Khóa Aim cứng hướng thẳng vào Boss + Tự đấm liên tục
 MainSection:NewToggle("Auto Boss V1 (30 Studs + Auto Aim)", "Tự bay cao, tự Aim khóa mục tiêu và tự đấm liên tục", function(state)
     getgenv().AutoBossV1 = state
     
@@ -182,14 +183,12 @@ MainSection:NewToggle("Auto Boss V1 (30 Studs + Auto Aim)", "Tự bay cao, tự 
                         end
                         Humanoid:ChangeState(Enum.HumanoidStateType.Physics)
                         
-                        -- HỆ THỐNG SILENT AIM: Khóa chặt hướng nhân vật và Camera vào Boss gần nhất
                         local target = GetClosestTarget()
                         if target then
                             HRP.CFrame = CFrame.new(HRP.Position, Vector3.new(target.Position.X, target.Position.Y, target.Position.Z))
                             workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, target.Position)
                         end
                     end
-                    -- Tự động xả đấm (Không cần người chơi nhấn màn hình)
                     VirtualUser:Button1Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
                 end)
                 task.wait(0.04)
@@ -202,30 +201,35 @@ MainSection:NewToggle("Auto Boss V1 (30 Studs + Auto Aim)", "Tự bay cao, tự 
     end
 end)
 
--- Auto Boss V2: Spam E Cực Tốc (Đã tối ưu hóa giảm ping/lag bằng khoảng chờ thông minh 0.01 giây)
-MainSection:NewToggle("Auto Boss V2 (Auto Aim + Anti-Lag Spam E)", "Tự động Aim trúng đích và tự Spam phím E mượt mà, chống lag", function(state)
+-- Auto Boss V2: ÉP TỐC ĐỘ THEO TỪNG KHUNG HÌNH (HEARTBEAT BYPASS) - TỐC ĐỘ CAO NHẤT ENGINE CHO PHÉP
+MainSection:NewToggle("Auto Boss V2 (Max Speed Spam E)", "Đẩy tốc độ spam phím E đồng bộ theo FPS máy (Không delay)", function(state)
     getgenv().AutoBossV2 = state
     
     if state then
         task.spawn(function()
-            while getgenv().AutoBossV2 do
+            -- Sử dụng luồng Heartbeat để kích hoạt vòng lặp chạy bằng vận tốc khung hình máy
+            local HeartbeatConnection
+            HeartbeatConnection = RunService.Heartbeat:Connect(function()
+                if not getgenv().AutoBossV2 then
+                    if HeartbeatConnection then HeartbeatConnection:Disconnect() end
+                    return
+                end
+                
                 pcall(function()
                     local HRP = Character:FindFirstChild("HumanoidRootPart")
                     local target = GetClosestTarget()
                     
-                    -- HỆ THỐNG SILENT AIM: Tự bẻ hướng chiêu thức bay thẳng vào Boss gần nhất
+                    -- Khóa mục tiêu chuẩn xác liên tục
                     if HRP and target then
                         HRP.CFrame = CFrame.new(HRP.Position, Vector3.new(target.Position.X, target.Position.Y, target.Position.Z))
                         workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, target.Position)
                     end
                     
-                    -- Gửi sự kiện nhấn phím E tốc độ cao có kiểm soát để tránh tràn dữ liệu gây crash game
+                    -- Triệt tiêu hoàn toàn task.wait, ép sự kiện click nhấn và nhả xảy ra tức thì
                     InputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
-                    task.wait(0.01)
                     InputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
                 end)
-                task.wait(0.01) -- Giãn cách ngắn tối ưu cho CPU thiết bị yếu và giảm ping mạng
-            end
+            end)
         end)
     end
 end)
@@ -304,19 +308,16 @@ LocalPlayer.Idled:Connect(function()
     end
 end)
 
--- NÚT SIÊU CẤP ĐỘ: Giảm đồ họa kịch trần, tắt hiệu ứng map và chiêu thức nặng để tăng tối đa FPS
 SettingsSection:NewButton("Optimize Graphics (Max Boost FPS)", "Xóa hiệu ứng kỹ năng thừa + vân bề mặt để làm mượt game", function()
     pcall(function()
-        -- Tắt hiệu ứng hạt, ánh sáng thừa và bóng đổ kỹ năng
         for _, v in ipairs(workspace:GetDescendants()) do
             if v:IsA("PostEffect") or v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Sparkles") then 
                 v.Enabled = false 
             end
             if v:IsA("Decal") or v:IsA("Texture") then
-                v:Destroy() -- Xóa hoa văn bề mặt giảm tải cho VGA/GPU
+                v:Destroy()
             end
         end
-        -- Hạ cấu hình đồ họa hệ thống của Roblox xuống mức 1 thấp nhất
         settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
         sethiddenproperty(game:GetService("Lighting"), "Technology", Enum.Technology.Compatibility)
     end)
