@@ -3,10 +3,6 @@ local RunService = game:GetService("RunService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local UserInputService = game:GetService("UserInputService")
 
--- CONFIG TỪ KHÓA TÌM NÚT TRONG GAME (Thay đổi nếu nút của game tên khác)
-local TEXT_START_BUTTON = "start" -- Chữ xuất hiện trong nút Start của game (không phân biệt hoa thường)
-local TEXT_NEXT_BUTTON = "next"   -- Chữ xuất hiện trong nút Next của game (không phân biệt hoa thường)
-
 -- Reset GUI cũ nếu có
 local oldGui = Player:WaitForChild("PlayerGui"):FindFirstChild("AutoBossGui")
 if oldGui then oldGui:Destroy() end
@@ -42,7 +38,7 @@ LockBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 LockBtn.Font = Enum.Font.SourceSansBold
 LockBtn.TextSize = 16
 
--- THÊM MỚI: Nút Tự động Start Raid (Click)
+-- Nút Tự động Start Raid (Giữ nguyên)
 local StartBtn = Instance.new("TextButton", MainFrame)
 StartBtn.Size = UDim2.new(1, 0, 0, 50)
 StartBtn.Position = UDim2.new(0, 0, 0, 110)
@@ -52,7 +48,7 @@ StartBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 StartBtn.Font = Enum.Font.SourceSansBold
 StartBtn.TextSize = 16
 
--- THÊM MỚI: Nút Tự động Next Raid (Click)
+-- Nút Tự động Next Raid (Giữ nguyên)
 local NextBtn = Instance.new("TextButton", MainFrame)
 NextBtn.Size = UDim2.new(1, 0, 0, 50)
 NextBtn.Position = UDim2.new(0, 0, 0, 165)
@@ -87,8 +83,8 @@ end)
 -- Trạng thái mặc định
 local Active = false
 local LockMode = "ALL"
-local AutoStart = false  -- THÊM MỚI
-local AutoNext = false   -- THÊM MỚI
+local AutoStart = false
+local AutoNext = false
 
 -- Sự kiện Click nút Auto Boss (Giữ nguyên gốc)
 Btn.MouseButton1Click:Connect(function()
@@ -114,14 +110,14 @@ LockBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- THÊM MỚI: Sự kiện Click nút Start Raid
+-- Sự kiện Click nút Start Raid
 StartBtn.MouseButton1Click:Connect(function()
     AutoStart = not AutoStart
     StartBtn.Text = AutoStart and "START RAID: ON" or "START RAID: OFF"
     StartBtn.BackgroundColor3 = AutoStart and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 100, 0)
 end)
 
--- THÊM MỚI: Sự kiện Click nút Next Raid
+-- Sự kiện Click nút Next Raid
 NextBtn.MouseButton1Click:Connect(function()
     AutoNext = not AutoNext
     NextBtn.Text = AutoNext and "NEXT RAID: ON" or "NEXT RAID: OFF"
@@ -146,31 +142,6 @@ local function FindBossDeep()
         end
     end
     return nil
-end
-
--- HÀM TÌM VÀ CLICK VÀO NÚT UI CỦA GAME
-local function ClickGameButton(searchTxt)
-    for _, gui in pairs(Player.PlayerGui:GetDescendants()) do
-        -- Tránh tự click vào các nút của công cụ AutoBossGui này
-        if gui:IsA("TextButton") and gui.Parent ~= MainFrame and gui.Visible and gui.AbsoluteSize.X > 0 then
-            local textLower = string.lower(gui.Text)
-            local nameLower = string.lower(gui.Name)
-            
-            -- Kiểm tra xem Tên nút hoặc Chữ trên nút có chứa từ khóa không
-            if string.find(textLower, searchTxt) or string.find(nameLower, searchTxt) then
-                -- Lấy tọa độ thực tế của nút trên màn hình
-                local x = gui.AbsolutePosition.X + (gui.AbsoluteSize.X / 2)
-                local y = gui.AbsolutePosition.Y + (gui.AbsoluteSize.Y / 2) + 36 -- +36 là offset thanh bar của Roblox
-                
-                -- Giả lập nhấn chuột trái vào vị trí nút
-                VirtualInputManager:SendMouseButtonEvent(x, y, 0, true, game, 1)
-                task.wait(0.05)
-                VirtualInputManager:SendMouseButtonEvent(x, y, 0, false, game, 1)
-                return true -- Đã tìm thấy và click thành công
-            end
-        end
-    end
-    return false
 end
 
 -- Vòng lặp Dịch Chuyển & Ghim Đầu (Giữ nguyên gốc 100%)
@@ -217,22 +188,52 @@ task.spawn(function()
     end
 end)
 
--- THÊM MỚI: Vòng lặp quét và Tự Động CLICK nút Start Raid của game
+
+-- ==================== PHẦN SỬA ĐỔI ĐỂ SỬ DỤNG CLICK CHUẨN THEO ẢNH ====================
+
+-- TỰ ĐỘNG START RAID (Ảnh 2 - Kích hoạt nút Start nổi trên mặt đất)
 task.spawn(function()
     while true do
         if AutoStart then
-            ClickGameButton(TEXT_START_BUTTON)
+            -- Quét các nút tương tác ProximityPrompt trong bán kính gần nhân vật
+            for _, prompt in pairs(workspace:GetDescendants()) do
+                if prompt:IsA("ProximityPrompt") then
+                    -- Kiểm tra xem nút có chữ Start hay không
+                    if string.find(string.lower(prompt.ObjectText), "start") or string.find(string.lower(prompt.ActionText), "start") then
+                        -- Giả lập hành động kích hoạt nút mà không cần bấm phím
+                        prompt:InputHoldBegin()
+                        task.wait(prompt.HoldDuration + 0.02)
+                        prompt:InputHoldEnd()
+                    end
+                end
+            end
         end
-        task.wait(1) -- Quét và click lại sau mỗi 1 giây nếu nút vẫn xuất hiện
+        task.wait(0.5)
     end
 end)
 
--- THÊM MỚI: Vòng lặp quét và Tự Động CLICK nút Next Raid của game
+-- TỰ ĐỘNG NEXT RAID / PLAY AGAIN (Ảnh 1 - Click vào nút "Play Again" trên màn hình)
 task.spawn(function()
     while true do
         if AutoNext then
-            ClickGameButton(TEXT_NEXT_BUTTON)
+            -- Quét toàn bộ giao diện gốc của game để tìm nút "Play Again"
+            for _, gui in pairs(Player.PlayerGui:GetDescendants()) do
+                if gui:IsA("TextButton") and gui.Parent ~= MainFrame and gui.Visible then
+                    local txt = string.lower(gui.Text)
+                    -- Tìm chính xác nút có chữ "play again" hoặc tên chứa "again"
+                    if string.find(txt, "again") or string.find(txt, "play") or string.find(string.lower(gui.Name), "again") then
+                        -- Tính toán tọa độ chính xác của nút trên màn hình để click chuột
+                        local x = gui.AbsolutePosition.X + (gui.AbsoluteSize.X / 2)
+                        local y = gui.AbsolutePosition.Y + (gui.AbsoluteSize.Y / 2) + 36 -- Thêm bù trừ thanh bar roblox
+                        
+                        -- Thực hiện click chuột trái ảo
+                        VirtualInputManager:SendMouseButtonEvent(x, y, 0, true, game, 1)
+                        task.wait(0.05)
+                        VirtualInputManager:SendMouseButtonEvent(x, y, 0, false, game, 1)
+                    end
+                end
+            end
         end
-        task.wait(1) -- Quét và click lại sau mỗi 1 giây nếu nút vẫn xuất hiện
+        task.wait(0.5)
     end
 end)
