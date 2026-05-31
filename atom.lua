@@ -3,6 +3,10 @@ local RunService = game:GetService("RunService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local UserInputService = game:GetService("UserInputService")
 
+-- CONFIG TỪ KHÓA TÌM NÚT TRONG GAME (Thay đổi nếu nút của game tên khác)
+local TEXT_START_BUTTON = "start" -- Chữ xuất hiện trong nút Start của game (không phân biệt hoa thường)
+local TEXT_NEXT_BUTTON = "next"   -- Chữ xuất hiện trong nút Next của game (không phân biệt hoa thường)
+
 -- Reset GUI cũ nếu có
 local oldGui = Player:WaitForChild("PlayerGui"):FindFirstChild("AutoBossGui")
 if oldGui then oldGui:Destroy() end
@@ -12,7 +16,7 @@ local Screen = Instance.new("ScreenGui", Player:WaitForChild("PlayerGui"))
 Screen.Name = "AutoBossGui"
 Screen.ResetOnSpawn = false
 
--- Khung chứa (Frame) để quản lý việc kéo thả (Mở rộng chiều cao lên 215 để chứa thêm 2 nút mới)
+-- Khung chứa (Frame) để quản lý việc kéo thả
 local MainFrame = Instance.new("Frame", Screen)
 MainFrame.Size = UDim2.new(0, 160, 0, 215)
 MainFrame.Position = UDim2.new(0.8, 0, 0.4, 0)
@@ -28,32 +32,32 @@ Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
 Btn.Font = Enum.Font.SourceSansBold
 Btn.TextSize = 16
 
--- Nút Lock Mục Tiêu (Gốc - Hỗ trợ cả Atom và Max)
+-- Nút Lock Mục Tiêu (Gốc)
 local LockBtn = Instance.new("TextButton", MainFrame)
 LockBtn.Size = UDim2.new(1, 0, 0, 50)
 LockBtn.Position = UDim2.new(0, 0, 0, 55)
 LockBtn.Text = "LOCK: ALL"
-LockBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100) -- Màu xám (quét hết)
+LockBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
 LockBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 LockBtn.Font = Enum.Font.SourceSansBold
 LockBtn.TextSize = 16
 
--- THÊM MỚI: Nút Tự động Start Raid
+-- THÊM MỚI: Nút Tự động Start Raid (Click)
 local StartBtn = Instance.new("TextButton", MainFrame)
 StartBtn.Size = UDim2.new(1, 0, 0, 50)
 StartBtn.Position = UDim2.new(0, 0, 0, 110)
 StartBtn.Text = "START RAID: OFF"
-StartBtn.BackgroundColor3 = Color3.fromRGB(200, 100, 0) -- Màu cam
+StartBtn.BackgroundColor3 = Color3.fromRGB(200, 100, 0)
 StartBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 StartBtn.Font = Enum.Font.SourceSansBold
 StartBtn.TextSize = 16
 
--- THÊM MỚI: Nút Tự động Next Raid
+-- THÊM MỚI: Nút Tự động Next Raid (Click)
 local NextBtn = Instance.new("TextButton", MainFrame)
 NextBtn.Size = UDim2.new(1, 0, 0, 50)
 NextBtn.Position = UDim2.new(0, 0, 0, 165)
 NextBtn.Text = "NEXT RAID: OFF"
-NextBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 150) -- Màu xanh ngọc
+NextBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 150)
 NextBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 NextBtn.Font = Enum.Font.SourceSansBold
 NextBtn.TextSize = 16
@@ -80,9 +84,9 @@ UserInputService.InputChanged:Connect(function(input)
     if input == dragInput and dragging then update(input) end
 end)
 
--- Trạng thái mặc định (Giữ nguyên và thêm 2 biến trạng thái mới)
+-- Trạng thái mặc định
 local Active = false
-local LockMode = "ALL" -- Có 3 chế độ: "ALL", "ATOM", "MAX"
+local LockMode = "ALL"
 local AutoStart = false  -- THÊM MỚI
 local AutoNext = false   -- THÊM MỚI
 
@@ -93,20 +97,20 @@ Btn.MouseButton1Click:Connect(function()
     Btn.BackgroundColor3 = Active and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 0, 0)
 end)
 
--- Sự kiện Click đổi chế độ Lock (Giữ nguyên gốc: ALL -> ATOM -> MAX -> lặp lại)
+-- Sự kiện Click đổi chế độ Lock (Giữ nguyên gốc)
 LockBtn.MouseButton1Click:Connect(function()
     if LockMode == "ALL" then
         LockMode = "ATOM"
         LockBtn.Text = "LOCK: ATOM ONLY"
-        LockBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 255) -- Xanh dương
+        LockBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
     elseif LockMode == "ATOM" then
         LockMode = "MAX"
         LockBtn.Text = "LOCK: MAX ONLY"
-        LockBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 200) -- Màu tím
+        LockBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 200)
     else
         LockMode = "ALL"
         LockBtn.Text = "LOCK: ALL (ATOM/MAX)"
-        LockBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100) -- Xám bình thường
+        LockBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
     end
 end)
 
@@ -124,20 +128,17 @@ NextBtn.MouseButton1Click:Connect(function()
     NextBtn.BackgroundColor3 = AutoNext and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(0, 150, 150)
 end)
 
--- HÀM QUÉT SÂU (Giữ nguyên gốc 100%)
+-- HÀM QUÉT SÂU BOSS (Giữ nguyên gốc 100%)
 local function FindBossDeep()
     for _, v in pairs(workspace:GetDescendants()) do
         if v:IsA("Model") and v:FindFirstChild("HumanoidRootPart") then
             local nameLower = string.lower(v.Name)
             
             if LockMode == "ATOM" then
-                -- Chỉ tìm Boss có chữ "atom"
                 if string.find(nameLower, "atom") then return v end
             elseif LockMode == "MAX" then
-                -- Chỉ tìm Boss có chữ "max"
                 if string.find(nameLower, "max") then return v end
             else
-                -- Chế độ ALL: Tìm bất kỳ con nào xuất hiện trước
                 if string.find(nameLower, "atom") or string.find(nameLower, "max") then 
                     return v 
                 end
@@ -145,6 +146,31 @@ local function FindBossDeep()
         end
     end
     return nil
+end
+
+-- HÀM TÌM VÀ CLICK VÀO NÚT UI CỦA GAME
+local function ClickGameButton(searchTxt)
+    for _, gui in pairs(Player.PlayerGui:GetDescendants()) do
+        -- Tránh tự click vào các nút của công cụ AutoBossGui này
+        if gui:IsA("TextButton") and gui.Parent ~= MainFrame and gui.Visible and gui.AbsoluteSize.X > 0 then
+            local textLower = string.lower(gui.Text)
+            local nameLower = string.lower(gui.Name)
+            
+            -- Kiểm tra xem Tên nút hoặc Chữ trên nút có chứa từ khóa không
+            if string.find(textLower, searchTxt) or string.find(nameLower, searchTxt) then
+                -- Lấy tọa độ thực tế của nút trên màn hình
+                local x = gui.AbsolutePosition.X + (gui.AbsoluteSize.X / 2)
+                local y = gui.AbsolutePosition.Y + (gui.AbsoluteSize.Y / 2) + 36 -- +36 là offset thanh bar của Roblox
+                
+                -- Giả lập nhấn chuột trái vào vị trí nút
+                VirtualInputManager:SendMouseButtonEvent(x, y, 0, true, game, 1)
+                task.wait(0.05)
+                VirtualInputManager:SendMouseButtonEvent(x, y, 0, false, game, 1)
+                return true -- Đã tìm thấy và click thành công
+            end
+        end
+    end
+    return false
 end
 
 -- Vòng lặp Dịch Chuyển & Ghim Đầu (Giữ nguyên gốc 100%)
@@ -191,28 +217,22 @@ task.spawn(function()
     end
 end)
 
--- THÊM MỚI: Vòng lặp xử lý Auto Start Raid (Mặc định giả lập nhấn phím G để vào hoặc bắt đầu raid)
--- (Bạn có thể đổi Enum.KeyCode.G thành phím bất kỳ của game bạn cần)
+-- THÊM MỚI: Vòng lặp quét và Tự Động CLICK nút Start Raid của game
 task.spawn(function()
     while true do
         if AutoStart then
-            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.G, false, game)
-            task.wait(0.05)
-            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.G, false, game)
+            ClickGameButton(TEXT_START_BUTTON)
         end
-        task.wait(1) -- Spam giãn cách mỗi 1 giây
+        task.wait(1) -- Quét và click lại sau mỗi 1 giây nếu nút vẫn xuất hiện
     end
 end)
 
--- THÊM MỚI: Vòng lặp xử lý Auto Next Raid (Mặc định giả lập nhấn phím N để chuyển màn)
--- (Bạn có thể đổi Enum.KeyCode.N thành phím bất kỳ của game bạn cần)
+-- THÊM MỚI: Vòng lặp quét và Tự Động CLICK nút Next Raid của game
 task.spawn(function()
     while true do
         if AutoNext then
-            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.N, false, game)
-            task.wait(0.05)
-            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.N, false, game)
+            ClickGameButton(TEXT_NEXT_BUTTON)
         end
-        task.wait(1) -- Spam giãn cách mỗi 1 giây
+        task.wait(1) -- Quét và click lại sau mỗi 1 giây nếu nút vẫn xuất hiện
     end
 end)
