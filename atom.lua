@@ -1,32 +1,34 @@
--- ============================================================================
--- SCRIPT AUTO: DI CHUYỂN, GHIM ĐẦU VÀ SPAM SKILL E (ĐÃ SỬA LỖI)
--- ============================================================================
 local Player = game:GetService("Players").LocalPlayer
 local RunService = game:GetService("RunService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 
--- Tạo nút bấm trên màn hình
+-- Reset GUI cũ
+local oldGui = Player:WaitForChild("PlayerGui"):FindFirstChild("AutoBossGui")
+if oldGui then oldGui:Destroy() end
+
 local Screen = Instance.new("ScreenGui", Player:WaitForChild("PlayerGui"))
+Screen.Name = "AutoBossGui"
+Screen.ResetOnSpawn = false
+
 local Btn = Instance.new("TextButton", Screen)
-Btn.Size = UDim2.new(0, 150, 0, 50)
+Btn.Size = UDim2.new(0, 160, 0, 50)
 Btn.Position = UDim2.new(0.8, 0, 0.4, 0)
 Btn.Text = "AUTO BOSS: OFF"
 Btn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+Btn.Font = Enum.Font.SourceSansBold
+Btn.TextSize = 16
 
--- Khiến nút có thể kéo thả (Fix thuộc tính Draggable cũ đã bị lỗi thời)
+-- Hệ thống kéo thả nút
 local UserInputService = game:GetService("UserInputService")
 local dragging, dragInput, dragStart, startPos
 Btn.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPos = Btn.Position
+        dragging = true; dragStart = input.Position; startPos = Btn.Position
     end
 end)
 Btn.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        dragInput = input
-    end
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
 end)
 UserInputService.InputChanged:Connect(function(input)
     if input == dragInput and dragging then
@@ -35,9 +37,7 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 Btn.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = false
-    end
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end
 end)
 
 local Active = false
@@ -47,38 +47,62 @@ Btn.MouseButton1Click:Connect(function()
     Btn.BackgroundColor3 = Active and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 0, 0)
 end)
 
--- 1. XỬ LÝ DỊCH CHUYỂN VÀ GHIM ĐẦU (Chạy mượt theo khung hình)
+-- HÀM QUÉT SÂU (Tìm Boss ở TẤT CẢ các thư mục ẩn)
+local function FindBossDeep()
+    -- Quét toàn bộ mọi ngóc ngách trong Workspace
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v:IsA("Model") and v:FindFirstChild("HumanoidRootPart") then
+            local nameLower = string.lower(v.Name)
+            -- Kiểm tra xem tên có chứa chữ "atom" hoặc "max" không
+            if string.find(nameLower, "atom") or string.find(nameLower, "max") then
+                return v
+            end
+        end
+    end
+    return nil
+end
+
+-- Vòng lặp Dịch Chuyển & Ghim Đầu
 RunService.Heartbeat:Connect(function()
     if Active then
         local Char = Player.Character
-        local Boss = workspace:FindFirstChild("Atom Max")
+        local Boss = FindBossDeep()
         
-        if Boss and Boss:FindFirstChild("HumanoidRootPart") and Char and Char:FindFirstChild("HumanoidRootPart") then
-            -- Tính toán vị trí trên đầu Boss 15 studs
-            local TargetPosition = Boss.HumanoidRootPart.Position + Vector3.new(0, 15, 0)
+        if Boss and Char and Char:FindFirstChild("HumanoidRootPart") then
+            local Humanoid = Char:FindFirstChildOfClass("Humanoid")
+            if Humanoid then
+                -- Giúp nhân vật không bị vấp ngã khi đứng trên không
+                Humanoid.PlatformStand = true 
+            end
             
-            -- Dịch chuyển và ép nhìn thẳng xuống Boss cùng lúc
-            Char.HumanoidRootPart.CFrame = CFrame.new(TargetPosition, Boss.HumanoidRootPart.Position)
+            -- Ghim vị trí trên đầu Boss 15 gốc tọa độ
+            local TargetPos = Boss.HumanoidRootPart.Position + Vector3.new(0, 15, 0)
+            Char.HumanoidRootPart.CFrame = CFrame.new(TargetPos, Boss.HumanoidRootPart.Position)
             
-            -- Tắt vận tốc để nhân vật không bị rơi hoặc rung lắc
+            -- Đóng băng vận tốc (Tránh bị đẩy lùi hoặc rớt)
             Char.HumanoidRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+        else
+            -- Nếu tắt Auto hoặc không thấy Boss, trả lại trạng thái đứng bình thường
+            local Char = Player.Character
+            if Char then
+                local Humanoid = Char:FindFirstChildOfClass("Humanoid")
+                if Humanoid then Humanoid.PlatformStand = false end
+            end
         end
     end
 end)
 
--- 2. XỬ LÝ SPAM PHÍM E (Chạy luồng riêng biệt, không gây lag)
+-- Vòng lặp Spam Phím E
 task.spawn(function()
     while true do
         if Active then
-            local Boss = workspace:FindFirstChild("Atom Max")
-            if Boss and Boss:FindFirstChild("HumanoidRootPart") then
-                -- Nhấn phím E
+            local Boss = FindBossDeep()
+            if Boss then
                 VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
                 task.wait(0.05)
-                -- Thả phím E
                 VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
             end
         end
-        task.wait(0.1) -- Khoảng cách giữa các lần spam tuyệt chiêu (Có thể chỉnh lại)
+        task.wait(0.2)
     end
 end)
