@@ -3,6 +3,7 @@ local RunService = game:GetService("RunService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 
 -- Xóa sạch GUI cũ tránh trùng lặp dữ liệu
 local oldGui = Player:WaitForChild("PlayerGui"):FindFirstChild("AutoBossGui")
@@ -13,75 +14,120 @@ local Screen = Instance.new("ScreenGui", Player:WaitForChild("PlayerGui"))
 Screen.Name = "AutoBossGui"
 Screen.ResetOnSpawn = false
 
--- Khung chứa (Frame)
+-- ==========================================
+-- THIẾT KẾ GIAO DIỆN MENU CHUYÊN NGHIỆP
+-- ==========================================
+
+-- Khung chứa chính (Main Frame)
 local MainFrame = Instance.new("Frame", Screen)
-MainFrame.Size = UDim2.new(0, 160, 0, 270)
-MainFrame.Position = UDim2.new(0.8, 0, 0.3, 0)
-MainFrame.BackgroundTransparency = 1
+MainFrame.Size = UDim2.new(0, 180, 0, 320)
+MainFrame.Position = UDim2.new(0.8, 0, 0.25, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+MainFrame.BorderSizePixel = 0
+MainFrame.ClipsDescendants = true
 
--- NÚT 1: AUTO FARM (Đứng tại chỗ ghim skill xả thẳng vào quái vật)
-local FarmBtn = Instance.new("TextButton", MainFrame)
-FarmBtn.Size = UDim2.new(1, 0, 0, 50)
-FarmBtn.Text = "AUTO FARM: OFF"
-FarmBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-FarmBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-FarmBtn.Font = Enum.Font.SourceSansBold
-FarmBtn.TextSize = 16
+local MainCorner = Instance.new("UICorner", MainFrame)
+MainCorner.CornerRadius = UDim.new(0, 8)
 
--- NÚT 2: AUTO BOSS (Tự động bay lên đầu Boss + Xả siêu tốc an toàn chống lag)
-local BossBtn = Instance.new("TextButton", MainFrame)
-BossBtn.Size = UDim2.new(1, 0, 0, 50)
-BossBtn.Position = UDim2.new(0, 0, 0, 55)
-BossBtn.Text = "AUTO BOSS: OFF"
-BossBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-BossBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-BossBtn.Font = Enum.Font.SourceSansBold
-BossBtn.TextSize = 16
+-- Thanh Tiêu Đề (Title Bar - Dùng để kéo thả)
+local TitleBar = Instance.new("Frame", MainFrame)
+TitleBar.Size = UDim2.new(1, 0, 0, 35)
+TitleBar.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+TitleBar.BorderSizePixel = 0
 
--- Các nút phụ trợ đồng bộ màn chơi (Raid)
-local StartBtn = Instance.new("TextButton", MainFrame)
-StartBtn.Size = UDim2.new(1, 0, 0, 50)
-StartBtn.Position = UDim2.new(0, 0, 0, 110)
-StartBtn.Text = "START RAID: OFF"
-StartBtn.BackgroundColor3 = Color3.fromRGB(200, 100, 0)
-StartBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-StartBtn.Font = Enum.Font.SourceSansBold
-StartBtn.TextSize = 16
+local TitleCorner = Instance.new("UICorner", TitleBar)
+TitleCorner.CornerRadius = UDim.new(0, 8)
 
-local NextBtn = Instance.new("TextButton", MainFrame)
-NextBtn.Size = UDim2.new(1, 0, 0, 50)
-NextBtn.Position = UDim2.new(0, 0, 0, 165)
-NextBtn.Text = "NEXT RAID: OFF"
-NextBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 150)
-NextBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-NextBtn.Font = Enum.Font.SourceSansBold
-NextBtn.TextSize = 16
+local TitleText = Instance.new("TextLabel", TitleBar)
+TitleText.Size = UDim2.new(0.75, 0, 1, 0)
+TitleText.Position = UDim2.new(0, 10, 0, 0)
+TitleText.Text = "DRAGON BLOX V2"
+TitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
+TitleText.Font = Enum.Font.SourceSansBold
+TitleText.TextSize = 15
+TitleText.TextXAlignment = Enum.TextXAlignment.Left
+TitleText.BackgroundTransparency = 1
 
-local PlayAgainBtn = Instance.new("TextButton", MainFrame)
-PlayAgainBtn.Size = UDim2.new(1, 0, 0, 50)
-PlayAgainBtn.Position = UDim2.new(0, 0, 0, 220)
-PlayAgainBtn.Text = "PLAY AGAIN: OFF"
-PlayAgainBtn.BackgroundColor3 = Color3.fromRGB(120, 120, 0)
-PlayAgainBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-PlayAgainBtn.Font = Enum.Font.SourceSansBold
-PlayAgainBtn.TextSize = 16
+-- Nút Thu Nhỏ / Phóng To (- / +)
+local ToggleSizeBtn = Instance.new("TextButton", TitleBar)
+ToggleSizeBtn.Size = UDim2.new(0, 25, 0, 25)
+ToggleSizeBtn.Position = UDim2.new(1, -30, 0, 5)
+ToggleSizeBtn.Text = "-"
+ToggleSizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleSizeBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+ToggleSizeBtn.Font = Enum.Font.SourceSansBold
+ToggleSizeBtn.TextSize = 18
 
--- Kéo thả GUI
+local BtnCorner = Instance.new("UICorner", ToggleSizeBtn)
+BtnCorner.CornerRadius = UDim.new(0, 5)
+
+-- Khung chứa các nút chức năng (Container)
+local ButtonContainer = Instance.new("Frame", MainFrame)
+ButtonContainer.Size = UDim2.new(1, 0, 1, -35)
+ButtonContainer.Position = UDim2.new(0, 0, 0, 35)
+ButtonContainer.BackgroundTransparency = 1
+
+-- Hàm tạo nút chuẩn hóa giao diện phẳng hiện đại
+local function CreateMenuButton(name, text, posIndex, defaultColor)
+    local btn = Instance.new("TextButton", ButtonContainer)
+    btn.Size = UDim2.new(1, -20, 0, 42)
+    btn.Position = UDim2.new(0, 10, 0, 10 + (posIndex * 48))
+    btn.Text = text
+    btn.BackgroundColor3 = defaultColor
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.SourceSansBold
+    btn.TextSize = 13
+    
+    local corner = Instance.new("UICorner", btn)
+    corner.CornerRadius = UDim.new(0, 6)
+    return btn
+end
+
+-- Khởi tạo các nút bấm vào Khung chứa
+local FarmBtn = CreateMenuButton("FarmBtn", "AUTO FARM: OFF", 0, Color3.fromRGB(180, 40, 40))
+local BossBtn = CreateMenuButton("BossBtn", "AUTO BOSS: OFF", 1, Color3.fromRGB(180, 40, 40))
+local StartBtn = CreateMenuButton("StartBtn", "START RAID: OFF", 2, Color3.fromRGB(200, 100, 0))
+local NextBtn = CreateMenuButton("NextBtn", "NEXT RAID: OFF", 3, Color3.fromRGB(0, 140, 140))
+local PlayAgainBtn = CreateMenuButton("PlayAgainBtn", "PLAY AGAIN: OFF", 4, Color3.fromRGB(140, 140, 0))
+
+-- ==========================================
+-- LOGIC KÉO THẢ & PHÓNG TO / THU NHỎ UI
+-- ==========================================
+
+-- Tính năng thu nhỏ / phóng to bảng
+local isMinimized = false
+ToggleSizeBtn.MouseButton1Click:Connect(function()
+    isMinimized = not isMinimized
+    if isMinimized then
+        MainFrame:TweenSize(UDim2.new(0, 180, 0, 35), Enum.EasingDirection.Out, Enum.EasingStyle.Quart, 0.3, true)
+        ToggleSizeBtn.Text = "+"
+        ButtonContainer.Visible = false
+    else
+        MainFrame:TweenSize(UDim2.new(0, 180, 0, 320), Enum.EasingDirection.Out, Enum.EasingStyle.Quart, 0.3, true)
+        ToggleSizeBtn.Text = "-"
+        ButtonContainer.Visible = true
+    end
+end)
+
+-- Hệ thống kéo thả menu bằng thanh Tiêu đề (TitleBar)
 local dragging, dragInput, dragStart, startPos
 local function update(input)
     local delta = input.Position - dragStart
     MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
 end
-FarmBtn.InputBegan:Connect(function(input)
+TitleBar.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         dragging = true; dragStart = input.Position; startPos = MainFrame.Position
         input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
     end
 end)
-FarmBtn.InputChanged:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end end)
+TitleBar.InputChanged:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end end)
 UserInputService.InputChanged:Connect(function(input) if input == dragInput and dragging then update(input) end end)
 
--- Trạng thái Logic
+-- ==========================================
+-- LOGIC HOẠT ĐỘNG VÀ XỬ LÝ GAMEPLAY
+-- ==========================================
+
 local AutoFarmActive = false
 local AutoBossActive = false
 local AutoStart = false
@@ -91,34 +137,34 @@ local AutoPlayAgain = false
 FarmBtn.MouseButton1Click:Connect(function()
     AutoFarmActive = not AutoFarmActive
     FarmBtn.Text = AutoFarmActive and "AUTO FARM: ON" or "AUTO FARM: OFF"
-    FarmBtn.BackgroundColor3 = AutoFarmActive and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 0, 0)
+    FarmBtn.BackgroundColor3 = AutoFarmActive and Color3.fromRGB(40, 160, 40) or Color3.fromRGB(180, 40, 40)
 end)
 
 BossBtn.MouseButton1Click:Connect(function()
     AutoBossActive = not AutoBossActive
     BossBtn.Text = AutoBossActive and "AUTO BOSS: ON" or "AUTO BOSS: OFF"
-    BossBtn.BackgroundColor3 = AutoBossActive and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 0, 0)
+    BossBtn.BackgroundColor3 = AutoBossActive and Color3.fromRGB(40, 160, 40) or Color3.fromRGB(180, 40, 40)
 end)
 
 StartBtn.MouseButton1Click:Connect(function()
     AutoStart = not AutoStart
     StartBtn.Text = AutoStart and "START RAID: ON" or "START RAID: OFF"
-    StartBtn.BackgroundColor3 = AutoStart and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 100, 0)
+    StartBtn.BackgroundColor3 = AutoStart and Color3.fromRGB(40, 160, 40) or Color3.fromRGB(200, 100, 0)
 end)
 
 NextBtn.MouseButton1Click:Connect(function()
     AutoNext = not AutoNext
     NextBtn.Text = AutoNext and "NEXT RAID: ON" or "NEXT RAID: OFF"
-    NextBtn.BackgroundColor3 = AutoNext and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(0, 150, 150)
+    NextBtn.BackgroundColor3 = AutoNext and Color3.fromRGB(40, 160, 40) or Color3.fromRGB(0, 140, 140)
 end)
 
 PlayAgainBtn.MouseButton1Click:Connect(function()
     AutoPlayAgain = not AutoPlayAgain
     PlayAgainBtn.Text = AutoPlayAgain and "PLAY AGAIN: ON" or "PLAY AGAIN: OFF"
-    PlayAgainBtn.BackgroundColor3 = AutoPlayAgain and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(120, 120, 0)
+    PlayAgainBtn.BackgroundColor3 = AutoPlayAgain and Color3.fromRGB(40, 160, 40) or Color3.fromRGB(140, 140, 0)
 end)
 
--- Hàm quét tìm quái vật/Boss trong Dragon Blox
+-- Hàm tìm mục tiêu quái/Boss gần nhất
 local function FindAnyMonster()
     local targetMonster = nil
     local shortestDistance = math.huge
@@ -142,7 +188,7 @@ local function FindAnyMonster()
     return targetMonster
 end
 
--- Vòng lặp quản lý vị trí dịch chuyển (Tối ưu hóa tần suất chạy bằng Heartbeat)
+-- Vòng lặp quản lý vị trí dịch chuyển (Chỉ dịch chuyển đứng trên đầu khi có Auto Boss)
 RunService.Heartbeat:Connect(function()
     local Char = Player.Character
     if AutoBossActive then
@@ -162,37 +208,42 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- Hàm thực thi xả chiêu gốc (Đã dọn dẹp các dòng thừa để giảm mệt tải CPU)
-local function FireDragonBloxSkills(target)
-    local attackRemote = ReplicatedStorage:FindFirstChild("Attack", true) or ReplicatedStorage:FindFirstChild("Skill", true) or ReplicatedStorage:FindFirstChild("UseSkill", true)
-    
+-- ====================================================================
+-- CƠ CHẾ ĐÓNG BĂNG VÀ PHÁ COOLDOWN CHIÊU THỨC (GIỐNG VIDEO MẪU)
+-- ====================================================================
+local attackRemote = ReplicatedStorage:FindFirstChild("Attack", true) or ReplicatedStorage:FindFirstChild("Skill", true) or ReplicatedStorage:FindFirstChild("UseSkill", true)
+
+if setfflag then
+    pcall(function() setfflag("UserSkillCooldownBypass", "True") end)
+end
+
+local function DirectNoCooldownFire(target)
     if attackRemote and attackRemote:IsA("RemoteEvent") and target and target:FindFirstChild("HumanoidRootPart") then
         attackRemote:FireServer(target.HumanoidRootPart.Position)
     end
-    
-    local skillKeys = {Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three, Enum.KeyCode.Four, Enum.KeyCode.Five, Enum.KeyCode.E}
-    for i = 1, #skillKeys do
-        VirtualInputManager:SendKeyEvent(true, skillKeys[i], false, game)
-        VirtualInputManager:SendKeyEvent(false, skillKeys[i], false, game)
-    end
 end
 
--- LUỒNG SPAM CHIÊU CHỐNG LAG: Đã thay thế vòng lặp cũ bằng chu trình phân phối mượt hơn
+local skillKeys = {Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three, Enum.KeyCode.Four, Enum.KeyCode.Five, Enum.KeyCode.E}
+
 task.spawn(function()
-    local bossTick = 0
     while true do
-        local Monster = FindAnyMonster()
-        if Monster then
-            if AutoBossActive then
-                -- Thay vì dùng vòng lặp for i=1,10 gây sập FPS, ta chia nhỏ đợt bắn liên hoàn ra cách nhau 0.01 giây ổn định
-                FireDragonBloxSkills(Monster)
+        if AutoBossActive or AutoFarmActive then
+            local Monster = FindAnyMonster()
+            if Monster then
+                DirectNoCooldownFire(Monster)
+                
+                for i = 1, #skillKeys do
+                    VirtualInputManager:SendKeyEvent(true, skillKeys[i], false, game)
+                    VirtualInputManager:SendKeyEvent(false, skillKeys[i], false, game)
+                end
+            end
+            
+            if AutoBossActive and AutoFarmActive then
                 task.wait(0.01)
-                FireDragonBloxSkills(Monster)
-            elseif AutoFarmActive then
-                FireDragonBloxSkills(Monster)
-                task.wait(0.12)
+            elseif AutoBossActive then
+                task.wait(0.02)
             else
-                task.wait(0.2)
+                task.wait(0.08)
             end
         else
             task.wait(0.3)
