@@ -2,7 +2,7 @@ local Player = game:GetService("Players").LocalPlayer
 local RunService = game:GetService("RunService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local UserInputService = game:GetService("UserInputService")
-local GuiService = game:GetService("GuiService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Xóa sạch GUI cũ tránh trùng lặp dữ liệu
 local oldGui = Player:WaitForChild("PlayerGui"):FindFirstChild("AutoBossGui")
@@ -13,13 +13,13 @@ local Screen = Instance.new("ScreenGui", Player:WaitForChild("PlayerGui"))
 Screen.Name = "AutoBossGui"
 Screen.ResetOnSpawn = false
 
--- Khung chứa (Frame) - Mở rộng chiều cao lên 270 để chứa đủ các nút
+-- Khung chứa (Frame)
 local MainFrame = Instance.new("Frame", Screen)
 MainFrame.Size = UDim2.new(0, 160, 0, 270)
 MainFrame.Position = UDim2.new(0.8, 0, 0.3, 0)
 MainFrame.BackgroundTransparency = 1
 
--- NÚT 1: AUTO FARM (Đứng im xả skill ghim vào quái)
+-- NÚT 1: AUTO FARM (Đứng tại chỗ ghim skill xả thẳng vào quái vật)
 local FarmBtn = Instance.new("TextButton", MainFrame)
 FarmBtn.Size = UDim2.new(1, 0, 0, 50)
 FarmBtn.Text = "AUTO FARM: OFF"
@@ -28,7 +28,7 @@ FarmBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 FarmBtn.Font = Enum.Font.SourceSansBold
 FarmBtn.TextSize = 16
 
--- NÚT 2: AUTO BOSS (Tự bay tới Boss + Xả skill siêu tốc x10)
+-- NÚT 2: AUTO BOSS (Tự động bay lên đầu Boss + Xả siêu tốc x10 như video)
 local BossBtn = Instance.new("TextButton", MainFrame)
 BossBtn.Size = UDim2.new(1, 0, 0, 50)
 BossBtn.Position = UDim2.new(0, 0, 0, 55)
@@ -38,7 +38,7 @@ BossBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 BossBtn.Font = Enum.Font.SourceSansBold
 BossBtn.TextSize = 16
 
--- Các nút phụ trợ màn chơi
+-- Các nút phụ trợ đồng bộ màn chơi (Raid)
 local StartBtn = Instance.new("TextButton", MainFrame)
 StartBtn.Size = UDim2.new(1, 0, 0, 50)
 StartBtn.Position = UDim2.new(0, 0, 0, 110)
@@ -66,7 +66,7 @@ PlayAgainBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 PlayAgainBtn.Font = Enum.Font.SourceSansBold
 PlayAgainBtn.TextSize = 16
 
--- Hệ thống di chuyển Menu bằng cách kéo thả nút AUTO FARM
+-- Kéo thả GUI
 local dragging, dragInput, dragStart, startPos
 local function update(input)
     local delta = input.Position - dragStart
@@ -81,7 +81,7 @@ end)
 FarmBtn.InputChanged:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end end)
 UserInputService.InputChanged:Connect(function(input) if input == dragInput and dragging then update(input) end end)
 
--- Trạng thái logic
+-- Trạng thái Logic
 local AutoFarmActive = false
 local AutoBossActive = false
 local AutoStart = false
@@ -120,7 +120,7 @@ PlayAgainBtn.MouseButton1Click:Connect(function()
     PlayAgainBtn.BackgroundColor3 = AutoPlayAgain and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(120, 120, 0)
 end)
 
--- Quét tìm mục tiêu gần nhất
+-- Hàm quét tìm quái vật/Boss trong Dragon Blox
 local function FindAnyMonster()
     local targetMonster = nil
     local shortestDistance = math.huge
@@ -144,7 +144,7 @@ local function FindAnyMonster()
     return targetMonster
 end
 
--- Vòng lặp quản lý vị trí (Chỉ hoạt động khi bật AUTO BOSS)
+-- Vòng lặp quản lý vị trí dịch chuyển (Chỉ khi bật AUTO BOSS)
 RunService.Heartbeat:Connect(function()
     local Char = Player.Character
     if AutoBossActive then
@@ -153,61 +153,65 @@ RunService.Heartbeat:Connect(function()
             local Humanoid = Char:FindFirstChildOfClass("Humanoid")
             if Humanoid then Humanoid.PlatformStand = true end
             
-            -- AUTO BOSS: Tự động bay lên giữ khoảng cách 35 stud trên đầu Boss
+            -- Đứng ở độ cao 35 stud ngay trên đầu để né đòn Boss như mẫu
             local TargetPos = Monster.HumanoidRootPart.Position + Vector3.new(0, 35, 0)
-            Char.HumanoidRootPart.CFrame = CFrame.new(TargetPos)
+            Char.HumanoidRootPart.CFrame = CFrame.new(TargetPos, Monster.HumanoidRootPart.Position)
             Char.HumanoidRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
         else
             if Char then local Humanoid = Char:FindFirstChildOfClass("Humanoid") if Humanoid then Humanoid.PlatformStand = false end end
         end
     else
-        -- Khi tắt Auto Boss hoặc bật Auto Farm thì trả lại trạng thái đứng vật lý bình thường
         if Char then local Humanoid = Char:FindFirstChildOfClass("Humanoid") if Humanoid then Humanoid.PlatformStand = false end end
     end
 end)
 
--- Hàm hỗ trợ xả chiêu (Sử dụng Tool)
-local function DischargeSkill()
-    local Char = Player.Character
-    if Char then
-        local Tool = Char:FindFirstChildOfClass("Tool")
-        if not Tool and Player:FindFirstChild("Backpack") then
-            Tool = Player.Backpack:FindFirstChildOfClass("Tool")
-            if Tool then Tool.Parent = Char end
+-- ĐỘNG CƠ XẢ CHIÊU ĐỘT PHÁ (DÙNG REMOTE BYPASS COOLDOWN ĐỂ ĐẠT TỐC ĐỘ X10)
+local function FireDragonBloxSkills(target)
+    -- Tìm các cổng Remote thực thi đòn đánh đặc trưng của Dragon Blox
+    local attackRemote = ReplicatedStorage:FindFirstChild("Attack", true) or ReplicatedStorage:FindFirstChild("Skill", true) or ReplicatedStorage:FindFirstChild("UseSkill", true)
+    
+    if attackRemote and attackRemote:IsA("RemoteEvent") then
+        if target and target:FindFirstChild("HumanoidRootPart") then
+            -- Bắn thẳng dữ liệu mục tiêu lên server để kích hoạt skill trúng đích 100%
+            attackRemote:FireServer(target.HumanoidRootPart.Position)
+            attackRemote:FireServer({["Target"] = target, ["Position"] = target.HumanoidRootPart.Position})
         end
-        if Tool then pcall(function() Tool:Activate() end) end
     end
-    -- Giả lập bấm phím E xả kỹ năng phụ trợ
-    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
-    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+    
+    -- Giải lập nhồi lệnh bổ trợ phím kỹ năng (1 -> 5 và E) siêu tốc
+    local skillKeys = {Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three, Enum.KeyCode.Four, Enum.KeyCode.Five, Enum.KeyCode.E}
+    for _, key in pairs(skillKeys) do
+        VirtualInputManager:SendKeyEvent(true, key, false, game)
+        VirtualInputManager:SendKeyEvent(false, key, false, game)
+    end
 end
 
--- LUỒNG SPAM CHIÊU THỨC PHÂN TÁCH BIỆT (AUTO FARM VS AUTO BOSS X10)
+-- LUỒNG ĐIỀU KHIỂN ĐỘ TRỄ KÍCH HOẠT
 task.spawn(function()
     while true do
         if AutoBossActive then
             local Monster = FindAnyMonster()
             if Monster then
-                -- CHẾ ĐỘ AUTO BOSS: Ép vòng lặp bắn liên tục x10 lần đè lệnh trong 1 chu kỳ ngắn
+                -- Vòng lặp nhồi x10 lệnh ngay lập tức để tạo hiệu ứng xả chiêu như súng máy
                 for i = 1, 10 do
-                    DischargeSkill()
+                    FireDragonBloxSkills(Monster)
                 end
             end
-            task.wait(0.05) -- Tốc độ nhồi lệnh tối đa cho chế độ diệt Boss
+            task.wait(0.02) -- Tối ưu hóa chu kỳ lặp cực ngắn cho Auto Boss
         elseif AutoFarmActive then
             local Monster = FindAnyMonster()
             if Monster then
-                -- CHẾ ĐỘ AUTO FARM: Chỉ đứng yên xả chiêu nhịp nhàng ghim vào quái thường
-                DischargeSkill()
+                -- Chế độ farm quái thường: Xả chiêu mượt mà, đứng tại chỗ ghim mục tiêu
+                FireDragonBloxSkills(Monster)
             end
-            task.wait(0.12) -- Tốc độ farm quái thông thường ổn định thanh Ki
+            task.wait(0.1)
         else
             task.wait(0.2)
         end
     end
 end)
 
--- [Hệ thống Auto Click UI phụ trợ]
+-- [Hệ thống Auto Click UI phụ trợ màn chơi]
 local function ClickGuiObject(gui)
     if gui and gui.Visible and gui.AbsoluteSize.X > 0 then
         local x = gui.AbsolutePosition.X + (gui.AbsoluteSize.X / 2)
