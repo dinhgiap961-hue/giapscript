@@ -204,37 +204,38 @@ end
 
 local skillKeys = {Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three, Enum.KeyCode.Four, Enum.KeyCode.Five, Enum.KeyCode.E}
 
--- HÀM LOGIC: TỰ ĐỘNG BẮT ĐẠN TRÊN MAP VÀ GHIM VÀO QUÁI
-local function GhimBulletToMonster(bullet, monsterRoot)
+-- HÀM LOGIC CHÍNH: ÉP VIÊN ĐẠN CHỌN MỤC TIÊU VÀ GHIM CHẶT VÀO QUÁI
+local function ForceBulletToMonster(bullet, monsterRoot)
     if not bullet:IsA("BasePart") or bullet:FindFirstChild("AtomPinned") then return end
+    if bullet.Anchored and bullet.Transparency == 1 then return end -- Bỏ qua các part tàng hình nền map
     
-    -- Đánh dấu đạn đã xử lý để tránh lặp logic
+    -- Tạo đánh dấu tránh quét lặp
     local marker = Instance.new("BoolValue", bullet)
     marker.Name = "AtomPinned"
     
-    -- Dùng Tween để ép viên đạn bay thẳng vào người quái ngay lập tức
-    local tweenInfo = TweenInfo.new(0.1, Enum.EasingStyle.Linear)
+    -- Tắt vật lý cản trở ngay lập tức để đạn bay xuyên vật cản đến Boss
+    bullet.CanCollide = false
+    
+    -- Ép đạn đổi CFrame (vị trí + hướng) bay thẳng vào tim Boss trong 0.05 giây
+    local tweenInfo = TweenInfo.new(0.05, Enum.EasingStyle.Linear)
     local tween = TweenService:Create(bullet, tweenInfo, {CFrame = monsterRoot.CFrame})
     tween:Play()
     
-    -- Chờ tween chạy xong rồi thực hiện ghim dính vật lý
     tween.Completed:Connect(function()
         if monsterRoot and monsterRoot.Parent and bullet and bullet.Parent then
-            bullet.CanCollide = false
             bullet.Anchored = false
-            
-            -- Tạo mối hàn ghim chặt đạn vào quái
+            -- Tạo mối hàn ghim chặt đạn dính hẳn vào quái vật
             local weld = Instance.new("WeldConstraint", monsterRoot)
             weld.Part0 = monsterRoot
             weld.Part1 = bullet
             
-            -- Tự hủy đạn sau 4 giây tránh nặng game
-            game:GetService("Debris"):AddItem(bullet, 4)
+            -- Tự hủy đạn sau 3 giây để giải phóng bộ nhớ máy
+            game:GetService("Debris"):AddItem(bullet, 3)
         end
     end)
 end
 
--- Vòng lặp chính quản lý AutoFarm + Xả đạn x10 + Quét Ghim Đạn
+-- Vòng lặp quản lý AutoFarm + Xả đạn x10 + Cưỡng chế ghim mục tiêu
 task.spawn(function()
     while true do
         if AutoFarmActive then
@@ -242,36 +243,40 @@ task.spawn(function()
             if Monster and Monster:FindFirstChild("HumanoidRootPart") then
                 local targetPos = Monster.HumanoidRootPart.Position
                 local monsterRoot = Monster.HumanoidRootPart
+                local myChar = Player.Character
                 
-                -- 1. LUỒNG QUÉT TOÀN MAP ĐỂ GHIM ĐẠN (Chạy song song)
+                -- SỬA LỖI: LUỒNG QUÉT SÂU (GETDESCENDANTS) - BẮT BẰNG ĐƯỢC MỌI VIÊN ĐẠN VỪA SINH RA QUANH BẠN
                 task.spawn(function()
-                    for _, child in pairs(Workspace:GetChildren()) do
-                        -- Nhận diện các object đạn bay tự do do bạn tạo ra (Thường tên Bullet, Part, v.v...)
-                        -- Đoạn này quét tất cả các Part rơi ngoài Workspace không thuộc về nhân vật của bạn
-                        if child:IsA("BasePart") and child.Name ~= "Terrain" and not child:IsDescendantOf(Player.Character) and not child:IsDescendantOf(Monster) then
-                            -- Nếu viên đạn ở khoảng cách gần hoặc bay tự do, lập tức hút ghim vào boss
-                            if (child.Position - Player.Character.HumanoidRootPart.Position).Magnitude < 250 then
-                                GhimBulletToMonster(child, monsterRoot)
+                    for _, child in pairs(Workspace:GetDescendants()) do
+                        -- Kiểm tra nếu là Part, không thuộc người chơi, không thuộc quái vật
+                        if child:IsA("BasePart") and not child:IsDescendantOf(myChar) and not child:IsDescendantOf(Monster.Parent) then
+                            -- Nếu viên đạn xuất hiện trong bán kính 150 mét xung quanh bạn
+                            if myChar and myChar:FindFirstChild("HumanoidRootPart") then
+                                local dist = (child.Position - myChar.HumanoidRootPart.Position).Magnitude
+                                if dist < 150 then
+                                    -- Ép viên đạn này chọn mục tiêu là con quái hiện tại
+                                    ForceBulletToMonster(child, monsterRoot)
+                                end
                             end
                         end
                     end
                 end)
                 
-                -- 2. LUỒNG XẢ ĐẠN X10 (MULTICAST CHỒNG GÓI TIN LÊN SERVER)
+                -- LUỒNG XẢ ĐẠN X10 (MULTICAST CHỒNG GÓI TIN LÊN SERVER)
                 if attackRemote and attackRemote:IsA("RemoteEvent") then
-                    for i = 1, 10 do -- Lặp lệnh phát đạn x10 lần cùng lúc tại một thời điểm
+                    for i = 1, 10 do
                         attackRemote:FireServer(targetPos)
                         attackRemote:FireServer({["Target"] = Monster, ["Position"] = targetPos, ["Hit"] = true, ["DamageMultipier"] = 10})
                     end
                 end
                 
-                -- 3. LUỒNG PHÁ ĐÓNG BĂNG SKILL KHÔNG HỒI GIÂY
+                -- LUỒNG PHÁ ĐÓNG BĂNG SKILL KHÔNG HỒI GIÂY
                 for k = 1, #skillKeys do
                     VirtualInputManager:SendKeyEvent(true, skillKeys[k], false, game)
                     VirtualInputManager:SendKeyEvent(false, skillKeys[k], false, game)
                 end
                 
-                task.wait(0.005) -- Tốc độ quét nghẽn mạch siêu vi mô, dồn sát thương cực đại
+                task.wait(0.005)
             else
                 task.wait(0.1)
             end
