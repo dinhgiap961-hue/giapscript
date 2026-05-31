@@ -62,7 +62,7 @@ Section:NewToggle("Auto Boss V1 (Bay 30 Studs)", "Bay cao 30 studs", function(st
                 local remote = FindCombatRemote()
                 if remote then remote:FireServer("E", target.Position) end
             end
-            task.wait(0.05)
+            task.wait(0.01)
         end
     end)
 end)
@@ -92,7 +92,7 @@ Section:NewToggle("Auto Rebirth", "Tự trùng sinh", function(state)
         while getgenv().AutoRebirth do
             local remote = ReplicatedStorage:FindFirstChild("Rebirth") or ReplicatedStorage:FindFirstChild("RebirthEvent")
             if remote then remote:FireServer() end
-            task.wait(2)
+            task.wait(0.01)
         end
     end)
 end)
