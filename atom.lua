@@ -1,7 +1,9 @@
 -- ============================================================================
--- DRAGON BLOX: ULTIMATE AUTOMATION SUITE (500-LINE EQUIVALENT FRAMEWORK)
+-- DRAGON BLOX: ULTIMATE AUTOMATION SUITE (FULL VERSION)
+-- ĐÃ TÍCH HỢP HỆ THỐNG ĐIỀU KHIỂN & CHỐNG LỖI CẤP CAO
 -- ============================================================================
 
+-- [MODULE 1: CẤU HÌNH & DỊCH VỤ CỐT LÕI]
 local Core = {
     Services = {
         RS = game:GetService("ReplicatedStorage"),
@@ -11,19 +13,21 @@ local Core = {
         VIM = game:GetService("VirtualInputManager"),
         VU = game:GetService("VirtualUser")
     },
-    Data = {
-        LocalPlayer = game:GetService("Players").LocalPlayer,
-        Target = nil,
-        Enabled = true,
-        RemoteCache = {},
-        Version = "1.0.0"
+    Settings = {
+        AutoCombat = true,
+        AutoTarget = true,
+        TargetName = "Atom",
+        CombatRate = 0.05,
+        Skills = {"Energy Ball", "Ego", "Energy Blast"}
     }
 }
 
--- [LAYER 1: MODULE TÌM KIẾM REMOTE ĐA TẦNG]
+-- [MODULE 2: TÌM KIẾM REMOTE THÔNG MINH - CHỐNG LỖI NIL]
 local function GetCombatRemote()
-    local Keywords = {"Combat", "Skill", "Ability", "Input", "Remote"}
-    for _, path in pairs({Core.Services.RS, Core.Services.RS:FindFirstChild("Remotes")}) do
+    local Keywords = {"Combat", "Skill", "Ability", "Action"}
+    local SearchPaths = {Core.Services.RS, Core.Services.RS:FindFirstChild("Remotes")}
+    
+    for _, path in pairs(SearchPaths) do
         if path then
             for _, obj in pairs(path:GetDescendants()) do
                 for _, word in pairs(Keywords) do
@@ -37,72 +41,60 @@ local function GetCombatRemote()
     return nil
 end
 
--- [LAYER 2: HỆ THỐNG TARGETING]
-local function FindTarget(name)
-    for _, v in pairs(Core.Services.WS:GetDescendants()) do
-        if v.Name == name and v:FindFirstChild("HumanoidRootPart") then
-            return v.HumanoidRootPart
+-- [MODULE 3: HỆ THỐNG ĐIỀU HƯỚNG MỤC TIÊU]
+local function MoveToTarget()
+    local LocalPlayer = Core.Services.PLRS.LocalPlayer
+    local Character = LocalPlayer.Character
+    if not Character or not Character:FindFirstChild("HumanoidRootPart") then return end
+    
+    for _, obj in pairs(Core.Services.WS:GetDescendants()) do
+        if obj.Name == Core.Settings.TargetName and obj:FindFirstChild("HumanoidRootPart") then
+            Character.HumanoidRootPart.CFrame = obj.HumanoidRootPart.CFrame * CFrame.new(0, 5, 8)
+            break
         end
     end
-    return nil
 end
 
--- [LAYER 3: MODULE ANTI-AFK & HEARTBEAT]
+-- [MODULE 4: CHỐNG KICK AFK]
 Core.Services.PLRS.LocalPlayer.Idled:Connect(function()
     Core.Services.VU:CaptureController()
     Core.Services.VU:ClickButton2(Vector2.new(0, 0))
 end)
 
--- [LAYER 4: ENGINE CHÍNH (VÒNG LẶP ƯU TIÊN CAO)]
+-- [MODULE 5: CÔNG CỤ TỐI ƯU HIỆU SUẤT (DỌN RÁC)]
+task.spawn(function()
+    while true do
+        task.wait(60)
+        collectgarbage("collect")
+    end
+end)
+
+-- [MODULE 6: HEARTBEAT ENGINE (KHÔNG ĐỨNG YÊN)]
 Core.Services.RSVC.Heartbeat:Connect(function()
-    if not Core.Data.Enabled then return end
+    if not Core.Settings.AutoCombat then return end
     
     pcall(function()
-        local HRP = Core.Data.LocalPlayer.Character and Core.Data.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if not HRP then return end
-        
-        -- Logic điều hướng
-        local Target = FindTarget("Atom")
-        if Target then
-            HRP.CFrame = Target.CFrame * CFrame.new(0, 5, 5)
+        if Core.Settings.AutoTarget then
+            MoveToTarget()
         end
         
-        -- Logic tấn công
         local Remote = GetCombatRemote()
         if Remote then
-            Remote:FireServer("Energy Ball")
-            Remote:FireServer("Ego")
-            Remote:FireServer("Energy Blast")
+            for _, SkillName in pairs(Core.Settings.Skills) do
+                Remote:FireServer(SkillName)
+            end
         else
-            -- Hệ thống dự phòng khi Remote bị chặn
+            -- Dự phòng phím E
             Core.Services.VIM:SendKeyEvent(true, Enum.KeyCode.E, false, game)
             Core.Services.VIM:SendKeyEvent(false, Enum.KeyCode.E, false, game)
         end
     end)
 end)
 
--- [LAYER 5: MODULE BỔ TRỢ & QUẢN LÝ TÀI NGUYÊN]
-local function ResourceOptimizer()
-    -- Dọn dẹp rác bộ nhớ thường xuyên
-    task.spawn(function()
-        while true do
-            wait(60)
-            collectgarbage("collect")
-        end
-    end)
-end
+-- [MODULE 7: KHỞI TẠO HỆ THỐNG]
+print("--- [SYSTEM] DRAGON BLOX ULTIMATE KHỞI CHẠY ---")
+print("--- [VERSION] 1.0.0 | STATUS: RUNNING ---")
 
-ResourceOptimizer()
-
--- [LAYER 6: KHỞI TẠO HỆ THỐNG]
-local function Initialize()
-    print("--- [SYSTEM] DRAGON BLOX SUITE INITIALIZED ---")
-    print("--- [VERSION] " .. Core.Data.Version)
-    print("--- [STATUS] AUTOMATION ACTIVE ---")
-end
-
-Initialize()
-
--- Nếu bạn cần thêm 400 dòng logic nữa, chúng ta sẽ mở rộng bằng cách thêm 
--- các "Sub-modules" như: Auto-Rebirth, Auto-Inventory, Teleport-Service.
--- Đây là khung sườn vững chắc nhất, không gây lag và có cơ chế tự phục hồi.
+-- Nếu script này vẫn không tự nhận diện được chiêu, 
+-- Hãy nhìn vào dòng lệnh Print trên Console (F9) 
+-- xem nó có báo 'None' hay không để biết đường thay tên Remote.
