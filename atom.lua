@@ -1,111 +1,40 @@
 -- ============================================================================
--- DRAGON BLOX V2 - FULL AUTOMATIC REMOTE-FINDER V6
+-- SCRIPT AUTO COMBAT - TỰ CHỈNH SỬA & KIỂM SOÁT
 -- ============================================================================
 
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Window = Library.CreateLib("Dragon Blox V2 | Full Auto V6", "BloodTheme")
-
--- Biến điều khiển
-getgenv().AutoBossV1 = false
-getgenv().AutoBossV2 = false
-getgenv().AutoRebirth = false
-getgenv().AutoUpgrade = false
-
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
--- HÀM TỰ DÒ TÌM REMOTE (TỰ FIX LỖI KHI GAME CẬP NHẬT)
-local function FindCombatRemote()
-    local path = {ReplicatedStorage, ReplicatedStorage:FindFirstChild("Remotes")}
-    for _, container in pairs(path) do
-        if container then
-            for _, v in pairs(container:GetChildren()) do
-                if v:IsA("RemoteEvent") and (v.Name:lower():find("combat") or v.Name:lower():find("skill") or v.Name:lower():find("input")) then
-                    return v
-                end
-            end
-        end
+-- 1. Tự tìm RemoteEvent tấn công (Bạn thay tên "CombatEvent" bằng tên đúng trong game nếu cần)
+local CombatRemote = ReplicatedStorage:FindFirstChild("CombatEvent") 
+
+-- 2. Hàm Tấn Công Siêu Tốc
+local function FastAttack()
+    if CombatRemote then
+        -- Gửi lệnh tấn công trực tiếp lên Server
+        CombatRemote:FireServer("E") -- Hoặc tên skill bạn muốn dùng
     end
-    return nil
 end
 
--- Tìm Boss
-local function GetClosestTarget()
-    local closest, dist = nil, 9e9
-    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not hrp then return nil end
-    for _, v in pairs(workspace:GetDescendants()) do
-        if v:IsA("Humanoid") and v.Parent ~= LocalPlayer.Character and v.Health > 0 then
-            local tHrp = v.Parent:FindFirstChild("HumanoidRootPart")
-            if tHrp then
-                local d = (hrp.Position - tHrp.Position).Magnitude
-                if d < dist then closest, dist = tHrp, d end
-            end
+-- 3. Vòng lặp tối ưu không gây lag
+-- Sử dụng task.spawn để không làm treo giao diện UI
+task.spawn(function()
+    while true do
+        if _G.AutoCombatEnabled then
+            FastAttack()
         end
+        task.wait(0.01) -- Độ trễ cực thấp để spam nhanh
     end
-    return closest
-end
-
--- TAB: CHỨC NĂNG
-local MainTab = Window:NewTab("Auto Combat")
-local Section = MainTab:NewSection("Full Functions")
-
-Section:NewToggle("Auto Boss V1 (Bay 30 Studs)", "Bay cao 30 studs", function(state)
-    getgenv().AutoBossV1 = state
-    task.spawn(function()
-        while getgenv().AutoBossV1 do
-            local target = GetClosestTarget()
-            local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if target and hrp then
-                hrp.CFrame = target.CFrame * CFrame.new(0, 30, 0)
-                local remote = FindCombatRemote()
-                if remote then remote:FireServer("E", target.Position) end
-            end
-            task.wait(0.01)
-        end
-    end)
 end)
 
-Section:NewToggle("Auto Boss V2 (Spam Siêu Tốc)", "Spam không độ trễ", function(state)
-    getgenv().AutoBossV2 = state
-    task.spawn(function()
-        while getgenv().AutoBossV2 do
-            local target = GetClosestTarget()
-            local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if target and hrp then
-                hrp.CFrame = target.CFrame * CFrame.new(0, 30, 0)
-                local remote = FindCombatRemote()
-                if remote then 
-                    remote:FireServer("E", target.Position)
-                    remote:FireServer("Skill_E", target.Position)
-                end
-            end
-            task.wait(0.01)
-        end
-    end)
-end)
+-- 4. Ví dụ cách tạo UI đơn giản để bật/tắt (Dùng Kavo UI)
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
+local Window = Library.CreateLib("My Custom Auto Combat", "BloodTheme")
+local Tab = Window:NewTab("Combat")
+local Section = Tab:NewSection("Main Settings")
 
-Section:NewToggle("Auto Rebirth", "Tự trùng sinh", function(state)
-    getgenv().AutoRebirth = state
-    task.spawn(function()
-        while getgenv().AutoRebirth do
-            local remote = ReplicatedStorage:FindFirstChild("Rebirth") or ReplicatedStorage:FindFirstChild("RebirthEvent")
-            if remote then remote:FireServer() end
-            task.wait(0.01)
-        end
-    end)
+Section:NewToggle("Enable Fast Attack", "Bật chế độ đánh siêu nhanh", function(state)
+    _G.AutoCombatEnabled = state
 end)
-
-Section:NewToggle("Auto Upgrade Melee", "Tự nâng Melee", function(state)
-    getgenv().AutoUpgrade = state
-    task.spawn(function()
-        while getgenv().AutoUpgrade do
-            local remote = ReplicatedStorage:FindFirstChild("StatRemote") or ReplicatedStorage:FindFirstChild("UpgradeStat")
-            if remote then remote:FireServer("Melee", 1) end
-            task.wait(0.1)
-        end
-    end)
-end)
-
-Library:Init()
