@@ -4,11 +4,11 @@ local VirtualInputManager = game:GetService("VirtualInputManager")
 local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
 
--- Reset GUI cũ nếu có
+-- Xóa sạch GUI cũ tránh trùng lặp dữ liệu
 local oldGui = Player:WaitForChild("PlayerGui"):FindFirstChild("AutoBossGui")
 if oldGui then oldGui:Destroy() end
 
--- Khởi tạo ScreenGui
+-- Khởi tạo ScreenGui mới hoàn toàn
 local Screen = Instance.new("ScreenGui", Player:WaitForChild("PlayerGui"))
 Screen.Name = "AutoBossGui"
 Screen.ResetOnSpawn = false
@@ -19,17 +19,15 @@ MainFrame.Size = UDim2.new(0, 160, 0, 270)
 MainFrame.Position = UDim2.new(0.8, 0, 0.3, 0)
 MainFrame.BackgroundTransparency = 1
 
--- Nút 1: Auto Boss
+-- Khởi tạo các nút bấm
 local Btn = Instance.new("TextButton", MainFrame)
 Btn.Size = UDim2.new(1, 0, 0, 50)
-Btn.Position = UDim2.new(0, 0, 0, 0)
 Btn.Text = "AUTO BOSS: OFF"
 Btn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
 Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
 Btn.Font = Enum.Font.SourceSansBold
 Btn.TextSize = 16
 
--- Nút 2: Lock Mục Tiêu
 local LockBtn = Instance.new("TextButton", MainFrame)
 LockBtn.Size = UDim2.new(1, 0, 0, 50)
 LockBtn.Position = UDim2.new(0, 0, 0, 55)
@@ -39,7 +37,6 @@ LockBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 LockBtn.Font = Enum.Font.SourceSansBold
 LockBtn.TextSize = 16
 
--- Nút 3: Tự động Start Raid
 local StartBtn = Instance.new("TextButton", MainFrame)
 StartBtn.Size = UDim2.new(1, 0, 0, 50)
 StartBtn.Position = UDim2.new(0, 0, 0, 110)
@@ -49,7 +46,6 @@ StartBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 StartBtn.Font = Enum.Font.SourceSansBold
 StartBtn.TextSize = 16
 
--- Nút 4: Tự động Next Raid
 local NextBtn = Instance.new("TextButton", MainFrame)
 NextBtn.Size = UDim2.new(1, 0, 0, 50)
 NextBtn.Position = UDim2.new(0, 0, 0, 165)
@@ -59,7 +55,6 @@ NextBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 NextBtn.Font = Enum.Font.SourceSansBold
 NextBtn.TextSize = 16
 
--- Nút 5: Tự động Play Again
 local PlayAgainBtn = Instance.new("TextButton", MainFrame)
 PlayAgainBtn.Size = UDim2.new(1, 0, 0, 50)
 PlayAgainBtn.Position = UDim2.new(0, 0, 0, 220)
@@ -69,36 +64,28 @@ PlayAgainBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 PlayAgainBtn.Font = Enum.Font.SourceSansBold
 PlayAgainBtn.TextSize = 16
 
--- Hệ thống kéo thả Menu
+-- Kéo thả Menu
 local dragging, dragInput, dragStart, startPos
 local function update(input)
     local delta = input.Position - dragStart
     MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
 end
-
 Btn.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         dragging = true; dragStart = input.Position; startPos = MainFrame.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then dragging = false end
-        end)
+        input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
     end
 end)
-Btn.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
-end)
-UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then update(input) end
-end)
+Btn.InputChanged:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end end)
+UserInputService.InputChanged:Connect(function(input) if input == dragInput and dragging then update(input) end end)
 
--- Trạng thái mặc định
+-- Biến logic
 local Active = false
 local LockMode = "ALL"
 local AutoStart = false
 local AutoNext = false
 local AutoPlayAgain = false
 
--- Sự kiện các nút bấm
 Btn.MouseButton1Click:Connect(function()
     Active = not Active
     Btn.Text = Active and "AUTO BOSS: ON" or "AUTO BOSS: OFF"
@@ -106,19 +93,9 @@ Btn.MouseButton1Click:Connect(function()
 end)
 
 LockBtn.MouseButton1Click:Connect(function()
-    if LockMode == "ALL" then
-        LockMode = "ATOM"
-        LockBtn.Text = "LOCK: ATOM ONLY"
-        LockBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
-    elseif LockMode == "ATOM" then
-        LockMode = "MAX"
-        LockBtn.Text = "LOCK: MAX ONLY"
-        LockBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 200)
-    else
-        LockMode = "ALL"
-        LockBtn.Text = "LOCK: ALL (ATOM/MAX)"
-        LockBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-    end
+    if LockMode == "ALL" then LockMode = "ATOM"; LockBtn.Text = "LOCK: ATOM ONLY"; LockBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
+    elseif LockMode == "ATOM" then LockMode = "MAX"; LockBtn.Text = "LOCK: MAX ONLY"; LockBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 200)
+    else LockMode = "ALL"; LockBtn.Text = "LOCK: ALL (ATOM/MAX)"; LockBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100) end
 end)
 
 StartBtn.MouseButton1Click:Connect(function()
@@ -139,52 +116,52 @@ PlayAgainBtn.MouseButton1Click:Connect(function()
     PlayAgainBtn.BackgroundColor3 = AutoPlayAgain and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(120, 120, 0)
 end)
 
--- Hàm quét Boss sâu
+-- Quét tìm Boss nâng cao
 local function FindBossDeep()
     for _, v in pairs(workspace:GetDescendants()) do
         if v:IsA("Model") and v:FindFirstChild("HumanoidRootPart") then
             local nameLower = string.lower(v.Name)
-            if LockMode == "ATOM" then
-                if string.find(nameLower, "atom") then return v end
-            elseif LockMode == "MAX" then
-                if string.find(nameLower, "max") then return v end
-            else
-                if string.find(nameLower, "atom") or string.find(nameLower, "max") then return v end
-            end
+            if LockMode == "ATOM" and string.find(nameLower, "atom") then return v
+            elseif LockMode == "MAX" and string.find(nameLower, "max") then return v
+            elseif LockMode == "ALL" and (string.find(nameLower, "atom") or string.find(nameLower, "max")) then return v end
         end
     end
     return nil
 end
 
--- Vòng lặp Dịch Chuyển (Độ cao an toàn 35 stud)
+-- ==================== ĐỘNG CƠ SILENT AIM VÀ KHÓA HƯỚNG MỚI ====================
+-- Thay vì dùng hook chuột dễ lỗi, ta ép trực tiếp góc nhìn Camera và hướng đạn vật lý
 RunService.Heartbeat:Connect(function()
     if Active then
         local Char = Player.Character
         local Boss = FindBossDeep()
+        
         if Boss and Char and Char:FindFirstChild("HumanoidRootPart") then
             local Humanoid = Char:FindFirstChildOfClass("Humanoid")
             if Humanoid then Humanoid.PlatformStand = true end
             
-            local TargetPos = Boss.HumanoidRootPart.Position + Vector3.new(0, 35, 0)
+            -- Neo vị trí an toàn phía trên Boss
+            local SafeHeight = Vector3.new(0, 35, 0)
+            local TargetPos = Boss.HumanoidRootPart.Position + SafeHeight
+            
+            -- Ép Nhân vật nhìn thẳng xuống Boss
             Char.HumanoidRootPart.CFrame = CFrame.new(TargetPos, Boss.HumanoidRootPart.Position)
             Char.HumanoidRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-        else
-            local Char = Player.Character
-            if Char then
-                local Humanoid = Char:FindFirstChildOfClass("Humanoid")
-                if Humanoid then Humanoid.PlatformStand = false end
+            
+            -- Ép Camera của máy bạn hướng thẳng vào Boss (Bẻ hướng đạn dựa trên Camera)
+            if workspace.CurrentCamera then
+                workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, Boss.HumanoidRootPart.Position)
             end
+        else
+            if Char then local Humanoid = Char:FindFirstChildOfClass("Humanoid") if Humanoid then Humanoid.PlatformStand = false end end
         end
     else
-        local Char = Player.Character
-        if Char then
-            local Humanoid = Char:FindFirstChildOfClass("Humanoid")
-            if Humanoid then Humanoid.PlatformStand = false end
-        end
+        local Char = Player.Character if Char then local Humanoid = Char:FindFirstChildOfClass("Humanoid") if Humanoid then Humanoid.PlatformStand = false end end
     end
 end)
+-- =============================================================================
 
--- Đóng băng hoạt ảnh cơ thể để đứng im ra chiêu mượt mà
+-- Đóng băng hoạt ảnh cơ thể
 RunService.RenderStepped:Connect(function()
     if Active then
         local Char = Player.Character
@@ -192,52 +169,39 @@ RunService.RenderStepped:Connect(function()
             local Humanoid = Char:FindFirstChildOfClass("Humanoid")
             if Humanoid then
                 local Animator = Humanoid:FindFirstChildOfClass("Animator") or Humanoid
-                for _, track in pairs(Animator:GetPlayingAnimationTracks()) do
-                    track:Stop()
-                end
+                for _, track in pairs(Animator:GetPlayingAnimationTracks()) do track:Stop() end
             end
         end
     end
 end)
 
-
--- ==================== ĐỘNG CƠ CẬP NHẬT: CHEAT X10 FAST ATTACK ====================
-
--- Sử dụng chu kỳ Stepped (tần suất quét gốc của game) phối hợp vòng lặp For x10 nhân bản gói tin
-RunService.Stepped:Connect(function()
-    if Active then
-        local Boss = FindBossDeep()
-        if Boss then
-            local Char = Player.Character
-            if Char then
-                local Tool = Char:FindFirstChildOfClass("Tool")
-                if not Tool and Player:FindFirstChild("Backpack") then
-                    Tool = Player.Backpack:FindFirstChildOfClass("Tool")
-                end
-                
-                if Tool then
-                    -- Vòng lặp ép ra chiêu 10 lần liên tục ngay trong 1 khung hình đơn lẻ
-                    for i = 1, 10 do
-                        pcall(function() 
-                            Tool:Activate() 
-                        end)
+-- Vòng lặp xả chiêu mượt mà tương thích Server dữ liệu mới
+task.spawn(function()
+    while true do
+        if Active then
+            local Boss = FindBossDeep()
+            if Boss then
+                local Char = Player.Character
+                if Char then
+                    local Tool = Char:FindFirstChildOfClass("Tool")
+                    if not Tool and Player:FindFirstChild("Backpack") then
+                        Tool = Player.Backpack:FindFirstChildOfClass("Tool")
+                    end
+                    
+                    if Tool then
+                        -- Ra chiêu khi Camera đã bị khóa hướng vào mục tiêu
+                        pcall(function() Tool:Activate() end)
+                        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+                        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
                     end
                 end
             end
-            
-            -- Nhân bản x10 tín hiệu phím vật lý E để nhồi nhét sát thương tối đa
-            for i = 1, 10 do
-                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
-                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
-            end
         end
+        task.wait(0.12) -- Nhịp độ chuẩn xác để đạn tìm quái liên tục mà không nghẽn dữ liệu
     end
 end)
 
--- =========================================================================================
-
-
--- Hàm hỗ trợ Click UI
+-- Hệ thống Auto UI phụ trợ
 local function ClickGuiObject(gui)
     if gui and gui.Visible and gui.AbsoluteSize.X > 0 then
         local x = gui.AbsolutePosition.X + (gui.AbsoluteSize.X / 2)
@@ -249,19 +213,15 @@ local function ClickGuiObject(gui)
     end
 end
 
--- 1. Tự động Start Raid từ xa
 task.spawn(function()
     while true do
         if AutoStart then
             for _, prompt in pairs(workspace:GetDescendants()) do
                 if prompt:IsA("ProximityPrompt") then
                     if string.find(string.lower(prompt.ObjectText), "start") or string.find(string.lower(prompt.ActionText), "start") then
-                        prompt.MaxActivationDistance = math.huge
-                        prompt.RequiresLineOfSight = false
+                        prompt.MaxActivationDistance = math.huge; prompt.RequiresLineOfSight = false
                         pcall(function() fireproximityprompt(prompt) end)
-                        prompt:InputHoldBegin()
-                        task.wait(0.02)
-                        prompt:InputHoldEnd()
+                        prompt:InputHoldBegin(); task.wait(0.02); prompt:InputHoldEnd()
                     end
                 end
             end
@@ -270,7 +230,6 @@ task.spawn(function()
     end
 end)
 
--- 2. Tự động Next Raid (Bảng chọn màn)
 task.spawn(function()
     while true do
         if AutoNext then
@@ -279,9 +238,7 @@ task.spawn(function()
                     local txt = gui:IsA("TextButton") and string.lower(gui.Text) or ""
                     local name = string.lower(gui.Name)
                     if string.find(txt, "start") or string.find(name, "start") then
-                        if not string.find(name, "leave") then
-                            ClickGuiObject(gui)
-                        end
+                        if not string.find(name, "leave") then ClickGuiObject(gui) end
                     end
                 end
             end
@@ -290,15 +247,13 @@ task.spawn(function()
     end
 end)
 
--- 3. Tự động Play Again (Chống kẹt bảng Rewards)
 task.spawn(function()
     while true do
         if AutoPlayAgain then
             local foundRewardsFrame = false
             for _, gui in pairs(Player.PlayerGui:GetDescendants()) do
                 if gui:IsA("TextLabel") and gui.Visible and (string.find(string.lower(gui.Text), "rewards") or string.find(string.lower(gui.Text), "cleared")) then
-                    foundRewardsFrame = true
-                    break
+                    foundRewardsFrame = true; break
                 end
             end
             if foundRewardsFrame then
@@ -310,9 +265,7 @@ task.spawn(function()
             for _, gui in pairs(Player.PlayerGui:GetDescendants()) do
                 if gui:IsA("TextButton") and gui.Parent ~= MainFrame and gui.Visible then
                     local txt = string.lower(gui.Text)
-                    if string.find(txt, "again") or string.find(txt, "play") then
-                        ClickGuiObject(gui)
-                    end
+                    if string.find(txt, "again") or string.find(txt, "play") then ClickGuiObject(gui) end
                 end
             end
         end
