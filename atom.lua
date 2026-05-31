@@ -156,7 +156,7 @@ local function FindBossDeep()
     return nil
 end
 
--- Vòng lặp Dịch Chuyển (Bay cao an toàn 35 stud)
+-- Vòng lặp Dịch Chuyển (Độ cao an toàn 35 stud)
 RunService.Heartbeat:Connect(function()
     if Active then
         local Char = Player.Character
@@ -184,19 +184,61 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- VÒNG LẶP SPAM SKILL SIÊU TỐC (Đã cập nhật task.wait xuống đúng 0.1s)
+
+-- ==================== CƠ CHẾ MỚI: ĐỨNG IM KHÔNG VUNG TAY + XẢ CHIÊU LIÊN TỤC ====================
+
+-- 1. Luồng chặn đứng toàn bộ Animation vung tay của nhân vật
+RunService.RenderStepped:Connect(function()
+    if Active then
+        local Char = Player.Character
+        if Char then
+            local Humanoid = Char:FindFirstChildOfClass("Humanoid")
+            if Humanoid then
+                local Animator = Humanoid:FindFirstChildOfClass("Animator") or Humanoid
+                -- Quét dứt điểm toàn bộ hoạt ảnh đang chạy và ép dừng ngay lập tức
+                for _, track in pairs(Animator:GetPlayingAnimationTracks()) do
+                    track:Stop()
+                end
+            end
+        end
+    end
+end)
+
+-- 2. Vòng lặp kích hoạt chiêu trực tiếp ở mức 0.1s (Bypass phím vật lý)
 task.spawn(function()
     while true do
         if Active then
             local Boss = FindBossDeep()
             if Boss then
+                local Char = Player.Character
+                if Char then
+                    -- Kiểm tra xem nhân vật có đang cầm Vũ khí/Kỹ năng (Tool) trên tay không
+                    local Tool = Char:FindFirstChildOfClass("Tool")
+                    
+                    -- Nếu không cầm trên tay, tự động tìm trong Backpack (Túi đồ) để kích hoạt ngầm
+                    if not Tool and Player:FindFirstChild("Backpack") then
+                        Tool = Player.Backpack:FindFirstChildOfClass("Tool")
+                    end
+                    
+                    if Tool then
+                        -- Ép Tool kích hoạt trực tiếp từ code hệ thống (Không chạy animation vung tay)
+                        pcall(function() 
+                            Tool:Activate() 
+                        end)
+                    end
+                end
+                
+                -- Giữ phím E phòng hờ trường hợp game bắt buộc nhận diện phím bấm vật lý
                 VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
                 VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
             end
         end
-        task.wait(0.1) -- Cập nhật thời gian delay theo yêu cầu
+        task.wait(0.1) -- Độ trễ 0.1 giây chuẩn hóa
     end
 end)
+
+-- =========================================================================================
+
 
 -- Hàm hỗ trợ Click UI
 local function ClickGuiObject(gui)
