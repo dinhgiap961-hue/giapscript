@@ -12,13 +12,13 @@ local Screen = Instance.new("ScreenGui", Player:WaitForChild("PlayerGui"))
 Screen.Name = "AutoBossGui"
 Screen.ResetOnSpawn = false
 
--- Khung chứa (Frame) để quản lý việc kéo thả
+-- Khung chứa (Frame) để quản lý việc kéo thả (Mở rộng chiều cao lên 215 để chứa thêm 2 nút mới)
 local MainFrame = Instance.new("Frame", Screen)
-MainFrame.Size = UDim2.new(0, 160, 0, 105)
+MainFrame.Size = UDim2.new(0, 160, 0, 215)
 MainFrame.Position = UDim2.new(0.8, 0, 0.4, 0)
 MainFrame.BackgroundTransparency = 1
 
--- Nút Auto Boss
+-- Nút Auto Boss (Gốc)
 local Btn = Instance.new("TextButton", MainFrame)
 Btn.Size = UDim2.new(1, 0, 0, 50)
 Btn.Position = UDim2.new(0, 0, 0, 0)
@@ -28,7 +28,7 @@ Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
 Btn.Font = Enum.Font.SourceSansBold
 Btn.TextSize = 16
 
--- Nút Lock Mục Tiêu (Hỗ trợ cả Atom và Max)
+-- Nút Lock Mục Tiêu (Gốc - Hỗ trợ cả Atom và Max)
 local LockBtn = Instance.new("TextButton", MainFrame)
 LockBtn.Size = UDim2.new(1, 0, 0, 50)
 LockBtn.Position = UDim2.new(0, 0, 0, 55)
@@ -38,7 +38,27 @@ LockBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 LockBtn.Font = Enum.Font.SourceSansBold
 LockBtn.TextSize = 16
 
--- Hệ thống kéo thả Menu
+-- THÊM MỚI: Nút Tự động Start Raid
+local StartBtn = Instance.new("TextButton", MainFrame)
+StartBtn.Size = UDim2.new(1, 0, 0, 50)
+StartBtn.Position = UDim2.new(0, 0, 0, 110)
+StartBtn.Text = "START RAID: OFF"
+StartBtn.BackgroundColor3 = Color3.fromRGB(200, 100, 0) -- Màu cam
+StartBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+StartBtn.Font = Enum.Font.SourceSansBold
+StartBtn.TextSize = 16
+
+-- THÊM MỚI: Nút Tự động Next Raid
+local NextBtn = Instance.new("TextButton", MainFrame)
+NextBtn.Size = UDim2.new(1, 0, 0, 50)
+NextBtn.Position = UDim2.new(0, 0, 0, 165)
+NextBtn.Text = "NEXT RAID: OFF"
+NextBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 150) -- Màu xanh ngọc
+NextBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+NextBtn.Font = Enum.Font.SourceSansBold
+NextBtn.TextSize = 16
+
+-- Hệ thống kéo thả Menu (Giữ nguyên gốc)
 local dragging, dragInput, dragStart, startPos
 local function update(input)
     local delta = input.Position - dragStart
@@ -60,18 +80,20 @@ UserInputService.InputChanged:Connect(function(input)
     if input == dragInput and dragging then update(input) end
 end)
 
--- Trạng thái mặc định
+-- Trạng thái mặc định (Giữ nguyên và thêm 2 biến trạng thái mới)
 local Active = false
 local LockMode = "ALL" -- Có 3 chế độ: "ALL", "ATOM", "MAX"
+local AutoStart = false  -- THÊM MỚI
+local AutoNext = false   -- THÊM MỚI
 
--- Sự kiện Click nút Auto Boss
+-- Sự kiện Click nút Auto Boss (Giữ nguyên gốc)
 Btn.MouseButton1Click:Connect(function()
     Active = not Active
     Btn.Text = Active and "AUTO BOSS: ON" or "AUTO BOSS: OFF"
     Btn.BackgroundColor3 = Active and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 0, 0)
 end)
 
--- Sự kiện Click đổi chế độ Lock (ALL -> ATOM -> MAX -> lặp lại)
+-- Sự kiện Click đổi chế độ Lock (Giữ nguyên gốc: ALL -> ATOM -> MAX -> lặp lại)
 LockBtn.MouseButton1Click:Connect(function()
     if LockMode == "ALL" then
         LockMode = "ATOM"
@@ -88,7 +110,21 @@ LockBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- HÀM QUÉT SÂU (Xử lý thông minh theo bộ lọc nút bấm)
+-- THÊM MỚI: Sự kiện Click nút Start Raid
+StartBtn.MouseButton1Click:Connect(function()
+    AutoStart = not AutoStart
+    StartBtn.Text = AutoStart and "START RAID: ON" or "START RAID: OFF"
+    StartBtn.BackgroundColor3 = AutoStart and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 100, 0)
+end)
+
+-- THÊM MỚI: Sự kiện Click nút Next Raid
+NextBtn.MouseButton1Click:Connect(function()
+    AutoNext = not AutoNext
+    NextBtn.Text = AutoNext and "NEXT RAID: ON" or "NEXT RAID: OFF"
+    NextBtn.BackgroundColor3 = AutoNext and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(0, 150, 150)
+end)
+
+-- HÀM QUÉT SÂU (Giữ nguyên gốc 100%)
 local function FindBossDeep()
     for _, v in pairs(workspace:GetDescendants()) do
         if v:IsA("Model") and v:FindFirstChild("HumanoidRootPart") then
@@ -111,7 +147,7 @@ local function FindBossDeep()
     return nil
 end
 
--- Vòng lặp Dịch Chuyển & Ghim Đầu
+-- Vòng lặp Dịch Chuyển & Ghim Đầu (Giữ nguyên gốc 100%)
 RunService.Heartbeat:Connect(function()
     if Active then
         local Char = Player.Character
@@ -140,7 +176,7 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- Vòng lặp Spam Phím E
+-- Vòng lặp Spam Phím E (Giữ nguyên gốc 100%)
 task.spawn(function()
     while true do
         if Active then
@@ -152,5 +188,31 @@ task.spawn(function()
             end
         end
         task.wait(0.2)
+    end
+end)
+
+-- THÊM MỚI: Vòng lặp xử lý Auto Start Raid (Mặc định giả lập nhấn phím G để vào hoặc bắt đầu raid)
+-- (Bạn có thể đổi Enum.KeyCode.G thành phím bất kỳ của game bạn cần)
+task.spawn(function()
+    while true do
+        if AutoStart then
+            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.G, false, game)
+            task.wait(0.05)
+            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.G, false, game)
+        end
+        task.wait(1) -- Spam giãn cách mỗi 1 giây
+    end
+end)
+
+-- THÊM MỚI: Vòng lặp xử lý Auto Next Raid (Mặc định giả lập nhấn phím N để chuyển màn)
+-- (Bạn có thể đổi Enum.KeyCode.N thành phím bất kỳ của game bạn cần)
+task.spawn(function()
+    while true do
+        if AutoNext then
+            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.N, false, game)
+            task.wait(0.05)
+            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.N, false, game)
+        end
+        task.wait(1) -- Spam giãn cách mỗi 1 giây
     end
 end)
