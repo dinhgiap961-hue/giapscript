@@ -1,31 +1,55 @@
 -- ============================================================================
--- GUI SIÊU CẤP: ATOM MAX PRO FARMER
+-- GUI VIP TỰ CHỦ (KHÔNG CẦN TẢI THƯ VIỆN NGOÀI)
 -- ============================================================================
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/Library.lua"))()
-local Window = Library:CreateWindow({ Title = "ATOM MAX VIP | Dragon V2", Center = true, AutoShow = true })
+local UIS = game:GetService("UserInputService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local RunService = game:GetService("RunService")
 
-local Tab = Window:AddTab("Main Farming")
-local Group = Tab:AddLeftGroupbox("Auto Boss")
+-- Tạo GUI
+local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+local MainFrame = Instance.new("Frame", ScreenGui)
+MainFrame.Size = UDim2.new(0, 250, 0, 300)
+MainFrame.Position = UDim2.new(0.5, -125, 0.5, -150)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.Visible = true
 
--- Các biến trạng thái
-getgenv().AutoFarm = false
+-- Nút Thu nhỏ/Mở rộng (Nút VIP)
+local ToggleBtn = Instance.new("TextButton", ScreenGui)
+ToggleBtn.Size = UDim2.new(0, 50, 0, 50)
+ToggleBtn.Position = UDim2.new(0, 10, 0.5, 0)
+ToggleBtn.Text = "MENU"
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 255)
+ToggleBtn.MouseButton1Click:Connect(function() MainFrame.Visible = not MainFrame.Visible end)
 
--- Chức năng Ghim & Đánh
-Group:AddToggle("AutoBoss", { Text = "Auto Kill Boss Atom Max", Default = false, Callback = function(v)
-    getgenv().AutoFarm = v
-end })
+-- Các biến chức năng
+local AutoBoss = false
+local AutoSkill = false
 
-game:GetService("RunService").Heartbeat:Connect(function()
-    if getgenv().AutoFarm then
-        local Boss = workspace:FindFirstChild("Atom Max")
-        local Char = game.Players.LocalPlayer.Character
-        if Boss and Boss:FindFirstChild("HumanoidRootPart") and Char and Char:FindFirstChild("HumanoidRootPart") then
-            -- Ghim vị trí
-            Char.HumanoidRootPart.CFrame = Boss.HumanoidRootPart.CFrame * CFrame.new(0, 15, 0)
-            -- Spam kỹ năng (giả lập phím E)
-            game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode.E, false, game)
-        end
+-- Hàm tạo nút bấm trong Menu
+local function AddButton(name, callback)
+    local btn = Instance.new("TextButton", MainFrame)
+    btn.Size = UDim2.new(0.9, 0, 0, 40)
+    btn.Position = UDim2.new(0.05, 0, 0.1 * #MainFrame:GetChildren(), 0)
+    btn.Text = name
+    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    btn.MouseButton1Click:Connect(callback)
+end
+
+AddButton("AUTO BOSS (ON/OFF)", function() AutoBoss = not AutoBoss end)
+AddButton("AUTO SKILL (ON/OFF)", function() AutoSkill = not AutoSkill end)
+
+-- Vòng lặp chính xử lý logic
+RunService.Heartbeat:Connect(function()
+    local Char = game.Players.LocalPlayer.Character
+    local Boss = workspace:FindFirstChild("Atom Max")
+    
+    if AutoBoss and Boss and Char then
+        Char.HumanoidRootPart.CFrame = Boss.HumanoidRootPart.CFrame * CFrame.new(0, 15, 0)
+    end
+    
+    if AutoSkill and Char then
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+        task.wait(0.1)
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
     end
 end)
-
-Library:Notify("Đã nạp GUI VIP thành công!")
