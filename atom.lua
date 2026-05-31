@@ -16,19 +16,17 @@ _G.AtomConfig = {
     RaidStart = false
 }
 
--- Hàm gom quái về vị trí trước mặt người chơi (Giống hệt video mẫu)
+-- Hàm gom quái về vị trí trước mặt người chơi
 local function doBringMob()
     local char = Plr.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
     
-    -- Xác định điểm gom quái lý tưởng ngay trước mặt nhân vật
     local bringTargetPos = hrp.CFrame * CFrame.new(0, 0, -6)
 
     for _, v in ipairs(workspace:GetDescendants()) do
         if v:IsA("Model") and v:FindFirstChild("HumanoidRootPart") and v:FindFirstChild("Humanoid") and v.Name ~= Plr.Name then
             if v.Humanoid.Health > 0 and not v:FindFirstChild("ForceField") then
-                -- Ép quái đứng im và kéo tụ lại một điểm duy nhất
                 v.HumanoidRootPart.Anchored = true
                 v.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
                 v.HumanoidRootPart.CFrame = bringTargetPos
@@ -51,17 +49,13 @@ Tab:NewToggle("Auto Bring Mob (Gom Quái)", "Gom toàn bộ quái về trước 
                     local char = Plr.Character
                     local hrp = char and char:FindFirstChild("HumanoidRootPart")
                     if hrp then
-                        -- Khóa cứng nhân vật đứng im tại chỗ cực kỳ an toàn
                         hrp.Anchored = true
                         hrp.Velocity = Vector3.new(0, 0, 0)
-                        
-                        -- Thực hiện gom quái liên tục
                         doBringMob()
                     end
                 end)
                 task.wait(0.02)
             end
-            -- Khi tắt hack, trả lại trạng thái tự do cho nhân vật
             pcall(function()
                 if Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart") then
                     Plr.Character.HumanoidRootPart.Anchored = false
@@ -71,8 +65,8 @@ Tab:NewToggle("Auto Bring Mob (Gom Quái)", "Gom toàn bộ quái về trước 
     end
 end)
 
--- 2. Spam Đạn Đuổi Vào Tâm Gom Quái
-Tab:NewToggle("Spam Đạn Đuổi", "Tự động xả chiêu liên tục vào vị trí gom quái", function(s)
+-- 2. Spam Đạn Đuổi (Phương pháp trang bị công cụ tự động kích hoạt)
+Tab:NewToggle("Spam Đạn Đuổi", "Tự động kích hoạt chiêu thức từ xa vào vị trí gom quái", function(s)
     _G.AtomConfig.SpamDan = s
     if s then
         task.spawn(function()
@@ -80,14 +74,25 @@ Tab:NewToggle("Spam Đạn Đuổi", "Tự động xả chiêu liên tục vào 
                 pcall(function()
                     local char = Plr.Character
                     local hrp = char and char:FindFirstChild("HumanoidRootPart")
-                    if hrp then
-                        -- Bắn trực tiếp vào điểm phía trước mặt (Nơi quái đang bị gom)
+                    
+                    if char and hrp then
                         local targetPos = (hrp.CFrame * CFrame.new(0, 0, -6)).Position
-                        local attackRemote = RepStore:FindFirstChild("Remotes") and RepStore.Remotes:FindFirstChild("EnergyBlast") or RepStore:FindFirstChild("AttackRemote")
                         
+                        -- Thử tìm Remote gốc của hệ thống trước
+                        local attackRemote = RepStore:FindFirstChild("Remotes") and (RepStore.Remotes:FindFirstChild("EnergyBlast") or RepStore.Remotes:FindFirstChild("AttackRemote"))
                         if attackRemote then
                             attackRemote:FireServer(targetPos)
                         else
+                            -- Nếu Remote bị đổi tên, tự động trang bị Tool đạn trong balo để kích hoạt chiêu thức
+                            local tool = Plr.Backpack:FindFirstChildOfClass("Tool") or char:FindFirstChildOfClass("Tool")
+                            if tool then
+                                if tool.Parent ~= char then
+                                    tool.Parent = char -- Trang bị công cụ lên tay
+                                end
+                                tool:Activate() -- Kích hoạt kỹ năng tấn công của công cụ
+                            end
+                            
+                            -- Giả lập nhấn phím kỹ năng dự phòng cho phiên bản Mobile
                             game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode.E, false, game)
                             task.wait(0.02)
                             game:GetService("VirtualInputManager"):SendKeyEvent(false, Enum.KeyCode.E, false, game)
