@@ -1,13 +1,10 @@
 -- ============================================================================
--- DRAGON BLOX V2 - PREMIUM HUB (ATOM MAX ALL-IN-ONE FINAL STANDARD EDITION)
+-- DRAGON BLOX V2 - PREMIUM HUB (ATOM MAX - SPAM E ONLY FINAL EDITION)
 -- ============================================================================
 
 -- 1. KHỞI TẠO HỆ THỐNG VÀ KIỂM TRA KẾT NỐI UI
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
 local Window = Library.CreateLib("Dragon Blox V2 | Ultimate Hub", "BloodTheme")
-
--- Xác định chính xác khung giao diện gốc của Kavo UI để phục vụ nút Atom Max
-local KavoMainGui = game:GetService("CoreGui"):FindFirstChild("Dragon Blox V2 | Ultimate Hub") or game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("Dragon Blox V2 | Ultimate Hub")
 
 -- Thông báo khởi chạy hệ thống thành công dưới góc màn hình
 game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -63,7 +60,7 @@ local function GetClosestTarget()
 end
 
 -- ============================================================================
--- 🔘 HỆ THỐNG NÚT "ATOM MAX" THU NHỎ / MỞ RỘNG (ĐÃ FIX TÁC DỤNG 100%)
+-- 🔘 HỆ THỐNG NÚT "ATOM MAX" THU NHỎ / MỞ RỘNG (CHỐNG TRƠ NÚT 100%)
 -- ============================================================================
 local OpenCloseGui = Instance.new("ScreenGui")
 local AtomButton = Instance.new("TextButton")
@@ -95,12 +92,32 @@ UIStroke.Color = Color3.fromRGB(150, 0, 0)
 UIStroke.Thickness = 2
 UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
+local uiVisible = true
+
 AtomButton.MouseButton1Click:Connect(function()
-    if KavoMainGui then
-        KavoMainGui.Enabled = not KavoMainGui.Enabled
-    else
-        KavoMainGui = CoreGui:FindFirstChild("Dragon Blox V2 | Ultimate Hub") or LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("Dragon Blox V2 | Ultimate Hub")
-        if KavoMainGui then KavoMainGui.Enabled = not KavoMainGui.Enabled end
+    local TargetGui = CoreGui:FindFirstChild("Dragon Blox V2 | Ultimate Hub") or LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("Dragon Blox V2 | Ultimate Hub")
+    
+    if not TargetGui then
+        for _, gui in ipairs(CoreGui:GetChildren()) do
+            if gui:IsA("ScreenGui") and gui:FindFirstChild("Main") then
+                TargetGui = gui
+                break
+            end
+        end
+    end
+
+    if TargetGui then
+        local mainFrame = TargetGui:FindFirstChild("Main")
+        if mainFrame then
+            uiVisible = not uiVisible
+            if uiVisible then
+                mainFrame.Position = UDim2.new(0.5, -275, 0.5, -175) 
+            else
+                mainFrame.Position = UDim2.new(2, 0, 2, 0) 
+            end
+        else
+            TargetGui.Enabled = not TargetGui.Enabled
+        end
     end
 end)
 
@@ -185,8 +202,8 @@ MainSection:NewToggle("Auto Boss V1 (30 Studs + Auto Aim)", "Tự bay cao, tự 
     end
 end)
 
--- Auto Boss V2: Tự động xoay Aim hướng chiêu + Chỉ Spam duy nhất phím E siêu tốc độ, tự trúng 100% không cần nhấn
-MainSection:NewToggle("Auto Boss V2 (Auto Aim + Spam phím E)", "Tự động Aim trúng đích và tự Spam duy nhất chiêu E", function(state)
+-- Auto Boss V2: Tự động xoay Aim + Chỉ Spam duy nhất phím E (Đã bỏ hoàn toàn F, G, X)
+MainSection:NewToggle("Auto Boss V2 (Auto Aim + Spam phím E Only)", "Tự động Aim trúng đích và tự Spam DUY NHẤT chiêu E", function(state)
     getgenv().AutoBossV2 = state
     
     if state then
@@ -196,18 +213,18 @@ MainSection:NewToggle("Auto Boss V2 (Auto Aim + Spam phím E)", "Tự động Ai
                     local HRP = Character:FindFirstChild("HumanoidRootPart")
                     local target = GetClosestTarget()
                     
-                    -- HỆ THỐNG SILENT AIM: Tự bẻ hướng chiêu thức bay thẳng vào Boss
+                    -- HỆ THỐNG SILENT AIM: Tự bẻ hướng chiêu thức bay thẳng vào Boss gần nhất
                     if HRP and target then
                         HRP.CFrame = CFrame.new(HRP.Position, Vector3.new(target.Position.X, target.Position.Y, target.Position.Z))
                         workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, target.Position)
                     end
                     
-                    -- Tự động spam gửi tín hiệu nhấn/nhả phím E kịch khung tốc độ
+                    -- Tự động gửi tín hiệu gõ phím E siêu tốc độ
                     InputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
                     task.wait(0.01)
                     InputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
                 end)
-                task.wait(0.03) -- Chu kỳ vòng lặp siêu ngắn giúp phím E được kích hoạt liên tục không ngừng nghỉ
+                task.wait(0.03)
             end
         end)
     end
