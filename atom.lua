@@ -1,11 +1,10 @@
 -- ============================================================================
--- DRAGON BLOX V2 - MINIMALIST HIGH-SPEED AUTO BOSS ONLY
+-- DRAGON BLOX V2 - MINIMALIST HIGH-SPEED (WITH 30 STUDS FIX)
 -- ============================================================================
 
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
 local Window = Library.CreateLib("Dragon Blox V2 | Ultra Light", "BloodTheme")
 
--- Biến toàn cục
 getgenv().AutoBossV1 = false
 getgenv().AutoBossV2 = false
 
@@ -18,7 +17,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 LocalPlayer.CharacterAdded:Connect(function(char) Character = char end)
 
--- Hàm tìm mục tiêu tối ưu hóa cực nhẹ
 local function GetClosestTarget()
     local closest, dist = nil, math.huge
     local hrp = Character:FindFirstChild("HumanoidRootPart")
@@ -38,16 +36,25 @@ end
 local MainTab = Window:NewTab("Auto Boss")
 local MainSection = MainTab:NewSection("Minimalist Attack Mode")
 
--- Auto Boss V1
-MainSection:NewToggle("Auto Boss V1 (Hover + Auto Hit)", "Bay cao và tự đánh", function(state)
+-- Auto Boss V1: Đã thêm lại cơ chế bay 30 Studs
+MainSection:NewToggle("Auto Boss V1 (30 Studs Hover)", "Bay cao 30 studs và tự đánh", function(state)
     getgenv().AutoBossV1 = state
     if state then
         task.spawn(function()
+            -- Tạo lực đẩy lên cao
+            local bV = Instance.new("BodyVelocity")
+            bV.Name = "AtomFlyForce"
+            bV.Velocity = Vector3.new(0, 0, 0)
+            bV.MaxForce = Vector3.new(0, math.huge, 0)
+            
             while getgenv().AutoBossV1 do
                 pcall(function()
                     local HRP = Character:FindFirstChild("HumanoidRootPart")
                     if HRP then
-                        HRP.Velocity = Vector3.new(0, 50, 0)
+                        if not HRP:FindFirstChild("AtomFlyForce") then
+                            bV.Parent = HRP
+                            HRP.CFrame = HRP.CFrame * CFrame.new(0, 30, 0) -- Giữ độ cao 30 Studs
+                        end
                         local target = GetClosestTarget()
                         if target then HRP.CFrame = CFrame.new(HRP.Position, target.Position) end
                     end
@@ -55,12 +62,15 @@ MainSection:NewToggle("Auto Boss V1 (Hover + Auto Hit)", "Bay cao và tự đán
                 end)
                 task.wait(0.03)
             end
+            if Character:FindFirstChild("HumanoidRootPart") and Character.HumanoidRootPart:FindFirstChild("AtomFlyForce") then
+                Character.HumanoidRootPart.AtomFlyForce:Destroy()
+            end
         end)
     end
 end)
 
--- Auto Boss V2 (Spam E cực nhanh)
-MainSection:NewToggle("Auto Boss V2 (Extreme Spam E)", "Tốc độ spam tối đa, không lag", function(state)
+-- Auto Boss V2: Spam E cực nhanh
+MainSection:NewToggle("Auto Boss V2 (Extreme Spam E)", "Tốc độ spam tối đa", function(state)
     getgenv().AutoBossV2 = state
     if state then
         task.spawn(function()
