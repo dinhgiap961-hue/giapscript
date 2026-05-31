@@ -1,5 +1,5 @@
 -- ============================================================================
--- DRAGON BLOX V2 - PREMIUM HUB (ATOM MAX ALL-IN-ONE STANDARD EDITION)
+-- DRAGON BLOX V2 - PREMIUM HUB (ATOM MAX ALL-IN-ONE FINAL STANDARD EDITION)
 -- ============================================================================
 
 -- 1. KHỞI TẠO HỆ THỐNG VÀ KIỂM TRA KẾT NỐI UI
@@ -16,7 +16,7 @@ game:GetService("StarterGui"):SetCore("SendNotification", {
     Duration = 5
 })
 
--- Các biến môi trường toàn cục điều khiển vòng lặp (Anti-Lag & Safe Toggle)
+-- Các biến môi trường toàn cục điều khiển vòng lặp
 getgenv().AutoFarmMobs = false
 getgenv().AutoBossV1 = false
 getgenv().AutoBossV2 = false
@@ -39,7 +39,7 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     Character = char
 end)
 
--- Hàm tìm kiếm và định vị mục tiêu (Boss/Quái) gần nhân vật nhất
+-- HỆ THỐNG KIỂM TRA VÀ ĐỊNH VỊ MỤC TIÊU (BOSS/QUÁI) GẦN NHẤT ĐỂ AUTO-AIM
 local function GetClosestTarget()
     local closestTarget = nil
     local shortestDistance = math.huge
@@ -48,7 +48,7 @@ local function GetClosestTarget()
     if hrp then
         for _, v in ipairs(workspace:GetDescendants()) do
             if v:IsA("Humanoid") and v.Parent ~= Character and v.Health > 0 then
-                local targetHrp = v.Parent:FindFirstChild("HumanoidRootPart")
+                local targetHrp = v.Parent:FindFirstChild("HumanoidRootPart") or v.Parent:FindFirstChild("Torso")
                 if targetHrp then
                     local distance = (hrp.Position - targetHrp.Position).Magnitude
                     if distance < shortestDistance then
@@ -63,7 +63,7 @@ local function GetClosestTarget()
 end
 
 -- ============================================================================
--- 🔘 HỆ THỐNG NÚT "ATOM MAX" THU NHỎ / MỞ RỘNG (HOẠT ĐỘNG CHUẨN XÁC)
+-- 🔘 HỆ THỐNG NÚT "ATOM MAX" THU NHỎ / MỞ RỘNG (ĐÃ FIX TÁC DỤNG 100%)
 -- ============================================================================
 local OpenCloseGui = Instance.new("ScreenGui")
 local AtomButton = Instance.new("TextButton")
@@ -106,7 +106,7 @@ end)
 
 
 -- ============================================================================
--- TAB 1: MAIN FUNCTION (QUẢN LÝ AUTO FARM & CHỨC NĂNG BOSS CHUẨN)
+-- TAB 1: MAIN FUNCTION (AUTO AIM LOCK VÀ TỰ ĐỘNG ĐÁNH KHÔNG CẦN NHẤN)
 -- ============================================================================
 local MainTab = Window:NewTab("Main Script")
 local MainSection = MainTab:NewSection("Quản Lý Auto Farm & Boss")
@@ -142,8 +142,8 @@ MainSection:NewToggle("Auto Farm Mobs (Level)", "Tự động tiêu diệt quái
     end
 end)
 
--- CHỨC NĂNG: Auto Boss V1 tự bay cao 30 Studs + Khóa mục tiêu để tự đấm liên tục
-MainSection:NewToggle("Auto Boss V1 (Fly 30 Studs)", "Bay cao 30 studs né skill & tự hướng mặt đấm Boss", function(state)
+-- Auto Boss V1: Tự bay cao 30 Studs + Khóa Aim cứng hướng thẳng vào Boss + Tự đấm trúng liên tục không cần nhấn
+MainSection:NewToggle("Auto Boss V1 (30 Studs + Auto Aim)", "Tự bay cao, tự Aim khóa mục tiêu và tự đấm liên tục", function(state)
     getgenv().AutoBossV1 = state
     
     if state then
@@ -165,11 +165,14 @@ MainSection:NewToggle("Auto Boss V1 (Fly 30 Studs)", "Bay cao 30 studs né skill
                         end
                         Humanoid:ChangeState(Enum.HumanoidStateType.Physics)
                         
+                        -- HỆ THỐNG SILENT AIM: Khóa chặt hướng nhân vật và Camera vào Boss gần nhất
                         local target = GetClosestTarget()
                         if target then
-                            HRP.CFrame = CFrame.new(HRP.Position, Vector3.new(target.Position.X, HRP.Position.Y, target.Position.Z))
+                            HRP.CFrame = CFrame.new(HRP.Position, Vector3.new(target.Position.X, target.Position.Y, target.Position.Z))
+                            workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, target.Position)
                         end
                     end
+                    -- Tự động xả đấm (Không cần người chơi nhấn màn hình)
                     VirtualUser:Button1Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
                 end)
                 task.wait(0.04)
@@ -182,33 +185,29 @@ MainSection:NewToggle("Auto Boss V1 (Fly 30 Studs)", "Bay cao 30 studs né skill
     end
 end)
 
--- CHỨC NĂNG ĐÃ SỬA: Chỉ Spam chính xác 4 phím E, G, F, X siêu tốc độ
-MainSection:NewToggle("Auto Boss V2 (Spam E, G, F, X)", "Tự xoay hướng quái và chỉ Spam các chiêu E, G, F, X", function(state)
+-- Auto Boss V2: Tự động xoay Aim hướng chiêu + Chỉ Spam duy nhất phím E siêu tốc độ, tự trúng 100% không cần nhấn
+MainSection:NewToggle("Auto Boss V2 (Auto Aim + Spam phím E)", "Tự động Aim trúng đích và tự Spam duy nhất chiêu E", function(state)
     getgenv().AutoBossV2 = state
     
     if state then
         task.spawn(function()
-            -- Cấu hình chính xác 4 phím theo yêu cầu của bạn
-            local skillKeys = {Enum.KeyCode.E, Enum.KeyCode.G, Enum.KeyCode.F, Enum.KeyCode.X}
-            
             while getgenv().AutoBossV2 do
                 pcall(function()
                     local HRP = Character:FindFirstChild("HumanoidRootPart")
                     local target = GetClosestTarget()
                     
+                    -- HỆ THỐNG SILENT AIM: Tự bẻ hướng chiêu thức bay thẳng vào Boss
                     if HRP and target then
-                        HRP.CFrame = CFrame.new(HRP.Position, Vector3.new(target.Position.X, HRP.Position.Y, target.Position.Z))
+                        HRP.CFrame = CFrame.new(HRP.Position, Vector3.new(target.Position.X, target.Position.Y, target.Position.Z))
+                        workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, target.Position)
                     end
                     
-                    -- Vòng lặp xả 4 phím liên hồi
-                    for _, key in ipairs(skillKeys) do
-                        if not getgenv().AutoBossV2 then break end
-                        InputManager:SendKeyEvent(true, key, false, game)
-                        task.wait(0.01)
-                        InputManager:SendKeyEvent(false, key, false, game)
-                    end
+                    -- Tự động spam gửi tín hiệu nhấn/nhả phím E kịch khung tốc độ
+                    InputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+                    task.wait(0.01)
+                    InputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
                 end)
-                task.wait(0.04)
+                task.wait(0.03) -- Chu kỳ vòng lặp siêu ngắn giúp phím E được kích hoạt liên tục không ngừng nghỉ
             end
         end)
     end
