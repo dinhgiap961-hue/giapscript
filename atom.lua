@@ -4,7 +4,7 @@ local VirtualInputManager = game:GetService("VirtualInputManager")
 local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
 
--- Xóa sạch GUI cũ tránh trùng lặp
+-- Xóa sạch GUI cũ tránh trùng lặp dữ liệu
 local oldGui = Player:WaitForChild("PlayerGui"):FindFirstChild("AutoBossGui")
 if oldGui then oldGui:Destroy() end
 
@@ -13,30 +13,32 @@ local Screen = Instance.new("ScreenGui", Player:WaitForChild("PlayerGui"))
 Screen.Name = "AutoBossGui"
 Screen.ResetOnSpawn = false
 
--- Khung chứa (Frame)
+-- Khung chứa (Frame) - Mở rộng chiều cao lên 270 để chứa đủ các nút
 local MainFrame = Instance.new("Frame", Screen)
 MainFrame.Size = UDim2.new(0, 160, 0, 270)
 MainFrame.Position = UDim2.new(0.8, 0, 0.3, 0)
 MainFrame.BackgroundTransparency = 1
 
--- Khởi tạo các nút bấm
-local Btn = Instance.new("TextButton", MainFrame)
-Btn.Size = UDim2.new(1, 0, 0, 50)
-Btn.Text = "AUTO BOSS: OFF"
-Btn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-Btn.Font = Enum.Font.SourceSansBold
-Btn.TextSize = 16
+-- NÚT 1: AUTO FARM (Đứng im xả skill ghim vào quái)
+local FarmBtn = Instance.new("TextButton", MainFrame)
+FarmBtn.Size = UDim2.new(1, 0, 0, 50)
+FarmBtn.Text = "AUTO FARM: OFF"
+FarmBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+FarmBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+FarmBtn.Font = Enum.Font.SourceSansBold
+FarmBtn.TextSize = 16
 
-local LockBtn = Instance.new("TextButton", MainFrame)
-LockBtn.Size = UDim2.new(1, 0, 0, 50)
-LockBtn.Position = UDim2.new(0, 0, 0, 55)
-LockBtn.Text = "LOCK: ALL"
-LockBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-LockBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-LockBtn.Font = Enum.Font.SourceSansBold
-LockBtn.TextSize = 16
+-- NÚT 2: AUTO BOSS (Tự bay tới Boss + Xả skill siêu tốc x10)
+local BossBtn = Instance.new("TextButton", MainFrame)
+BossBtn.Size = UDim2.new(1, 0, 0, 50)
+BossBtn.Position = UDim2.new(0, 0, 0, 55)
+BossBtn.Text = "AUTO BOSS: OFF"
+BossBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+BossBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+BossBtn.Font = Enum.Font.SourceSansBold
+BossBtn.TextSize = 16
 
+-- Các nút phụ trợ màn chơi
 local StartBtn = Instance.new("TextButton", MainFrame)
 StartBtn.Size = UDim2.new(1, 0, 0, 50)
 StartBtn.Position = UDim2.new(0, 0, 0, 110)
@@ -64,38 +66,40 @@ PlayAgainBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 PlayAgainBtn.Font = Enum.Font.SourceSansBold
 PlayAgainBtn.TextSize = 16
 
--- Kéo thả Menu
+-- Hệ thống di chuyển Menu bằng cách kéo thả nút AUTO FARM
 local dragging, dragInput, dragStart, startPos
 local function update(input)
     local delta = input.Position - dragStart
     MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
 end
-Btn.InputBegan:Connect(function(input)
+FarmBtn.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         dragging = true; dragStart = input.Position; startPos = MainFrame.Position
         input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
     end
 end)
-Btn.InputChanged:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end end)
+FarmBtn.InputChanged:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end end)
 UserInputService.InputChanged:Connect(function(input) if input == dragInput and dragging then update(input) end end)
 
--- Biến điều hướng câu lệnh
-local Active = false
-local LockMode = "ALL"
+-- Trạng thái logic
+local AutoFarmActive = false
+local AutoBossActive = false
 local AutoStart = false
 local AutoNext = false
 local AutoPlayAgain = false
 
-Btn.MouseButton1Click:Connect(function()
-    Active = not Active
-    Btn.Text = Active and "AUTO BOSS: ON" or "AUTO BOSS: OFF"
-    Btn.BackgroundColor3 = Active and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 0, 0)
+FarmBtn.MouseButton1Click:Connect(function()
+    AutoFarmActive = not AutoFarmActive
+    if AutoFarmActive then AutoBossActive = false; BossBtn.Text = "AUTO BOSS: OFF"; BossBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0) end
+    FarmBtn.Text = AutoFarmActive and "AUTO FARM: ON" or "AUTO FARM: OFF"
+    FarmBtn.BackgroundColor3 = AutoFarmActive and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 0, 0)
 end)
 
-LockBtn.MouseButton1Click:Connect(function()
-    if LockMode == "ALL" then LockMode = "ATOM"; LockBtn.Text = "LOCK: ATOM ONLY"; LockBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
-    elseif LockMode == "ATOM" then LockMode = "MAX"; LockBtn.Text = "LOCK: MAX ONLY"; LockBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 200)
-    else LockMode = "ALL"; LockBtn.Text = "LOCK: ALL (ATOM/MAX)"; LockBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100) end
+BossBtn.MouseButton1Click:Connect(function()
+    AutoBossActive = not AutoBossActive
+    if AutoBossActive then AutoFarmActive = false; FarmBtn.Text = "AUTO FARM: OFF"; FarmBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0) end
+    BossBtn.Text = AutoBossActive and "AUTO BOSS: ON" or "AUTO BOSS: OFF"
+    BossBtn.BackgroundColor3 = AutoBossActive and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 0, 0)
 end)
 
 StartBtn.MouseButton1Click:Connect(function()
@@ -116,79 +120,94 @@ PlayAgainBtn.MouseButton1Click:Connect(function()
     PlayAgainBtn.BackgroundColor3 = AutoPlayAgain and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(120, 120, 0)
 end)
 
--- Quét tìm mục tiêu Boss
-local function FindBossDeep()
-    for _, v in pairs(workspace:GetDescendants()) do
-        if v:IsA("Model") and v:FindFirstChild("HumanoidRootPart") then
-            local nameLower = string.lower(v.Name)
-            if LockMode == "ATOM" and string.find(nameLower, "atom") then return v
-            elseif LockMode == "MAX" and string.find(nameLower, "max") then return v
-            elseif LockMode == "ALL" and (string.find(nameLower, "atom") or string.find(nameLower, "max")) then return v end
+-- Quét tìm mục tiêu gần nhất
+local function FindAnyMonster()
+    local targetMonster = nil
+    local shortestDistance = math.huge
+    local myChar = Player.Character
+    
+    if myChar and myChar:FindFirstChild("HumanoidRootPart") then
+        for _, v in pairs(workspace:GetDescendants()) do
+            if v:IsA("Model") and v:FindFirstChild("HumanoidRootPart") and v:FindFirstChildOfClass("Humanoid") then
+                if v ~= myChar and not game.Players:GetPlayerFromCharacter(v) then
+                    if v:FindFirstChildOfClass("Humanoid").Health > 0 then
+                        local distance = (myChar.HumanoidRootPart.Position - v.HumanoidRootPart.Position).Magnitude
+                        if distance < shortestDistance then
+                            shortestDistance = distance
+                            targetMonster = v
+                        end
+                    end
+                end
+            end
         end
     end
-    return nil
+    return targetMonster
 end
 
--- Vòng lặp khóa hướng dịch chuyển và bẻ hướng Camera (Silent Aim hướng đạn)
+-- Vòng lặp quản lý vị trí (Chỉ hoạt động khi bật AUTO BOSS)
 RunService.Heartbeat:Connect(function()
-    if Active then
-        local Char = Player.Character
-        local Boss = FindBossDeep()
-        
-        if Boss and Char and Char:FindFirstChild("HumanoidRootPart") then
+    local Char = Player.Character
+    if AutoBossActive then
+        local Monster = FindAnyMonster()
+        if Monster and Char and Char:FindFirstChild("HumanoidRootPart") then
             local Humanoid = Char:FindFirstChildOfClass("Humanoid")
             if Humanoid then Humanoid.PlatformStand = true end
             
-            -- Giữ độ cao an toàn 35 stud phía trên quái
-            local TargetPos = Boss.HumanoidRootPart.Position + Vector3.new(0, 35, 0)
-            
-            -- Ép người nhân vật xoay thẳng về hướng Boss
-            Char.HumanoidRootPart.CFrame = CFrame.new(TargetPos, Boss.HumanoidRootPart.Position)
+            -- AUTO BOSS: Tự động bay lên giữ khoảng cách 35 stud trên đầu Boss
+            local TargetPos = Monster.HumanoidRootPart.Position + Vector3.new(0, 35, 0)
+            Char.HumanoidRootPart.CFrame = CFrame.new(TargetPos)
             Char.HumanoidRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-            
-            -- Ép Camera nhìn thẳng vào Boss để đạn tự tìm mục tiêu chính xác 100%
-            if workspace.CurrentCamera then
-                workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, Boss.HumanoidRootPart.Position)
-            end
         else
             if Char then local Humanoid = Char:FindFirstChildOfClass("Humanoid") if Humanoid then Humanoid.PlatformStand = false end end
         end
     else
-        local Char = Player.Character if Char then local Humanoid = Char:FindFirstChildOfClass("Humanoid") if Humanoid then Humanoid.PlatformStand = false end end
+        -- Khi tắt Auto Boss hoặc bật Auto Farm thì trả lại trạng thái đứng vật lý bình thường
+        if Char then local Humanoid = Char:FindFirstChildOfClass("Humanoid") if Humanoid then Humanoid.PlatformStand = false end end
     end
 end)
 
--- KHÔI PHỤC VÀ TỐI ƯU LUỒNG SPAM SKILL LIÊN TỤC (Đã gỡ bỏ Đóng băng Animation lỗi)
+-- Hàm hỗ trợ xả chiêu (Sử dụng Tool)
+local function DischargeSkill()
+    local Char = Player.Character
+    if Char then
+        local Tool = Char:FindFirstChildOfClass("Tool")
+        if not Tool and Player:FindFirstChild("Backpack") then
+            Tool = Player.Backpack:FindFirstChildOfClass("Tool")
+            if Tool then Tool.Parent = Char end
+        end
+        if Tool then pcall(function() Tool:Activate() end) end
+    end
+    -- Giả lập bấm phím E xả kỹ năng phụ trợ
+    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+end
+
+-- LUỒNG SPAM CHIÊU THỨC PHÂN TÁCH BIỆT (AUTO FARM VS AUTO BOSS X10)
 task.spawn(function()
     while true do
-        if Active then
-            local Boss = FindBossDeep()
-            if Boss then
-                local Char = Player.Character
-                if Char then
-                    -- Tự động cầm vũ khí/skill nếu đang cất trong balo
-                    local Tool = Char:FindFirstChildOfClass("Tool")
-                    if not Tool and Player:FindFirstChild("Backpack") then
-                        Tool = Player.Backpack:FindFirstChildOfClass("Tool")
-                        if Tool then Tool.Parent = Char end
-                    end
-                    
-                    -- Thực hiện kích hoạt chiêu liên hoàn
-                    if Tool then
-                        pcall(function() Tool:Activate() end)
-                    end
+        if AutoBossActive then
+            local Monster = FindAnyMonster()
+            if Monster then
+                -- CHẾ ĐỘ AUTO BOSS: Ép vòng lặp bắn liên tục x10 lần đè lệnh trong 1 chu kỳ ngắn
+                for i = 1, 10 do
+                    DischargeSkill()
                 end
-                
-                -- Giả lập nhấn phím E siêu tốc độ
-                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
-                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
             end
+            task.wait(0.05) -- Tốc độ nhồi lệnh tối đa cho chế độ diệt Boss
+        elseif AutoFarmActive then
+            local Monster = FindAnyMonster()
+            if Monster then
+                -- CHẾ ĐỘ AUTO FARM: Chỉ đứng yên xả chiêu nhịp nhàng ghim vào quái thường
+                DischargeSkill()
+            end
+            task.wait(0.12) -- Tốc độ farm quái thông thường ổn định thanh Ki
+        else
+            task.wait(0.2)
         end
-        task.wait(0.1) -- Tốc độ spam chiêu tiêu chuẩn và mượt mà nhất
     end
 end)
 
--- Hệ thống hỗ trợ Click UI tự động
+-- [Hệ thống Auto Click UI phụ trợ]
 local function ClickGuiObject(gui)
     if gui and gui.Visible and gui.AbsoluteSize.X > 0 then
         local x = gui.AbsolutePosition.X + (gui.AbsoluteSize.X / 2)
