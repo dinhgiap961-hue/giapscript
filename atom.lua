@@ -1,6 +1,6 @@
 local Kavo = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Win = Kavo.CreateLib("Atom Ultimate Hub", "BloodTheme")
-local Tab = Win:NewTab("Main"):NewSection("Boss Killer Ultimate")
+local Win = Kavo.CreateLib("Atom God Mode", "BloodTheme")
+local Tab = Win:NewTab("Main"):NewSection("Ultra Fast Attack Mode")
 
 local Plr = game:GetService("Players").LocalPlayer
 local RepStore = game:GetService("ReplicatedStorage")
@@ -9,12 +9,12 @@ local RunService = game:GetService("RunService")
 
 _G.AtomConfig = {
     FlyAboveBoss = false,
-    SpamDan = false,
+    SuperFastAttack = false, -- Tính năng đánh siêu nhanh mới
     AutoKi = false,
     AutoForm = false
 }
 
--- Hàm quét lấy mục tiêu Boss/Quái chính xác nhất
+-- Hàm quét lấy mục tiêu chuẩn xác nhất
 local function getAbsoluteBoss()
     local target = nil
     local minDist = math.huge
@@ -36,10 +36,10 @@ local function getAbsoluteBoss()
 end
 
 -- =======================================================
--- CÁC CHỨC NĂNG CHÍNH THEO YÊU CẦU
+-- HỆ THỐNG SKILL SIÊU TỐC ĐỘ & BAY QUANH BOSS
 -- =======================================================
 
--- 1. Bay sát trên đầu Boss đúng 30cm (Khoảng 1.5 studs để đạn nổ trực diện)
+-- 1. Bay sát đầu Boss 30cm
 Tab:NewToggle("Auto Fly Above Boss (30cm)", "Bay siêu sát trên đầu Boss để tối đa sát thương", function(s)
     _G.AtomConfig.FlyAboveBoss = s
     if s then
@@ -52,7 +52,6 @@ Tab:NewToggle("Auto Fly Above Boss (30cm)", "Bay siêu sát trên đầu Boss đ
                     
                     if hrp and boss and boss:FindFirstChild("HumanoidRootPart") then
                         hrp.Velocity = Vector3.new(0, 0, 0)
-                        -- 30cm tương đương khoảng 1.5 studs trong không gian Roblox
                         local bossPos = boss.HumanoidRootPart.Position
                         hrp.CFrame = CFrame.new(bossPos + Vector3.new(0, 1.5, 0), bossPos)
                     end
@@ -63,32 +62,35 @@ Tab:NewToggle("Auto Fly Above Boss (30cm)", "Bay siêu sát trên đầu Boss đ
     end
 end)
 
--- 2. Auto Lock Kỹ Năng + Spam Energy Blast
-Tab:NewToggle("Spam Skill Energy Blast", "Lock cứng mục tiêu và nã Energy Blast liên tục", function(s)
-    _G.AtomConfig.SpamDan = s
+-- 2. TÍNH NĂNG MỚI: ĐÁNH SIÊU NHANH (FAST ATTACK X3 SPEED)
+Tab:NewToggle("Đánh Siêu Nhanh (Energy Blast)", "Xả đạn liên thanh tốc độ ánh sáng, ghim thẳng vào Boss", function(s)
+    _G.AtomConfig.SuperFastAttack = s
     if s then
         task.spawn(function()
-            while _G.AtomConfig.SpamDan do
+            while _G.AtomConfig.SuperFastAttack do
                 pcall(function()
                     local boss = getAbsoluteBoss()
                     if boss and boss:FindFirstChild("HumanoidRootPart") then
                         local bossPos = boss.HumanoidRootPart.Position
                         
-                        -- LOCK SKILL: Khóa cứng góc nhìn Camera thẳng vào tâm Boss
+                        -- Auto Lock góc nhìn camera thẳng xuống mục tiêu
                         if workspace.CurrentCamera then
                             workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, bossPos)
                         end
                         
-                        -- SPAM ENERGY BLAST (Cơ chế Remote)
+                        -- Tìm kiếm Remote chiến đấu
                         local remotes = RepStore:FindFirstChild("Remotes")
                         if remotes then
                             local blast = remotes:FindFirstChild("EnergyBlast") or remotes:FindFirstChild("AttackRemote") or remotes:FindFirstChild("KiBlast")
                             if blast then
+                                -- ÉP X3 LUỒNG GỬI LỆNH (Gây sát thương siêu tốc)
+                                blast:FireServer(bossPos)
+                                blast:FireServer(bossPos)
                                 blast:FireServer(bossPos)
                             end
                         end
                         
-                        -- SPAM ENERGY BLAST (Cơ chế Click UI Mobile dự phòng)
+                        -- Click siêu tốc nút bấm UI cảm ứng trên Mobile
                         local pGui = Plr:FindFirstChild("PlayerGui")
                         if pGui then
                             for _, gui in ipairs(pGui:GetChildren()) do
@@ -106,13 +108,14 @@ Tab:NewToggle("Spam Skill Energy Blast", "Lock cứng mục tiêu và nã Energy
                         end
                     end
                 end)
-                task.wait(0.02) -- Tốc độ xả đạn cực hạn
+                -- Chờ cực ngắn (0.005 giây) để tạo hiệu ứng xả liên thanh không ngừng nghỉ
+                task.wait(0.005) 
             end
         end)
     end
 end)
 
--- 3. Auto Forms (Tự động biến hình trạng thái mạnh nhất)
+-- 3. Auto Forms
 Tab:NewToggle("Auto Forms", "Tự động kích hoạt Form biến hình tăng chỉ số", function(s)
     _G.AtomConfig.AutoForm = s
     if s then
@@ -134,8 +137,8 @@ Tab:NewToggle("Auto Forms", "Tự động kích hoạt Form biến hình tăng c
     end
 end)
 
--- 4. Auto Ki (Tự động gồng Ki khi cạn năng lượng)
-Tab:NewToggle("Auto Charge Ki", "Tự động gồng Ki khi năng lượng dưới 20%", function(s)
+-- 4. Auto Ki
+Tab:NewToggle("Auto Charge Ki", "Tự động gồng Ki khi năng lượng xuống thấp", function(s)
     _G.AtomConfig.AutoKi = s
     if s then
         task.spawn(function()
@@ -152,7 +155,6 @@ Tab:NewToggle("Auto Charge Ki", "Tự động gồng Ki khi năng lượng dư�
                                 repeat task.wait(0.1) until Ki.Value >= Ki.MaxKi.Value or not _G.AtomConfig.AutoKi
                                 charge:FireServer(false)
                             else
-                                -- Click nút Gồng Ki trên màn hình nếu không tìm thấy Remote
                                 local pGui = Plr:FindFirstChild("PlayerGui")
                                 if pGui then
                                     for _, v in ipairs(pGui:GetDescendants()) do
@@ -172,10 +174,9 @@ Tab:NewToggle("Auto Charge Ki", "Tự động gồng Ki khi năng lượng dư�
 end)
 
 -- =======================================================
--- HỆ THỐNG ĐIỀU KHIỂN & CHỐNG TREO MÁY
+-- GIAO DIỆN & CHỐNG KICK AFK
 -- =======================================================
 
--- Tạo nút tròn "Atom" màu đỏ ẩn/hiện Menu
 local ScreenGui = game:GetService("CoreGui"):FindFirstChild("KavoL") or game:GetService("CoreGui"):FindFirstChild("RobloxGui")
 local Btn = Instance.new("TextButton", ScreenGui)
 Btn.Size = UDim2.new(0,50,0,50) Btn.Position = UDim2.new(0,10,0,150) Btn.BackgroundColor3 = Color3.fromRGB(150,0,0)
@@ -183,5 +184,4 @@ Btn.Text = "Atom" Btn.TextColor3 = Color3.fromRGB(255,255,255) Btn.Font = Enum.F
 Instance.new("UICorner", Btn).CornerRadius = UDim.new(0,25)
 Btn.MouseButton1Click:Connect(function() Kavo:ToggleUI() end)
 
--- Anti-AFK chống ngắt kết nối
 Plr.Idled:Connect(function() VU:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame) task.wait(1) VU:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame) end)
