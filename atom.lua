@@ -28,7 +28,7 @@ FarmBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 FarmBtn.Font = Enum.Font.SourceSansBold
 FarmBtn.TextSize = 16
 
--- NÚT 2: AUTO BOSS (Tự động bay lên đầu Boss + Xả siêu tốc x10 như video)
+-- NÚT 2: AUTO BOSS (Tự động bay lên đầu Boss + Xả siêu tốc an toàn chống lag)
 local BossBtn = Instance.new("TextButton", MainFrame)
 BossBtn.Size = UDim2.new(1, 0, 0, 50)
 BossBtn.Position = UDim2.new(0, 0, 0, 55)
@@ -81,7 +81,7 @@ end)
 FarmBtn.InputChanged:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end end)
 UserInputService.InputChanged:Connect(function(input) if input == dragInput and dragging then update(input) end end)
 
--- Trạng thái Logic (Cho phép bật song song cả 2 nút)
+-- Trạng thái Logic
 local AutoFarmActive = false
 local AutoBossActive = false
 local AutoStart = false
@@ -142,7 +142,7 @@ local function FindAnyMonster()
     return targetMonster
 end
 
--- Vòng lặp quản lý vị trí dịch chuyển (Chỉ dịch chuyển khi bật Auto Boss)
+-- Vòng lặp quản lý vị trí dịch chuyển (Tối ưu hóa tần suất chạy bằng Heartbeat)
 RunService.Heartbeat:Connect(function()
     local Char = Player.Character
     if AutoBossActive then
@@ -151,7 +151,6 @@ RunService.Heartbeat:Connect(function()
             local Humanoid = Char:FindFirstChildOfClass("Humanoid")
             if Humanoid then Humanoid.PlatformStand = true end
             
-            -- Đứng ở độ cao 35 stud ngay trên đầu để né đòn Boss như mẫu
             local TargetPos = Monster.HumanoidRootPart.Position + Vector3.new(0, 35, 0)
             Char.HumanoidRootPart.CFrame = CFrame.new(TargetPos, Monster.HumanoidRootPart.Position)
             Char.HumanoidRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
@@ -159,54 +158,44 @@ RunService.Heartbeat:Connect(function()
             if Char then local Humanoid = Char:FindFirstChildOfClass("Humanoid") if Humanoid then Humanoid.PlatformStand = false end end
         end
     else
-        -- Nếu tắt Auto Boss (kể cả khi Auto Farm đang bật hoặc tắt), trả nhân vật về trạng thái vật lý bình thường để không bị neo trên trời
         if Char then local Humanoid = Char:FindFirstChildOfClass("Humanoid") if Humanoid then Humanoid.PlatformStand = false end end
     end
 end)
 
--- Hàm thực thi xả chiêu thức
+-- Hàm thực thi xả chiêu gốc (Đã dọn dẹp các dòng thừa để giảm mệt tải CPU)
 local function FireDragonBloxSkills(target)
     local attackRemote = ReplicatedStorage:FindFirstChild("Attack", true) or ReplicatedStorage:FindFirstChild("Skill", true) or ReplicatedStorage:FindFirstChild("UseSkill", true)
     
-    if attackRemote and attackRemote:IsA("RemoteEvent") then
-        if target and target:FindFirstChild("HumanoidRootPart") then
-            attackRemote:FireServer(target.HumanoidRootPart.Position)
-            attackRemote:FireServer({["Target"] = target, ["Position"] = target.HumanoidRootPart.Position})
-        end
+    if attackRemote and attackRemote:IsA("RemoteEvent") and target and target:FindFirstChild("HumanoidRootPart") then
+        attackRemote:FireServer(target.HumanoidRootPart.Position)
     end
     
     local skillKeys = {Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three, Enum.KeyCode.Four, Enum.KeyCode.Five, Enum.KeyCode.E}
-    for _, key in pairs(skillKeys) do
-        VirtualInputManager:SendKeyEvent(true, key, false, game)
-        VirtualInputManager:SendKeyEvent(false, key, false, game)
+    for i = 1, #skillKeys do
+        VirtualInputManager:SendKeyEvent(true, skillKeys[i], false, game)
+        VirtualInputManager:SendKeyEvent(false, skillKeys[i], false, game)
     end
 end
 
--- LUỒNG SPAM CHIÊU CHẠY SONG SONG KHÔNG XUNG ĐỘT
+-- LUỒNG SPAM CHIÊU CHỐNG LAG: Đã thay thế vòng lặp cũ bằng chu trình phân phối mượt hơn
 task.spawn(function()
+    local bossTick = 0
     while true do
         local Monster = FindAnyMonster()
         if Monster then
-            -- Nếu bật Auto Boss: Nhồi x10 lệnh siêu tốc
             if AutoBossActive then
-                for i = 1, 10 do
-                    FireDragonBloxSkills(Monster)
-                end
-            end
-            
-            -- Nếu bật đồng thời hoặc chỉ bật Auto Farm: Xả thêm 1 luồng chiêu thức bổ trợ ổn định
-            if AutoFarmActive then
+                -- Thay vì dùng vòng lặp for i=1,10 gây sập FPS, ta chia nhỏ đợt bắn liên hoàn ra cách nhau 0.01 giây ổn định
                 FireDragonBloxSkills(Monster)
+                task.wait(0.01)
+                FireDragonBloxSkills(Monster)
+            elseif AutoFarmActive then
+                FireDragonBloxSkills(Monster)
+                task.wait(0.12)
+            else
+                task.wait(0.2)
             end
-        end
-        
-        -- Điều chỉnh tốc độ trễ dựa trên trạng thái nút đang bật
-        if AutoBossActive then
-            task.wait(0.02)
-        elseif AutoFarmActive then
-            task.wait(0.1)
         else
-            task.wait(0.2)
+            task.wait(0.3)
         end
     end
 end)
