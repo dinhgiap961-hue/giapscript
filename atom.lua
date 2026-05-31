@@ -163,7 +163,7 @@ local function FindBossDeep()
     return nil
 end
 
--- Vòng lặp Dịch Chuyển & Ghim Đầu (Giữ nguyên gốc 100%)
+-- Vòng lặp Dịch Chuyển & Ghim Đầu (Đã nâng cao khoảng cách trục Y từ 15 lên 35 stud)
 RunService.Heartbeat:Connect(function()
     if Active then
         local Char = Player.Character
@@ -173,7 +173,8 @@ RunService.Heartbeat:Connect(function()
             local Humanoid = Char:FindFirstChildOfClass("Humanoid")
             if Humanoid then Humanoid.PlatformStand = true end
             
-            local TargetPos = Boss.HumanoidRootPart.Position + Vector3.new(0, 15, 0)
+            -- THAY ĐỔI TẠI ĐÂY: Thay đổi Vector3.new(0, 15, 0) thành Vector3.new(0, 35, 0) để bay cao hơn, an toàn hơn
+            local TargetPos = Boss.HumanoidRootPart.Position + Vector3.new(0, 35, 0)
             Char.HumanoidRootPart.CFrame = CFrame.new(TargetPos, Boss.HumanoidRootPart.Position)
             Char.HumanoidRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
         else
@@ -219,9 +220,6 @@ local function ClickGuiObject(gui)
     end
 end
 
-
--- ==================== PHẦN SỬA ĐỔI TOÀN BỘ LOGIC CLICK THEO ẢNH MỚI ====================
-
 -- 1. VÒNG LẶP: TỰ ĐỘNG START RAID TỪ XA
 task.spawn(function()
     while true do
@@ -247,13 +245,11 @@ end)
 task.spawn(function()
     while true do
         if AutoNext then
-            -- Quét để tìm đúng nút bấm có chữ "Start" nằm dưới cùng bên phải của bảng chọn màn
             for _, gui in pairs(Player.PlayerGui:GetDescendants()) do
                 if (gui:IsA("TextButton") or gui:IsA("ImageButton")) and gui.Parent ~= MainFrame and gui.Visible and gui.AbsolutePosition.Y > 150 then
                     local txt = gui:IsA("TextButton") and string.lower(gui.Text) or ""
                     local name = string.lower(gui.Name)
                     
-                    -- Xác định chính xác nút "Start" khởi chạy màn mới chứ không quét nhầm nút topbar
                     if string.find(txt, "start") or string.find(name, "start") then
                         if not string.find(name, "leave") then
                             ClickGuiObject(gui)
@@ -272,7 +268,6 @@ task.spawn(function()
         if AutoPlayAgain then
             local foundRewardsFrame = false
             
-            -- Bước A: Quét xem bảng "Rewards Collected" có đang hiển thị đè màn hình hay không
             for _, gui in pairs(Player.PlayerGui:GetDescendants()) do
                 if gui:IsA("TextLabel") and gui.Visible and (string.find(string.lower(gui.Text), "rewards") or string.find(string.lower(gui.Text), "cleared")) then
                     foundRewardsFrame = true
@@ -280,15 +275,13 @@ task.spawn(function()
                 end
             end
             
-            -- Nếu có bảng phần thưởng hiện lên, giả lập click vào vùng trống (tọa độ trung tâm màn hình) để tắt nó đi
             if foundRewardsFrame then
                 VirtualInputManager:SendMouseButtonEvent(400, 300, 0, true, game, 1)
                 task.wait(0.05)
                 VirtualInputManager:SendMouseButtonEvent(400, 300, 0, false, game, 1)
-                task.wait(0.3) -- Chờ bảng biến mất hoàn toàn
+                task.wait(0.3)
             end
             
-            -- Bước B: Sau khi đã xóa vật cản, thực hiện quét và click chính xác nút Play Again
             for _, gui in pairs(Player.PlayerGui:GetDescendants()) do
                 if gui:IsA("TextButton") and gui.Parent ~= MainFrame and gui.Visible then
                     local txt = string.lower(gui.Text)
