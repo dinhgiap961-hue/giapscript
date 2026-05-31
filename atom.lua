@@ -1,22 +1,31 @@
 -- ============================================================================
--- SCRIPT GIẢ LẬP GÕ PHÍM (KHÔNG CẦN TÌM REMOTE)
+-- GUI SIÊU CẤP: ATOM MAX PRO FARMER
 -- ============================================================================
-local VirtualInputManager = game:GetService("VirtualInputManager")
-local RunService = game:GetService("RunService")
-local Player = game:GetService("Players").LocalPlayer
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/Library.lua"))()
+local Window = Library:CreateWindow({ Title = "ATOM MAX VIP | Dragon V2", Center = true, AutoShow = true })
 
--- Gán phím chiêu thức của bạn ở đây
-local SkillKey = Enum.KeyCode.E 
+local Tab = Window:AddTab("Main Farming")
+local Group = Tab:AddLeftGroupbox("Auto Boss")
 
-RunService.Heartbeat:Connect(function()
-    local Boss = workspace:FindFirstChild("Atom")
-    if Boss and Boss:FindFirstChild("HumanoidRootPart") and Player.Character then
-        -- 1. Bay thẳng lên đầu
-        Player.Character.HumanoidRootPart.CFrame = Boss.HumanoidRootPart.CFrame * CFrame.new(0, 15, 0)
-        
-        -- 2. Giả lập bấm phím chiêu thức
-        VirtualInputManager:SendKeyEvent(true, SkillKey, false, game)
-        task.wait(0.1)
-        VirtualInputManager:SendKeyEvent(false, SkillKey, false, game)
+-- Các biến trạng thái
+getgenv().AutoFarm = false
+
+-- Chức năng Ghim & Đánh
+Group:AddToggle("AutoBoss", { Text = "Auto Kill Boss Atom Max", Default = false, Callback = function(v)
+    getgenv().AutoFarm = v
+end })
+
+game:GetService("RunService").Heartbeat:Connect(function()
+    if getgenv().AutoFarm then
+        local Boss = workspace:FindFirstChild("Atom Max")
+        local Char = game.Players.LocalPlayer.Character
+        if Boss and Boss:FindFirstChild("HumanoidRootPart") and Char and Char:FindFirstChild("HumanoidRootPart") then
+            -- Ghim vị trí
+            Char.HumanoidRootPart.CFrame = Boss.HumanoidRootPart.CFrame * CFrame.new(0, 15, 0)
+            -- Spam kỹ năng (giả lập phím E)
+            game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode.E, false, game)
+        end
     end
 end)
+
+Library:Notify("Đã nạp GUI VIP thành công!")
