@@ -8,6 +8,18 @@ local VU = game:GetService("VirtualUser")
 local VIM = game:GetService("VirtualInputManager")
 local RS = game:GetService("ReplicatedStorage")
 
+-- Hàm tìm remote theo từ khóa
+local function findRemote(keyword)
+    for _,v in pairs(RS:GetDescendants()) do
+        if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then
+            if string.find(string.lower(v.Name), string.lower(keyword)) then
+                return v
+            end
+        end
+    end
+    return nil
+end
+
 -- Tạo nền tảng tàng hình chống chết lỗi
 local Plat = Instance.new("Part", workspace)
 Plat.Size = Vector3.new(10,1,10)
@@ -75,17 +87,13 @@ end)
 -- Auto Lock Skill - tự ghim vào boss
 Section:NewToggle("Auto Lock Skill", "Tự ghim skill vào boss", function(s)
     _G.AutoLock = s
+    local lockRemote = findRemote("lock") or findRemote("target")
     task.spawn(function()
         while _G.AutoLock do
             pcall(function()
                 local boss = getMonster()
-                if boss then
-                    if RS:FindFirstChild("LockTarget") then
-                        RS.LockTarget:FireServer(boss)
-                    end
-                    if RS:FindFirstChild("LockSkill") then
-                        RS.LockSkill:FireServer(true)
-                    end
+                if boss and lockRemote then
+                    lockRemote:FireServer(boss)
                 end
             end)
             task.wait(0.5)
@@ -96,6 +104,7 @@ end)
 -- Auto Boss - tự đánh boss gần nhất
 Section:NewToggle("Auto Boss", "Tự động đánh boss", function(s)
     _G.AutoBoss = s
+    local attackRemote = findRemote("attack") or findRemote("punch") or findRemote("hit")
     task.spawn(function()
         while _G.AutoBoss do
             pcall(function()
@@ -106,8 +115,8 @@ Section:NewToggle("Auto Boss", "Tự động đánh boss", function(s)
                     if distance < 10 then
                         hrp.CFrame = hrp.CFrame * CFrame.new(0, 15, 0) -- bay lên né đòn
                     end
-                    if RS:FindFirstChild("Attack") then
-                        RS.Attack:FireServer()
+                    if attackRemote then
+                        attackRemote:FireServer()
                     end
                 end
             end)
@@ -116,14 +125,18 @@ Section:NewToggle("Auto Boss", "Tự động đánh boss", function(s)
     end)
 end)
 
--- Auto Fushi
+-- Auto Fushi - tự dò remote
 Section:NewToggle("Auto Fushi", "Tự bật Fushi", function(s)
     _G.AutoFushi = s
+    local fushiRemote = findRemote("fushi") or findRemote("charge") or findRemote("ki")
+    if not fushiRemote then
+        warn("Không tìm thấy Remote Fushi")
+    end
     task.spawn(function()
         while _G.AutoFushi do
             pcall(function()
-                if RS:FindFirstChild("Fushi") then
-                    RS.Fushi:FireServer(true)
+                if fushiRemote then
+                    fushiRemote:FireServer(true)
                 end
             end)
             task.wait(1)
@@ -131,14 +144,18 @@ Section:NewToggle("Auto Fushi", "Tự bật Fushi", function(s)
     end)
 end)
 
--- Auto Form
+-- Auto Form - tự dò remote
 Section:NewToggle("Auto Form", "Tự bật Form", function(s)
     _G.AutoForm = s
+    local formRemote = findRemote("form") or findRemote("transform") or findRemote("ssj") or findRemote("mode")
+    if not formRemote then
+        warn("Không tìm thấy Remote Form")
+    end
     task.spawn(function()
         while _G.AutoForm do
             pcall(function()
-                if RS:FindFirstChild("Form") then
-                    RS.Form:FireServer(true)
+                if formRemote then
+                    formRemote:FireServer(true)
                 end
             end)
             task.wait(1)
