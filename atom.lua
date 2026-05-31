@@ -184,7 +184,7 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- Tối ưu hóa tốc độ chạy Animation trên Client
+-- Đóng băng hoạt ảnh cơ thể để đứng im ra chiêu mượt mà
 RunService.RenderStepped:Connect(function()
     if Active then
         local Char = Player.Character
@@ -193,7 +193,6 @@ RunService.RenderStepped:Connect(function()
             if Humanoid then
                 local Animator = Humanoid:FindFirstChildOfClass("Animator") or Humanoid
                 for _, track in pairs(Animator:GetPlayingAnimationTracks()) do
-                    -- Chặn đứng các animation thừa để giữ trạng thái đứng im ra chiêu mượt mà
                     track:Stop()
                 end
             end
@@ -201,33 +200,42 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Vòng lặp kích hoạt chiêu trực tiếp ở mức 0.1s
-task.spawn(function()
-    while true do
-        if Active then
-            local Boss = FindBossDeep()
-            if Boss then
-                local Char = Player.Character
-                if Char then
-                    local Tool = Char:FindFirstChildOfClass("Tool")
-                    if not Tool and Player:FindFirstChild("Backpack") then
-                        Tool = Player.Backpack:FindFirstChildOfClass("Tool")
-                    end
-                    if Tool then
+
+-- ==================== ĐỘNG CƠ CẬP NHẬT: CHEAT X10 FAST ATTACK ====================
+
+-- Sử dụng chu kỳ Stepped (tần suất quét gốc của game) phối hợp vòng lặp For x10 nhân bản gói tin
+RunService.Stepped:Connect(function()
+    if Active then
+        local Boss = FindBossDeep()
+        if Boss then
+            local Char = Player.Character
+            if Char then
+                local Tool = Char:FindFirstChildOfClass("Tool")
+                if not Tool and Player:FindFirstChild("Backpack") then
+                    Tool = Player.Backpack:FindFirstChildOfClass("Tool")
+                end
+                
+                if Tool then
+                    -- Vòng lặp ép ra chiêu 10 lần liên tục ngay trong 1 khung hình đơn lẻ
+                    for i = 1, 10 do
                         pcall(function() 
                             Tool:Activate() 
                         end)
                     end
                 end
-                
-                -- Giả lập nhấn phím vật lý để kích hoạt kịch trần tốc độ Client cho phép
+            end
+            
+            -- Nhân bản x10 tín hiệu phím vật lý E để nhồi nhét sát thương tối đa
+            for i = 1, 10 do
                 VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
                 VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
             end
         end
-        task.wait(0.1)
     end
 end)
+
+-- =========================================================================================
+
 
 -- Hàm hỗ trợ Click UI
 local function ClickGuiObject(gui)
