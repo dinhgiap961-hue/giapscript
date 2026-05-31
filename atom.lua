@@ -20,7 +20,7 @@ task.spawn(function()
                 CombatRemote:FireServer("Attack", target)
             end
         end)
-        -- Tốc độ spam: 0.0000001 giây/lần (Tùy thuộc vào giới hạn của Server)
+        -- Tốc độ spam: 0.001 giây/lần (Tùy thuộc vào giới hạn của Server)
         task.wait(0.001) 
     end
 end)
