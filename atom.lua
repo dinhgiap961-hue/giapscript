@@ -1,21 +1,19 @@
 -- ============================================================================
--- DRAGON BLOX V2 - PREMIUM HUB V4 (LAG FIX & MAXIMUM FPS BOOST EDITION)
+-- DRAGON BLOX V2 - PREMIUM HUB (ATOM MAX - HARDCORE MAX SPEED SPAM E)
 -- ============================================================================
 
--- Tối ưu hóa bộ nhớ đệm hệ thống ngay khi khởi chạy
-if setfpscap then setfpscap(999) end
-game:GetService("Lighting").GlobalShadows = false
-
+-- 1. KHỞI TẠO HỆ THỐNG VÀ KIỂM TRA KẾT NỐI UI
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Window = Library.CreateLib("Dragon Blox V2 | Ultimate Hub V4", "BloodTheme")
+local Window = Library.CreateLib("Dragon Blox V2 | Ultimate Hub", "BloodTheme")
 
+-- Thông báo khởi chạy hệ thống thành công dưới góc màn hình
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Atom Anti-Lag V4",
-    Text = "Hệ thống siêu tối ưu FPS đã kích hoạt mượt mà!",
+    Title = "Atom System",
+    Text = "Đã kích hoạt chế độ Max Tốc Độ! Bấm 'Atom Max' để ẩn/hiện menu.",
     Duration = 5
 })
 
--- Biến môi trường toàn cục
+-- Các biến môi trường toàn cục điều khiển vòng lặp
 getgenv().AutoFarmMobs = false
 getgenv().AutoBossV1 = false
 getgenv().AutoBossV2 = false
@@ -24,19 +22,22 @@ getgenv().AutoStatsRebirth = false
 getgenv().AntiAFK = true
 getgenv().WalkSpeedValue = 16
 
+-- Khởi tạo các dịch vụ hệ thống Roblox cần thiết
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VirtualUser = game:GetService("VirtualUser")
 local CoreGui = game:GetService("CoreGui")
+local InputManager = game:GetService("VirtualInputManager")
 local RunService = game:GetService("RunService")
 
+-- Tự động cập nhật lại Character khi nhân vật bị reset hoặc hồi sinh
 LocalPlayer.CharacterAdded:Connect(function(char)
     Character = char
 end)
 
--- Định vị mục tiêu gần nhất (Thuật toán tối ưu giảm tải CPU)
+-- HỆ THỐNG KIỂM TRA VÀ ĐỊNH VỊ MỤC TIÊU GẦN NHẤT ĐỂ AUTO-AIM
 local function GetClosestTarget()
     local closestTarget = nil
     local shortestDistance = math.huge
@@ -44,9 +45,8 @@ local function GetClosestTarget()
     
     if hrp then
         for _, v in ipairs(workspace:GetDescendants()) do
-            -- Chỉ quét các đối tượng có thuộc tính Humanoid hợp lệ để tránh lag
             if v:IsA("Humanoid") and v.Parent ~= Character and v.Health > 0 then
-                local targetHrp = v.Parent:FindFirstChild("HumanoidRootPart")
+                local targetHrp = v.Parent:FindFirstChild("HumanoidRootPart") or v.Parent:FindFirstChild("Torso")
                 if targetHrp then
                     local distance = (hrp.Position - targetHrp.Position).Magnitude
                     if distance < shortestDistance then
@@ -61,7 +61,7 @@ local function GetClosestTarget()
 end
 
 -- ============================================================================
--- 🔘 NÚT "ATOM MAX" CHỐNG KẸT / CHỐNG ĐƠ MENU
+-- 🔘 HỆ THỐNG NÚT "ATOM MAX" THU NHỎ / MỞ RỘNG (CHỐNG TRƠ NÚT 100%)
 -- ============================================================================
 local OpenCloseGui = Instance.new("ScreenGui")
 local AtomButton = Instance.new("TextButton")
@@ -94,44 +94,58 @@ UIStroke.Thickness = 2
 UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
 local uiVisible = true
+
 AtomButton.MouseButton1Click:Connect(function()
-    local TargetGui = CoreGui:FindFirstChild("Dragon Blox V2 | Ultimate Hub V4") or LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("Dragon Blox V2 | Ultimate Hub V4")
+    local TargetGui = CoreGui:FindFirstChild("Dragon Blox V2 | Ultimate Hub") or LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("Dragon Blox V2 | Ultimate Hub")
+    
     if not TargetGui then
         for _, gui in ipairs(CoreGui:GetChildren()) do
-            if gui:IsA("ScreenGui") and gui:FindFirstChild("Main") then TargetGui = gui break end
+            if gui:IsA("ScreenGui") and gui:FindFirstChild("Main") then
+                TargetGui = gui
+                break
+            end
         end
     end
+
     if TargetGui then
         local mainFrame = TargetGui:FindFirstChild("Main")
         if mainFrame then
             uiVisible = not uiVisible
-            mainFrame.Position = uiVisible and UDim2.new(0.5, -275, 0.5, -175) or UDim2.new(2, 0, 2, 0)
+            if uiVisible then
+                mainFrame.Position = UDim2.new(0.5, -275, 0.5, -175) 
+            else
+                mainFrame.Position = UDim2.new(2, 0, 2, 0) 
+            end
         else
             TargetGui.Enabled = not TargetGui.Enabled
         end
     end
 end)
 
+
 -- ============================================================================
--- TAB 1: MAIN SCRIPT (TỐI ƯU HÓA HOÀN TOÀN CÁC VÒNG LẶP)
+-- TAB 1: MAIN FUNCTION (AUTO AIM LOCK VÀ TỰ ĐỘNG ĐÁNH KHÔNG CẦN NHẤN)
 -- ============================================================================
 local MainTab = Window:NewTab("Main Script")
 local MainSection = MainTab:NewSection("Quản Lý Auto Farm & Boss")
 
+-- Nút kiểm tra trạng thái Boss
 MainSection:NewButton("Check Boss Status", "Kiểm tra sự xuất hiện của Boss", function()
     local bossSpawned = workspace:FindFirstChild("Bosses") or workspace:FindFirstChild("Boss")
     game:GetService("StarterGui"):SetCore("SendNotification", {
         Title = "Atom System",
-        Text = bossSpawned and "Boss ĐÃ XUẤT HIỆN!" or "Hiện tại chưa có Boss.",
+        Text = bossSpawned and "Boss ĐÃ XUẤT HIỆN! Bật Auto ngay." or "Hiện tại chưa có Boss.",
         Duration = 4
     })
 end)
 
-MainSection:NewButton("Reset Character Stats", "Đặt lại trạng thái nhân vật", function()
+-- Nút Reset Nhân Vật Nhanh
+MainSection:NewButton("Reset Character Stats", "Đặt lại trạng thái nhân vật tức thì", function()
     if Character and Character:FindFirstChild("Humanoid") then Character.Humanoid.Health = 0 end
 end)
 
-MainSection:NewToggle("Auto Farm Mobs (Level)", "Tự động tiêu diệt quái", function(state)
+-- Công tắc Auto Farm Quái Thường (Mobs)
+MainSection:NewToggle("Auto Farm Mobs (Level)", "Tự động tiêu diệt quái theo cấp độ", function(state)
     getgenv().AutoFarmMobs = state
     if state then
         task.spawn(function()
@@ -140,14 +154,16 @@ MainSection:NewToggle("Auto Farm Mobs (Level)", "Tự động tiêu diệt quái
                     VirtualUser:CaptureController()
                     VirtualUser:ClickButton2(Vector2.new(0,0))
                 end)
-                task.wait(0.05) -- Giữ khoảng chờ tối ưu chống overload luồng dữ liệu
+                task.wait(0.05)
             end
         end)
     end
 end)
 
-MainSection:NewToggle("Auto Boss V1 (30 Studs Safe)", "Tự bay cao và tự động đấm", function(state)
+-- Auto Boss V1: Tự bay cao 30 Studs + Khóa Aim cứng hướng thẳng vào Boss + Tự đấm liên tục
+MainSection:NewToggle("Auto Boss V1 (30 Studs + Auto Aim)", "Tự bay cao, tự Aim khóa mục tiêu và tự đấm liên tục", function(state)
     getgenv().AutoBossV1 = state
+    
     if state then
         task.spawn(function()
             local bV = Instance.new("BodyVelocity")
@@ -158,98 +174,107 @@ MainSection:NewToggle("Auto Boss V1 (30 Studs Safe)", "Tự bay cao và tự đ�
             while getgenv().AutoBossV1 do
                 pcall(function()
                     local HRP = Character:FindFirstChild("HumanoidRootPart")
-                    if HRP then
+                    local Humanoid = Character:FindFirstChild("Humanoid")
+                    
+                    if HRP and Humanoid then
                         if not HRP:FindFirstChild("AtomFlyForce") then
                             bV.Parent = HRP
                             HRP.CFrame = HRP.CFrame * CFrame.new(0, 30, 0)
                         end
+                        Humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+                        
                         local target = GetClosestTarget()
                         if target then
                             HRP.CFrame = CFrame.new(HRP.Position, Vector3.new(target.Position.X, target.Position.Y, target.Position.Z))
+                            workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, target.Position)
                         end
                     end
                     VirtualUser:Button1Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
                 end)
                 task.wait(0.04)
             end
-            if Character:FindFirstChild("HumanoidRootPart") and Character.HumanoidRootPart:FindFirstChild("AtomFlyForce") then
-                Character.HumanoidRootPart.AtomFlyForce:Destroy()
-            end
+            
+            local TargetForce = Character:FindFirstChild("HumanoidRootPart") and Character.HumanoidRootPart:FindFirstChild("AtomFlyForce")
+            if TargetForce then TargetForce:Destroy() end
+            if Character:FindFirstChild("Humanoid") then Character.Humanoid:ChangeState(Enum.HumanoidStateType.GettingUp) end
         end)
     end
 end)
 
--- AUTO BOSS V2 SIÊU MƯỢT: Không giật Camera + Gửi gói tin thông minh có giãn cách vi mô (0.01s) để triệt tiêu độ trễ đồ họa
-MainSection:NewToggle("Auto Boss V2 (Super Smooth Attack E)", "Dịch chuyển ra sau lưng Boss + Tấn công giảm ping, chống lag", function(state)
+-- Auto Boss V2: ÉP TỐC ĐỘ THEO TỪNG KHUNG HÌNH (HEARTBEAT BYPASS) - TỐC ĐỘ CAO NHẤT ENGINE CHO PHÉP
+MainSection:NewToggle("Auto Boss V2 (Max Speed Spam E)", "Đẩy tốc độ spam phím E đồng bộ theo FPS máy (Không delay)", function(state)
     getgenv().AutoBossV2 = state
     
     if state then
         task.spawn(function()
-            while getgenv().AutoBossV2 do
-                task.defer(function() -- Sử dụng task.defer để giải phóng luồng xử lý chính của game
-                    pcall(function()
-                        local HRP = Character:FindFirstChild("HumanoidRootPart")
-                        local target = GetClosestTarget()
-                        
-                        if HRP and target then
-                            -- Giữ khoảng cách mượt mà cố định sau lưng mục tiêu, Camera hoàn toàn tự do chống chóng mặt
-                            HRP.CFrame = target.CFrame * CFrame.new(0, 0, 5)
-                            
-                            local skillRemote = ReplicatedStorage:FindFirstChild("CombatEvent") or ReplicatedStorage:FindFirstChild("SkillEvent") or (ReplicatedStorage:FindFirstChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("Input"))
-                            if skillRemote then
-                                skillRemote:FireServer("E", target.Position)
-                            else
-                                game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode.E, false, game)
-                                game:GetService("VirtualInputManager"):SendKeyEvent(false, Enum.KeyCode.E, false, game)
-                            end
-                        end
-                    end)
+            -- Sử dụng luồng Heartbeat để kích hoạt vòng lặp chạy bằng vận tốc khung hình máy
+            local HeartbeatConnection
+            HeartbeatConnection = RunService.Heartbeat:Connect(function()
+                if not getgenv().AutoBossV2 then
+                    if HeartbeatConnection then HeartbeatConnection:Disconnect() end
+                    return
+                end
+                
+                pcall(function()
+                    local HRP = Character:FindFirstChild("HumanoidRootPart")
+                    local target = GetClosestTarget()
+                    
+                    -- Khóa mục tiêu chuẩn xác liên tục
+                    if HRP and target then
+                        HRP.CFrame = CFrame.new(HRP.Position, Vector3.new(target.Position.X, target.Position.Y, target.Position.Z))
+                        workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, target.Position)
+                    end
+                    
+                    -- Triệt tiêu hoàn toàn task.wait, ép sự kiện click nhấn và nhả xảy ra tức thì
+                    InputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+                    InputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
                 end)
-                task.wait(0.01) -- Giãn cách vi mô hoàn hảo giúp giảm tải tài nguyên phần cứng mà tốc độ vẫn cực nhanh
-            end
+            end)
         end)
     end
 end)
 
+
 -- ============================================================================
--- TAB 2: STATS & UPGRADES (GIẢM TẦN SUẤT GỬI LỆNH ĐỂ TRÁNH LAG PING)
+-- TAB 2: STATS & UPGRADES (TỰ ĐỘNG NÂNG CHỈ SỐ / TRÙNG SINH)
 -- ============================================================================
 local StatsTab = Window:NewTab("Stats & Rebirth")
 local StatsSection = StatsTab:NewSection("Tự Động Nâng Cấp Sức Mạnh")
 
-StatsSection:NewToggle("Enable Auto Rebirth", "Tự động trùng sinh", function(state)
+StatsSection:NewToggle("Enable Auto Rebirth", "Tự động trùng sinh khi đủ điều kiện", function(state)
     getgenv().AutoStatsRebirth = state
     if state then
         task.spawn(function()
             while getgenv().AutoStatsRebirth do
                 local remote = ReplicatedStorage:FindFirstChild("RebirthEvent") or ReplicatedStorage:FindFirstChild("Rebirth")
                 if remote and remote:IsA("RemoteEvent") then remote:FireServer() end
-                task.wait(3) -- Tăng thời gian chờ lên 3 giây để tránh làm nghẽn đường truyền mạng (Ping lag)
+                task.wait(2)
             end
         end)
     end
 end)
 
-StatsSection:NewToggle("Auto Upgrade Melee/Damage", "Tự động cộng điểm tấn công", function(state)
+StatsSection:NewToggle("Auto Upgrade Melee/Damage", "Tự động cộng điểm vào chỉ số tấn công", function(state)
     getgenv().AutoStatsDestiny = state
     if state then
         task.spawn(function()
             while getgenv().AutoStatsDestiny do
                 local statRemote = ReplicatedStorage:FindFirstChild("StatRemote") or ReplicatedStorage:FindFirstChild("UpgradeStat")
                 if statRemote then statRemote:FireServer("Melee", 10) end
-                task.wait(1) -- Nâng cấp mượt mà mỗi 1 giây để bảo toàn FPS ổn định
+                task.wait(0.5)
             end
         end)
     end
 end)
 
+
 -- ============================================================================
--- TAB 3: MISC SYSTEM
+-- TAB 3: MISC SYSTEM & TELEPORT (TIỆN ÍCH TỐC ĐỘ DI CHUYỂN)
 -- ============================================================================
 local MiscTab = Window:NewTab("Utilities & Speed")
 local MiscSection = MiscTab:NewSection("Hỗ Trợ Người Chơi")
 
-MiscSection:NewSlider("Custom WalkSpeed", "Thay đổi tốc độ di chuyển", 250, 16, function(s)
+MiscSection:NewSlider("Custom WalkSpeed", "Thay đổi tốc độ di chuyển của nhân vật", 250, 16, function(s)
     getgenv().WalkSpeedValue = s
 end)
 
@@ -260,17 +285,18 @@ task.spawn(function()
                 Character.Humanoid.WalkSpeed = getgenv().WalkSpeedValue
             end
         end
-        task.wait(1.5)
+        task.wait(1)
     end
 end)
 
+
 -- ============================================================================
--- TAB 4: SETTINGS SYSTEM (CƠ CHẾ DỌN MAP VÀ GIẢM ĐỒ HỌA SIÊU CẤP ĐỘ)
+-- TAB 4: SETTINGS SYSTEM (SIÊU TỐI ƯU HÓA ĐỒ HỌA CHỐNG GIẬT LAG)
 -- ============================================================================
 local SettingsTab = Window:NewTab("System Settings")
 local SettingsSection = SettingsTab:NewSection("Cấu Hình Treo Máy Đêm")
 
-SettingsSection:NewToggle("Anti-AFK Connection Protection", "Chống mất kết nối", function(state)
+SettingsSection:NewToggle("Anti-AFK Connection Protection", "Giữ kết nối liên tục, không sợ bị kích", function(state)
     getgenv().AntiAFK = state
 end)
 
@@ -282,27 +308,18 @@ LocalPlayer.Idled:Connect(function()
     end
 end)
 
--- Nút tối ưu hóa đồ họa sâu: Xóa bỏ triệt để Texture, Chi tiết 3D thừa của bản đồ để đẩy FPS lên mượt mà nhất
-SettingsSection:NewButton("Optimize Graphics (Max Boost FPS)", "Xóa sạch hiệu ứng + hoa văn nặng để làm mượt game tối đa", function()
+SettingsSection:NewButton("Optimize Graphics (Max Boost FPS)", "Xóa hiệu ứng kỹ năng thừa + vân bề mặt để làm mượt game", function()
     pcall(function()
-        -- Hạ cấp cấu hình render đồ họa xuống mức thấp nhất
-        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-        
-        -- Dọn dẹp toàn bộ hiệu ứng môi trường, đổ bóng và vật thể hạt thừa thãi
         for _, v in ipairs(workspace:GetDescendants()) do
-            if v:IsA("PostEffect") or v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Sparkles") or v:IsA("Fire") then 
+            if v:IsA("PostEffect") or v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Sparkles") then 
                 v.Enabled = false 
             end
-            if v:IsA("Decal") or v:IsA("Texture") then 
-                v:Destroy() 
-            end
-            if v:IsA("MeshPart") then
-                v.MeshId = "" -- Chuyển các khối Mesh phức tạp thành dạng khối cơ bản giảm tải GPU
+            if v:IsA("Decal") or v:IsA("Texture") then
+                v:Destroy()
             end
         end
-        
-        -- Giải phóng ram ảo định kỳ bằng cách ép thu gom rác bộ nhớ Luau
-        gcinfo()
+        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+        sethiddenproperty(game:GetService("Lighting"), "Technology", Enum.Technology.Compatibility)
     end)
 end)
 
