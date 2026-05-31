@@ -1,19 +1,26 @@
 -- ============================================================================
--- DRAGON BLOX V2 - FIXED: HOVER ABOVE HEAD (30 STUDS)
+-- DRAGON BLOX V2 - PREMIUM HUB FULL VERSION (FIXED: 30 STUDS ABOVE HEAD)
 -- ============================================================================
 
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Window = Library.CreateLib("Dragon Blox V2 | Ultra Light", "BloodTheme")
+local Window = Library.CreateLib("Dragon Blox V2 | Ultimate Hub Full", "BloodTheme")
 
+-- Các biến môi trường
+getgenv().AutoFarmMobs = false
 getgenv().AutoBossV1 = false
 getgenv().AutoBossV2 = false
+getgenv().AutoStatsDestiny = false
+getgenv().AutoStatsRebirth = false
+getgenv().AntiAFK = true
+getgenv().WalkSpeedValue = 16
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-local RunService = game:GetService("RunService")
-local VirtualUser = game:GetService("VirtualUser")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local VirtualUser = game:GetService("VirtualUser")
+local CoreGui = game:GetService("CoreGui")
+local RunService = game:GetService("RunService")
 
 LocalPlayer.CharacterAdded:Connect(function(char) Character = char end)
 
@@ -33,11 +40,13 @@ local function GetClosestTarget()
     return closest
 end
 
-local MainTab = Window:NewTab("Auto Boss")
-local MainSection = MainTab:NewSection("Minimalist Attack Mode")
+-- ============================================================================
+-- TAB 1: MAIN FUNCTION
+-- ============================================================================
+local MainTab = Window:NewTab("Main Script")
+local MainSection = MainTab:NewSection("Quản Lý Auto Boss & Farm")
 
--- Fix: Tọa độ bay chuẩn lên đầu Boss
-MainSection:NewToggle("Auto Boss V1 (30 Studs Above Head)", "Bay cao lên đỉnh đầu Boss và tự đánh", function(state)
+MainSection:NewToggle("Auto Boss V1 (Hover 30 Studs Above)", "Bay cao trên đầu Boss và tự đánh", function(state)
     getgenv().AutoBossV1 = state
     if state then
         task.spawn(function()
@@ -46,7 +55,6 @@ MainSection:NewToggle("Auto Boss V1 (30 Studs Above Head)", "Bay cao lên đỉn
                     local HRP = Character:FindFirstChild("HumanoidRootPart")
                     local target = GetClosestTarget()
                     if HRP and target then
-                        -- FIX: Bay đúng 30 Studs phía trên đầu Boss thay vì giữa thân
                         HRP.CFrame = target.CFrame * CFrame.new(0, 30, 0)
                         HRP.Velocity = Vector3.new(0, 0, 0)
                     end
@@ -58,8 +66,7 @@ MainSection:NewToggle("Auto Boss V1 (30 Studs Above Head)", "Bay cao lên đỉn
     end
 end)
 
--- Auto Boss V2
-MainSection:NewToggle("Auto Boss V2 (Extreme Spam E)", "Tốc độ spam tối đa", function(state)
+MainSection:NewToggle("Auto Boss V2 (Ultra Spam E)", "Spam chiêu E tốc độ cao", function(state)
     getgenv().AutoBossV2 = state
     if state then
         task.spawn(function()
@@ -69,7 +76,6 @@ MainSection:NewToggle("Auto Boss V2 (Extreme Spam E)", "Tốc độ spam tối �
                         local HRP = Character:FindFirstChild("HumanoidRootPart")
                         local target = GetClosestTarget()
                         if HRP and target then
-                            -- Giữ khoảng cách trên đầu hoặc sau lưng tùy chỉnh
                             HRP.CFrame = target.CFrame * CFrame.new(0, 30, 0)
                             local skillRemote = ReplicatedStorage:FindFirstChild("CombatEvent") or ReplicatedStorage:FindFirstChild("SkillEvent")
                             if skillRemote then
@@ -85,6 +91,65 @@ MainSection:NewToggle("Auto Boss V2 (Extreme Spam E)", "Tốc độ spam tối �
             end
         end)
     end
+end)
+
+-- ============================================================================
+-- TAB 2: STATS & REBIRTH
+-- ============================================================================
+local StatsTab = Window:NewTab("Stats & Rebirth")
+local StatsSection = StatsTab:NewSection("Tự Động Nâng Cấp")
+
+StatsSection:NewToggle("Enable Auto Rebirth", "Tự động trùng sinh", function(state)
+    getgenv().AutoStatsRebirth = state
+    if state then
+        task.spawn(function()
+            while getgenv().AutoStatsRebirth do
+                local remote = ReplicatedStorage:FindFirstChild("RebirthEvent") or ReplicatedStorage:FindFirstChild("Rebirth")
+                if remote and remote:IsA("RemoteEvent") then remote:FireServer() end
+                task.wait(2)
+            end
+        end)
+    end
+end)
+
+StatsSection:NewToggle("Auto Upgrade Melee", "Tự động nâng chỉ số tấn công", function(state)
+    getgenv().AutoStatsDestiny = state
+    if state then
+        task.spawn(function()
+            while getgenv().AutoStatsDestiny do
+                local statRemote = ReplicatedStorage:FindFirstChild("StatRemote") or ReplicatedStorage:FindFirstChild("UpgradeStat")
+                if statRemote then statRemote:FireServer("Melee", 10) end
+                task.wait(0.5)
+            end
+        end)
+    end
+end)
+
+-- ============================================================================
+-- TAB 3: UTILITIES & SETTINGS
+-- ============================================================================
+local MiscTab = Window:NewTab("Utilities")
+local MiscSection = MiscTab:NewSection("Công Cụ Hỗ Trợ")
+
+MiscSection:NewSlider("WalkSpeed", "Tốc độ di chuyển", 250, 16, function(s) getgenv().WalkSpeedValue = s end)
+MiscSection:NewToggle("Anti-AFK", "Chống thoát game", function(state) getgenv().AntiAFK = state end)
+
+LocalPlayer.Idled:Connect(function()
+    if getgenv().AntiAFK then
+        VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+        task.wait(1)
+        VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+    end
+end)
+
+MiscSection:NewButton("Optimize Graphics", "Xóa hiệu ứng thừa làm mượt game", function()
+    pcall(function()
+        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+        for _, v in ipairs(workspace:GetDescendants()) do
+            if v:IsA("PostEffect") or v:IsA("ParticleEmitter") or v:IsA("Trail") then v.Enabled = false end
+            if v:IsA("Decal") or v:IsA("Texture") then v:Destroy() end
+        end
+    end)
 end)
 
 Library:Init()
