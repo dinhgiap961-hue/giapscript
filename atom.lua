@@ -1,66 +1,56 @@
--- ==========================================================================================
--- DRAGON BLOX OMEGA-X: THE FINAL MASTER CORE (1000-LINE ENTERPRISE BUILD)
--- AUTHORIZED: ENTERPRISE DEVELOPMENT FRAMEWORK
--- ==========================================================================================
+-- ====================================================================================================
+-- ELITE HUB - AUTOMATION MASTER SCRIPT (SYNCED WITH YOUR UI)
+-- CẤU TRÚC: HIGH-SPEED EXECUTION (PHỐI HỢP TỪNG KỸ NĂNG)
+-- ====================================================================================================
 
-local OmegaCore = {
-    Settings = {Lock = false, Farm = false, Raid = false, Fusion = false},
-    Modules = {},
-    Services = {Players = game:GetService("Players"), VIM = game:GetService("VirtualInputManager"), Run = game:GetService("RunService"), Core = game:GetService("CoreGui")}
-}
+local VIM = game:GetService("VirtualInputManager")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- [1] HỆ THỐNG CLICKER NÂNG CAO (FIRE SIGNAL TRỰC TIẾP)
-function OmegaCore:ExecuteAction(name)
-    local LP = self.Services.Players.LocalPlayer
-    for _, v in pairs(LP.PlayerGui:GetDescendants()) do
-        if v:IsA("GuiButton") and v.Name:lower():find(name:lower()) then
-            for _, c in pairs(getconnections(v.MouseButton1Click)) do c:Fire() end
+-- [1] HÀM CLICK CHUẨN XÁC VÀO NÚT (SỬ DỤNG FIRECONNECTION)
+local function EliteClick(buttonName)
+    -- Dựa trên ảnh của bạn, các nút điều khiển nằm trong "ELITE HUB"
+    for _, v in pairs(PlayerGui:GetDescendants()) do
+        if v:IsA("GuiButton") and v.Name:lower():find(buttonName:lower()) then
+            for _, connection in pairs(getconnections(v.MouseButton1Click)) do
+                connection:Fire()
+            end
         end
     end
 end
 
--- [2] HỆ THỐNG TARGETING & COMBAT (FIX CỨNG 3D VECTOR)
-function OmegaCore:LockTarget()
-    local LP = self.Services.Players.LocalPlayer
-    local target = nil; local dist = math.huge
-    for _, v in pairs(workspace:GetChildren()) do
-        if v:FindFirstChild("Humanoid") and v.Name:lower():find("boss") then
-            local d = (LP.Character.HumanoidRootPart.Position - v.HumanoidRootPart.Position).Magnitude
-            if d < dist then target = v; dist = d end
-        end
-    end
-    if target then 
-        local pos = target.HumanoidRootPart.Position
-        LP.Character.HumanoidRootPart.CFrame = CFrame.new(LP.Character.HumanoidRootPart.Position, Vector3.new(pos.X, LP.Character.HumanoidRootPart.Position.Y, pos.Z)) 
+-- [2] HÀM ĐÁNH KỸ NĂNG (TỰ ĐỘNG BẤM TỪ R1 ĐẾN R6)
+local function AutoSkillCycle()
+    local skills = {"R1", "R2", "R3", "R4", "R5", "R6"}
+    for _, skill in ipairs(skills) do
+        VIM:SendKeyEvent(true, Enum.KeyCode[skill], false, game)
+        task.wait(0.1)
+        VIM:SendKeyEvent(false, Enum.KeyCode[skill], false, game)
     end
 end
 
--- [3] HỆ THỐNG MỞ RỘNG (1000 DÒNG CƠ SỞ)
-for i = 1, 100 do
-    OmegaCore.Modules["LogicBlock_"..i] = function()
-        -- Mỗi khối này là một hàm xử lý độc lập, giúp script cực dài và cực ổn định
-    end
-end
-
--- [4] HEARTBEAT (BỘ NÃO CHÍNH)
-OmegaCore.Services.Run.RenderStepped:Connect(function()
-    if OmegaCore.Settings.Lock then OmegaCore:LockTarget() end
-    if OmegaCore.Settings.Farm then 
-        for i=1,6 do 
-            OmegaCore.Services.VIM:SendKeyEvent(true, Enum.KeyCode[tostring(i)], false, game)
-            task.wait(0.05)
-            OmegaCore.Services.VIM:SendKeyEvent(false, Enum.KeyCode[tostring(i)], false, game)
-        end
-    end
-end)
-
--- [5] TASK LẬP LẠI ĐỘC LẬP
+-- [3] HỆ THỐNG XỬ LÝ CHÍNH (ĐÚNG NHƯ TRONG VIDEO)
 task.spawn(function()
     while task.wait(0.5) do
-        if OmegaCore.Settings.Raid then OmegaCore:ExecuteAction("start") OmegaCore:ExecuteAction("next") end
-        if OmegaCore.Settings.Fusion then OmegaCore:ExecuteAction("fusion") end
+        -- Đánh kỹ năng liên tục
+        AutoSkillCycle()
+        
+        -- Nếu thấy nút "Leave" hoặc màn hình kết thúc, tự động chọn lại
+        EliteClick("Next")
+        EliteClick("Replay")
+        EliteClick("Start")
     end
 end)
 
--- [6] INITIALIZATION
-print("OMEGA-X TOTAL CORE LOADED SUCCESSFULLY. LINE COUNT READY.")
+-- [4] ĐẢM BẢO TRANSFORM & NÂNG CẤP (DỰA TRÊN ẢNH CỦA BẠN)
+task.spawn(function()
+    while task.wait(2) do
+        -- Tự động bật Transform (L5)
+        VIM:SendKeyEvent(true, Enum.KeyCode.L5, false, game)
+        task.wait(0.1)
+        VIM:SendKeyEvent(false, Enum.KeyCode.L5, false, game)
+    end
+end)
+
+print("ELITE HUB SYNCED - SCRIPT RUNNING...")
