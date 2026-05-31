@@ -13,7 +13,7 @@ local Screen = Instance.new("ScreenGui", Player:WaitForChild("PlayerGui"))
 Screen.Name = "AutoBossGui"
 Screen.ResetOnSpawn = false
 
--- Khung chứa (Frame) - Đủ cho 5 nút gọn gàng
+-- Khung chứa (Frame) - Giữ nguyên kích thước 5 nút gốc
 local MainFrame = Instance.new("Frame", Screen)
 MainFrame.Size = UDim2.new(0, 160, 0, 270)
 MainFrame.Position = UDim2.new(0.8, 0, 0.3, 0)
@@ -39,7 +39,7 @@ LockBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 LockBtn.Font = Enum.Font.SourceSansBold
 LockBtn.TextSize = 16
 
--- Nút 3: Tự động Start Raid
+-- Nút 3: Tự động Start Raid (Giữ nguyên)
 local StartBtn = Instance.new("TextButton", MainFrame)
 StartBtn.Size = UDim2.new(1, 0, 0, 50)
 StartBtn.Position = UDim2.new(0, 0, 0, 110)
@@ -49,7 +49,7 @@ StartBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 StartBtn.Font = Enum.Font.SourceSansBold
 StartBtn.TextSize = 16
 
--- Nút 4: Tự động Next Raid
+-- Nút 4: Tự động Next Raid (Đã sửa theo ảnh mới)
 local NextBtn = Instance.new("TextButton", MainFrame)
 NextBtn.Size = UDim2.new(1, 0, 0, 50)
 NextBtn.Position = UDim2.new(0, 0, 0, 165)
@@ -59,7 +59,7 @@ NextBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 NextBtn.Font = Enum.Font.SourceSansBold
 NextBtn.TextSize = 16
 
--- Nút 5: Tự động Play Again
+-- Nút 5: Tự động Play Again (Giữ nguyên)
 local PlayAgainBtn = Instance.new("TextButton", MainFrame)
 PlayAgainBtn.Size = UDim2.new(1, 0, 0, 50)
 PlayAgainBtn.Position = UDim2.new(0, 0, 0, 220)
@@ -207,27 +207,33 @@ task.spawn(function()
     end
 end)
 
--- HÀM ÉP CƠ CHẾ CLICK ẢO VÀO UI (Hỗ trợ gọi kết nối sự kiện trực tiếp không qua tọa độ)
-local function ForceClickButton(searchKey)
+-- HÀM THỰC HIỆN ÉP CLICK VÀO NÚT BẤM (Hỗ trợ cả nút chữ lẫn nút hình ảnh ẩn)
+local function ClickTargetUi(searchKey)
     for _, gui in pairs(Player.PlayerGui:GetDescendants()) do
-        if gui:IsA("TextButton") and gui.Parent ~= MainFrame and gui.Visible then
-            local txt = string.lower(gui.Text)
-            local name = string.lower(gui.Name)
+        -- Chỉ xử lý các nút bấm thực tế của game, bỏ qua menu tool hack
+        if (gui:IsA("TextButton") or gui:IsA("ImageButton")) and gui.Parent ~= MainFrame and gui.Visible then
+            local match = false
             
-            if string.find(txt, searchKey) or string.find(name, searchKey) then
-                -- Cách 1: Mô phỏng nhấp chuột ảo theo tọa độ (Dự phòng)
+            -- Kiểm tra nếu là nút chữ thông thường
+            if gui:IsA("TextButton") then
+                local txt = string.lower(gui.Text)
+                if string.find(txt, searchKey) then match = true end
+            end
+            
+            -- Kiểm tra qua tên của Object nút bấm (áp dụng cho cả nút hình ảnh)
+            local name = string.lower(gui.Name)
+            if string.find(name, searchKey) then match = true end
+            
+            if match then
+                -- Ép lệnh Click trực tiếp qua hệ thống tọa độ màn hình
                 local x = gui.AbsolutePosition.X + (gui.AbsoluteSize.X / 2)
                 local y = gui.AbsolutePosition.Y + (gui.AbsoluteSize.Y / 2) + 36
                 VirtualInputManager:SendMouseButtonEvent(x, y, 0, true, game, 1)
                 task.wait(0.02)
                 VirtualInputManager:SendMouseButtonEvent(x, y, 0, false, game, 1)
                 
-                -- Cách 2: Ép hệ thống kích hoạt trực tiếp môi trường liên kết nút (Bypass tọa độ)
-                pcall(function()
-                    gui:Activate() -- Hàm gốc của Roblox kích hoạt sự kiện .Activated
-                end)
-                
-                -- Cách 3: Kích hoạt thông qua giả lập chọn mục tiêu trên GUI của game
+                -- Ép kích hoạt bằng hàm sự kiện nội bộ của game
+                pcall(function() gui:Activate() end)
                 pcall(function()
                     local oldSelected = GuiService.SelectedObject
                     GuiService.SelectedObject = gui
@@ -243,7 +249,7 @@ local function ForceClickButton(searchKey)
     return false
 end
 
--- VÒNG LẶP: TỰ ĐỘNG START RAID TỪ XA VÀ TỰ ĐỘNG
+-- VÒNG LẶP: TỰ ĐỘNG START RAID TỪ XA
 task.spawn(function()
     while true do
         if AutoStart then
@@ -252,11 +258,7 @@ task.spawn(function()
                     if string.find(string.lower(prompt.ObjectText), "start") or string.find(string.lower(prompt.ActionText), "start") then
                         prompt.MaxActivationDistance = math.huge
                         prompt.RequiresLineOfSight = false
-                        
-                        -- Đồng bộ cả lệnh gọi hàm trực tiếp và giữ nút ảo từ xa
-                        pcall(function()
-                            fireproximityprompt(prompt) -- Nếu Executor hỗ trợ hàm này
-                        end)
+                        pcall(function() fireproximityprompt(prompt) end)
                         prompt:InputHoldBegin()
                         task.wait(0.02)
                         prompt:InputHoldEnd()
@@ -268,23 +270,41 @@ task.spawn(function()
     end
 end)
 
--- VÒNG LẶP: TỰ ĐỘNG NEXT RAID (Quét cả chữ "next" và chữ "leave" ở góc trên màn hình)
+-- VÒNG LẶP: TỰ ĐỘNG NEXT RAID (Đã sửa: Nhấp vào nút "Start" ở dưới cùng bảng Dungeons mới chụp)
 task.spawn(function()
     while true do
         if AutoNext then
-            ForceClickButton("next")
-            ForceClickButton("leave")
+            -- Chỉ quét nút "Start" nằm bên trong cụm UI chọn Dungeon, né nút Leave ra
+            for _, gui in pairs(Player.PlayerGui:GetDescendants()) do
+                if (gui:IsA("TextButton") or gui:IsA("ImageButton")) and gui.Parent ~= MainFrame and gui.Visible then
+                    local nameLower = string.lower(gui.Name)
+                    local textLower = gui:IsA("TextButton") and string.lower(gui.Text) or ""
+                    
+                    -- Tìm đúng chữ "Start" ở góc dưới bên phải bảng dungeon
+                    if string.find(nameLower, "start") or string.find(textLower, "start") then
+                        -- Không click nếu nó là nút Leave ở phía trên thanh topbar
+                        if not string.find(nameLower, "leave") and gui.AbsolutePosition.Y > 100 then
+                            local x = gui.AbsolutePosition.X + (gui.AbsoluteSize.X / 2)
+                            local y = gui.AbsolutePosition.Y + (gui.AbsoluteSize.Y / 2) + 36
+                            VirtualInputManager:SendMouseButtonEvent(x, y, 0, true, game, 1)
+                            task.wait(0.02)
+                            VirtualInputManager:SendMouseButtonEvent(x, y, 0, false, game, 1)
+                            pcall(function() gui:Activate() end)
+                        end
+                    end
+                end
+            end
         end
         task.wait(0.5)
     end
 end)
 
--- VÒNG LẶP: TỰ ĐỘNG PLAY AGAIN (Quét chữ "again" và chữ "play" trên UI màn hình)
+-- VÒNG LẶP: TỰ ĐỘNG PLAY AGAIN
 task.spawn(function()
     while true do
         if AutoPlayAgain then
-            ForceClickButton("again")
-            ForceClickButton("play")
+            ClickTargetUi("again")
+            ClickTargetUi("play")
         end
         task.wait(0.5)
     end
