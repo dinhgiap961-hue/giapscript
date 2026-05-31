@@ -1,48 +1,44 @@
 -- ============================================================================
--- DRAGON BLOX: TARGET LOCK & AUTO SPAM ENGINE (Bản chuẩn)
+-- DRAGON BLOX: INJECTOR ENGINE (PHIÊN BẢN ÉP LỆNH)
 -- ============================================================================
 
-local RS = game:GetService("ReplicatedStorage")
-local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
-local LocalPlayer = Players.LocalPlayer
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = game:GetService("Players").LocalPlayer
 
--- BẢNG CẤU HÌNH (THAY TÊN REMOTE Ở ĐÂY SAU KHI DÙNG SPY)
-local REMOTE_NAME = "SkillEvent" -- Cần thay đúng tên sau khi dùng SimpleSpy
-
--- HÀM TÌM QUÁI GẦN NHẤT (KHÔNG CẦN CHỌN MỤC TIÊU)
-local function GetNearestEnemy()
-    local nearest = nil
-    local shortestDist = math.huge
-    for _, obj in pairs(Workspace:GetDescendants()) do
-        -- Lọc đối tượng là Quái hoặc Boss (thay tên nếu cần)
-        if obj.Name == "Atom" and obj:FindFirstChild("HumanoidRootPart") then
-            local dist = (LocalPlayer.Character.HumanoidRootPart.Position - obj.HumanoidRootPart.Position).Magnitude
-            if dist < shortestDist then
-                shortestDist = dist
-                nearest = obj
-            end
-        end
-    end
-    return nearest
+-- HÀM ÉP LỆNH VÀO SERVER (DÙNG ĐỂ THỬ TẤT CẢ CÁC KIỂU TRUYỀN DỮ LIỆU)
+local function ForceFire(remote, skillName, target)
+    pcall(function()
+        -- Thử kiểu 1: Truyền tên chiêu + mục tiêu là Instance
+        remote:FireServer(skillName, target)
+        
+        -- Thử kiểu 2: Truyền tên chiêu + tọa độ của mục tiêu (CFrame)
+        remote:FireServer(skillName, target.HumanoidRootPart.CFrame)
+        
+        -- Thử kiểu 3: Truyền tên chiêu + Mouse Position (Một số game bắt buộc dùng cái này)
+        remote:FireServer(skillName, target.HumanoidRootPart.Position)
+    end)
 end
 
--- VÒNG LẶP CHIẾN ĐẤU (Ghim mục tiêu & Spam)
+-- VÒNG LẶP CHIẾN ĐẤU CỐT LÕI
 task.spawn(function()
-    while task.wait(0.04) do
+    while task.wait(0.05) do
         pcall(function()
-            local target = GetNearestEnemy()
-            if target then
-                -- 1. Tự động Ghim vị trí (Teleport hoặc xoay mặt về phía quái)
-                local hrp = LocalPlayer.Character.HumanoidRootPart
-                hrp.CFrame = CFrame.new(hrp.Position, target.HumanoidRootPart.Position)
-                
-                -- 2. Spam Skill vào Target (Gửi Instance hoặc vị trí)
-                local remote = RS:FindFirstChild(REMOTE_NAME)
-                if remote then
-                    -- Lưu ý: Nhiều game yêu cầu tham số là Vị trí (CFrame/Vector3) hoặc Target
-                    remote:FireServer("Energy Ball", target) -- Thêm 'target' làm tham số 2
-                    remote:FireServer("Ego", target)         -- để server tự khóa mục tiêu
+            -- 1. Quét tìm tất cả Remote có tên liên quan đến "Skill" hoặc "Combat"
+            for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
+                if obj:IsA("RemoteEvent") and (obj.Name:lower():find("skill") or obj.Name:lower():find("combat")) then
+                    
+                    -- 2. Quét mục tiêu "Atom"
+                    for _, v in pairs(game.Workspace:GetDescendants()) do
+                        if v.Name == "Atom" and v:FindFirstChild("HumanoidRootPart") then
+                            
+                            -- 3. ÉP LỆNH
+                            ForceFire(obj, "Energy Ball", v)
+                            ForceFire(obj, "Ego", v)
+                            
+                            -- Ghim nhân vật vào vị trí quái để đảm bảo trúng (nếu cần)
+                            LocalPlayer.Character.HumanoidRootPart.CFrame = v.HumanoidRootPart.CFrame * CFrame.new(0, 0, 5)
+                        end
+                    end
                 end
             end
         end)
