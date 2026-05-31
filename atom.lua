@@ -1,5 +1,5 @@
 -- ============================================================================
--- DRAGON BLOX V2 - PREMIUM HUB (ATOM MAX - ULTRA FAST SPAM E FINAL PACK)
+-- DRAGON BLOX V2 - PREMIUM HUB (ATOM MAX - ANTI-LAG & FPS BOOST PACK)
 -- ============================================================================
 
 -- 1. KHỞI TẠO HỆ THỐNG VÀ KIỂM TRA KẾT NỐI UI
@@ -9,7 +9,7 @@ local Window = Library.CreateLib("Dragon Blox V2 | Ultimate Hub", "BloodTheme")
 -- Thông báo khởi chạy hệ thống thành công dưới góc màn hình
 game:GetService("StarterGui"):SetCore("SendNotification", {
     Title = "Atom System",
-    Text = "Kích hoạt thành công! Bấm nút 'Atom Max' để ẩn hoặc hiện menu.",
+    Text = "Tối ưu hóa lag thành công! Bấm 'Atom Max' để ẩn/hiện menu.",
     Duration = 5
 })
 
@@ -36,7 +36,7 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     Character = char
 end)
 
--- HỆ THỐNG KIỂM TRA VÀ ĐỊNH VỊ MỤC TIÊU (BOSS/QUÁI) GẦN NHẤT ĐỂ AUTO-AIM
+-- HỆ THỐNG KIỂM TRA VÀ ĐỊNH VỊ MỤC TIÊU GẦN NHẤT ĐỂ AUTO-AIM
 local function GetClosestTarget()
     local closestTarget = nil
     local shortestDistance = math.huge
@@ -202,8 +202,8 @@ MainSection:NewToggle("Auto Boss V1 (30 Studs + Auto Aim)", "Tự bay cao, tự 
     end
 end)
 
--- Auto Boss V2: Tự động xoay Aim + Tối ưu hóa gửi gói tin nhấn phím E siêu tốc (Bỏ hẳn task.wait bên trong)
-MainSection:NewToggle("Auto Boss V2 (Auto Aim + Ultra Spam E)", "Tự động Aim trúng đích và tự Spam phím E tốc độ phần cứng", function(state)
+-- Auto Boss V2: Spam E Cực Tốc (Đã tối ưu hóa giảm ping/lag bằng khoảng chờ thông minh 0.01 giây)
+MainSection:NewToggle("Auto Boss V2 (Auto Aim + Anti-Lag Spam E)", "Tự động Aim trúng đích và tự Spam phím E mượt mà, chống lag", function(state)
     getgenv().AutoBossV2 = state
     
     if state then
@@ -219,11 +219,12 @@ MainSection:NewToggle("Auto Boss V2 (Auto Aim + Ultra Spam E)", "Tự động Ai
                         workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, target.Position)
                     end
                     
-                    -- Gửi liên tục sự kiện nhấn và nhả phím E kịch trần không có độ trễ
+                    -- Gửi sự kiện nhấn phím E tốc độ cao có kiểm soát để tránh tràn dữ liệu gây crash game
                     InputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+                    task.wait(0.01)
                     InputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
                 end)
-                task.wait() -- Chờ theo chu kỳ khung hình máy để chống văng game
+                task.wait(0.01) -- Giãn cách ngắn tối ưu cho CPU thiết bị yếu và giảm ping mạng
             end
         end)
     end
@@ -286,7 +287,7 @@ end)
 
 
 -- ============================================================================
--- TAB 4: SETTINGS SYSTEM (CẤU HÌNH AN TOÀN TREO MÁY ĐÊM)
+-- TAB 4: SETTINGS SYSTEM (SIÊU TỐI ƯU HÓA ĐỒ HỌA CHỐNG GIẬT LAG)
 -- ============================================================================
 local SettingsTab = Window:NewTab("System Settings")
 local SettingsSection = SettingsTab:NewSection("Cấu Hình Treo Máy Đêm")
@@ -303,12 +304,21 @@ LocalPlayer.Idled:Connect(function()
     end
 end)
 
-SettingsSection:NewButton("Optimize Graphics (Boost FPS)", "Xóa hiệu ứng kỹ năng thừa để làm mượt game", function()
+-- NÚT SIÊU CẤP ĐỘ: Giảm đồ họa kịch trần, tắt hiệu ứng map và chiêu thức nặng để tăng tối đa FPS
+SettingsSection:NewButton("Optimize Graphics (Max Boost FPS)", "Xóa hiệu ứng kỹ năng thừa + vân bề mặt để làm mượt game", function()
     pcall(function()
+        -- Tắt hiệu ứng hạt, ánh sáng thừa và bóng đổ kỹ năng
         for _, v in ipairs(workspace:GetDescendants()) do
-            if v:IsA("PostEffect") or v:IsA("ParticleEmitter") or v:IsA("Trail") then v.Enabled = false end
+            if v:IsA("PostEffect") or v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Sparkles") then 
+                v.Enabled = false 
+            end
+            if v:IsA("Decal") or v:IsA("Texture") then
+                v:Destroy() -- Xóa hoa văn bề mặt giảm tải cho VGA/GPU
+            end
         end
+        -- Hạ cấu hình đồ họa hệ thống của Roblox xuống mức 1 thấp nhất
         settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+        sethiddenproperty(game:GetService("Lighting"), "Technology", Enum.Technology.Compatibility)
     end)
 end)
 
