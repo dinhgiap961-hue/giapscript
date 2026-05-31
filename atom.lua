@@ -1,40 +1,46 @@
 -- ============================================================================
--- SCRIPT AUTO COMBAT - TỰ CHỈNH SỬA & KIỂM SOÁT
+-- DRAGON BLOX V2 - V7 (FORCE ATTACK MODE - FIX ĐỨNG IM)
 -- ============================================================================
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
+local VirtualInputManager = game:GetService("VirtualInputManager")
 
--- 1. Tự tìm RemoteEvent tấn công (Bạn thay tên "CombatEvent" bằng tên đúng trong game nếu cần)
-local CombatRemote = ReplicatedStorage:FindFirstChild("CombatEvent") 
-
--- 2. Hàm Tấn Công Siêu Tốc
-local function FastAttack()
-    if CombatRemote then
-        -- Gửi lệnh tấn công trực tiếp lên Server
-        CombatRemote:FireServer("E") -- Hoặc tên skill bạn muốn dùng
+-- HÀM TÌM REMOTE THÔNG MINH
+local function GetCombatRemote()
+    -- Ưu tiên tìm các tên phổ biến trong Dragon Blox
+    local names = {"CombatEvent", "SkillEvent", "Remotes", "Input", "Attack"}
+    for _, name in pairs(names) do
+        local remote = ReplicatedStorage:FindFirstChild(name, true)
+        if remote and remote:IsA("RemoteEvent") then return remote end
     end
+    return nil
 end
 
--- 3. Vòng lặp tối ưu không gây lag
--- Sử dụng task.spawn để không làm treo giao diện UI
+local CombatRemote = GetCombatRemote()
+
+-- TEST KẾT NỐI
+if CombatRemote then
+    game:GetService("StarterGui"):SetCore("SendNotification", {Title="Success", Text="Đã tìm thấy Remote: "..CombatRemote.Name, Duration=3})
+else
+    game:GetService("StarterGui"):SetCore("SendNotification", {Title="Error", Text="Không tìm thấy Remote! Vui lòng F9 xem tên Remote.", Duration=5})
+end
+
+-- VÒNG LẶP ÉP ĐÁNH (KHÔNG CẦN TARGET VẪN ĐÁNH)
+_G.AutoAttack = true 
+
 task.spawn(function()
-    while true do
-        if _G.AutoCombatEnabled then
-            FastAttack()
+    while _G.AutoAttack do
+        if CombatRemote then
+            -- Ép server nhận lệnh tấn công
+            pcall(function()
+                CombatRemote:FireServer("E") 
+                CombatRemote:FireServer("Combat")
+            end)
+        else
+            -- Phụ trợ: Nếu không tìm thấy Remote, dùng phím ảo tốc độ cao
+            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
         end
-        task.wait(0.01) -- Độ trễ cực thấp để spam nhanh
+        task.wait(0.01) -- Spam nhanh nhất có thể
     end
-end)
-
--- 4. Ví dụ cách tạo UI đơn giản để bật/tắt (Dùng Kavo UI)
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Window = Library.CreateLib("My Custom Auto Combat", "BloodTheme")
-local Tab = Window:NewTab("Combat")
-local Section = Tab:NewSection("Main Settings")
-
-Section:NewToggle("Enable Fast Attack", "Bật chế độ đánh siêu nhanh", function(state)
-    _G.AutoCombatEnabled = state
 end)
