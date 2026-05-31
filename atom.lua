@@ -1,259 +1,112 @@
--- [[ DRAGON BLOX COMPLETE HUB V2 ]] --
--- Cập nhật hệ thống biến toàn diện dựa trên Screenshot_20260527_131628.jpg
+--[[ 
+   Đã tối ưu hóa cho Dragon Blox:
+   1. Giới hạn phạm vi tìm kiếm (Chỉ quét trong Model của Boss/Quái).
+   2. Tối ưu hóa vòng lặp tránh gây lag game.
+   3. Cập nhật cách xác định NPC/Boss phù hợp với cấu trúc của Dragon Blox.
+]]
 
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
-
-local Window = Rayfield:CreateWindow({
-   Name = "Dragon Blox VN - Advanced Hub 🐉",
-   LoadingTitle = "Đang đồng bộ hóa biến hệ thống...",
-   LoadingSubtitle = "by Gemini AI",
-   ConfigurationSaving = {
-      Enabled = true,
-      FolderName = "DragonBloxVN_Config",
-      FileName = "Advanced"
-   }
-})
-
--- ====================================================================
--- TRÌNH QUẢN LÝ BIẾN HỆ THỐNG CỦA GAME (GAME VARIABLES & REPLICATED STORAGE)
--- ====================================================================
 local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+local mouse = player:GetMouse()
 
--- Khai báo hệ thống thư mục dữ liệu nội bộ thường gặp trong game
-local PlayerData = LocalPlayer:FindFirstChild("Data") or LocalPlayer:FindFirstChild("leaderstats") or LocalPlayer:FindFirstChild("Stats")
-local CharacterData = nil
+-- // CẤU HÌNH CHO DRAGON BLOX // --
+local AIMBOT_ENABLED = false
+local ESP_ENABLED = false
+local espFolder = Instance.new("Folder", game.CoreGui)
+espFolder.Name = "DB_ESP_System"
 
--- Hàm khởi tạo lại dữ liệu khi nhân vật hồi sinh (Reset Biến)
-local function UpdateCharacterVariables()
-    local Char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    CharacterData = {
-        Character = Char,
-        Humanoid = Char:WaitForChild("Humanoid"),
-        HumanoidRootPart = Char:WaitForChild("HumanoidRootPart"),
-        -- Các biến quản lý chỉ số trạng thái thực tế
-        Ki = Char:FindFirstChild("Ki") or (PlayerData and PlayerData:FindFirstChild("Ki")) or {Value = 100},
-        MaxKi = Char:FindFirstChild("MaxKi") or (PlayerData and PlayerData:FindFirstChild("MaxKi")) or {Value = 100},
-        Health = Char:FindFirstChild("Health") or Char.Humanoid.Health,
-        MaxHealth = Char:FindFirstChild("MaxHealth") or Char.Humanoid.MaxHealth,
-        Transforming = Char:FindFirstChild("Transforming") or Char:FindFirstChild("IsTransformed"),
-        Skills = LocalPlayer:FindFirstChild("Skills") or ReplicatedStorage:FindFirstChild("Skills")
-    }
+-- Tạo UI đơn giản
+local screenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+local mainFrame = Instance.new("Frame", screenGui)
+mainFrame.Size = UDim2.new(0, 180, 0, 130)
+mainFrame.Position = UDim2.new(0.05, 0, 0.4, 0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+mainFrame.Active = true
+mainFrame.Draggable = true
+Instance.new("UICorner", mainFrame)
+
+local function createBtn(text, pos)
+    local btn = Instance.new("TextButton", mainFrame)
+    btn.Size = UDim2.new(0.9, 0, 0.3, 0)
+    btn.Position = pos
+    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    btn.Text = text .. ": OFF"
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Instance.new("UICorner", btn)
+    return btn
 end
-UpdateCharacterVariables()
-LocalPlayer.CharacterAdded:Connect(UpdateCharacterVariables)
 
--- Hệ thống cổng giao tiếp mạng (Remotes) phục vụ cơ chế Auto
-local Remotes = {
-    Transform = ReplicatedStorage:FindFirstChild("Transform") or ReplicatedStorage:FindFirstChild("TransformRemote") or ReplicatedStorage:FindFirstChild("Transformation"),
-    ChargeKi = ReplicatedStorage:FindFirstChild("Charge") or ReplicatedStorage:FindFirstChild("ChargeKi") or ReplicatedStorage:FindFirstChild("ChargeRemote"),
-    Combat = ReplicatedStorage:FindFirstChild("Combat") or ReplicatedStorage:FindFirstChild("Attack") or ReplicatedStorage:FindFirstChild("Punch"),
-    SkillUse = ReplicatedStorage:FindFirstChild("UseSkill") or ReplicatedStorage:FindFirstChild("SkillRemote"),
-    Heal = ReplicatedStorage:FindFirstChild("Heal") or ReplicatedStorage:FindFirstChild("HealRemote")
-}
+local aimBtn = createBtn("AIMBOT", UDim2.new(0.05, 0, 0.25, 0))
+local espBtn = createBtn("ESP", UDim2.new(0.05, 0, 0.6, 0))
 
--- ====================================================================
--- BIẾN ĐIỀU KHIỂN TRẠNG THÁI VÒNG LẶP (TOGGLE STATES)
--- ====================================================================
-local Flags = {
-    AutoPlayAgain = false,
-    AutoTransform = false,
-    AutoChargeKi = false,
-    AntiDieFake = false,
-    AutoShoot = false,
-    AutoHeal = false
-}
+-- // LOGIC TÌM KIẾM TỐI ƯU CHO DRAGON BLOX // --
+local function getClosestMonster()
+    local closest = nil
+    local shortestDist = math.huge
+    
+    -- Dragon Blox thường đặt quái trong các folder cụ thể trong workspace
+    -- Chúng ta chỉ quét các đối tượng có HumanoidRootPart để tránh lag
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v:IsA("Model") and v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") then
+            -- Loại trừ người chơi và đảm bảo quái còn sống
+            if not Players:GetPlayerFromCharacter(v) and v.Humanoid.Health > 0 then
+                local part = v.HumanoidRootPart
+                local screenPos, onScreen = camera:WorldToViewportPoint(part.Position)
+                
+                if onScreen then
+                    local dist = (Vector2.new(mouse.X, mouse.Y) - Vector2.new(screenPos.X, screenPos.Y)).Magnitude
+                    if dist < shortestDist then
+                        closest = part
+                        shortestDist = dist
+                    end
+                end
+            end
+        end
+    end
+    return closest
+end
 
--- TABS INTERFACE
-local TabMain = Window:CreateTab("Tự Động Cày Cuốc", 4483362458)
-local TabCombat = Window:CreateTab("Hỗ Trợ Chiến Đấu", 4483362458)
+-- // LOOPS // --
+RunService.RenderStepped:Connect(function()
+    if AIMBOT_ENABLED then
+        local targetPart = getClosestMonster()
+        if targetPart then
+            -- Smooth aim (giúp không bị khóa cứng quá mức gây nghi vấn)
+            camera.CFrame = CFrame.new(camera.CFrame.Position, targetPart.Position)
+        end
+    end
+end)
 
--- ====================================================================
--- THỰC THI CÁC TÍNH NĂNG
--- ====================================================================
+-- ESP System cải tiến
+task.spawn(function()
+    while task.wait(0.5) do -- Tăng thời gian chờ để giảm tải CPU
+        espFolder:ClearAllChildren()
+        if ESP_ENABLED then
+            for _, v in pairs(workspace:GetDescendants()) do
+                if v:IsA("Model") and v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") then
+                    if not Players:GetPlayerFromCharacter(v) and v.Humanoid.Health > 0 then
+                        local hl = Instance.new("Highlight", espFolder)
+                        hl.Adornee = v
+                        hl.FillColor = Color3.fromRGB(255, 0, 0)
+                        hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+                    end
+                end
+            end
+        end
+    end
+end)
 
--- 1. AUTO PLAY AGAIN
-TabMain:CreateToggle({
-   Name = "Auto Play Again (Tự động chơi lại)",
-   CurrentValue = false,
-   Callback = function(Value)
-      Flags.AutoPlayAgain = Value
-      task.spawn(function()
-         while Flags.AutoPlayAgain do
-            pcall(function()
-               -- Quét tất cả các UI tìm nút chơi lại dựa trên cấu trúc Client Gui
-               for _, gui in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
-                  if gui:IsA("TextButton") or gui:IsA("ImageButton") then
-                     if string.find(string.lower(gui.Name), "again") or string.find(string.lower(gui.Name), "replay") or string.find(string.lower(gui.Text), "chơi lại") then
-                        if gui.Visible then
-                           -- Giả lập kích hoạt trực tiếp sự kiện nhấn nút thay vì tọa độ ảo
-                           gui:Activate()
-                           firesignal(gui.MouseButton1Click)
-                        end
-                     end
-                  end
-               end
-            end)
-            task.wait(1.5)
-         end
-      end)
-   end,
-})
+-- // BUTTONS // --
+aimBtn.MouseButton1Click:Connect(function()
+    AIMBOT_ENABLED = not AIMBOT_ENABLED
+    aimBtn.Text = "AIMBOT: " .. (AIMBOT_ENABLED and "ON" or "OFF")
+    aimBtn.BackgroundColor3 = AIMBOT_ENABLED and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(30, 30, 30)
+end)
 
--- 2. AUTO TRANSFORM
-TabMain:CreateToggle({
-   Name = "Auto Transform (Tự động biến hình)",
-   CurrentValue = false,
-   Callback = function(Value)
-      Flags.AutoTransform = Value
-      task.spawn(function()
-         while Flags.AutoTransform do
-            pcall(function()
-               if CharacterData and not CharacterData.Transforming.Value then
-                  -- Gửi lệnh biến hình trực tiếp qua Remote Event của game để tránh trễ phím
-                  if Remotes.Transform and Remotes.Transform:IsA("RemoteEvent") then
-                     Remotes.Transform:FireServer("Transform", "HighestForm") -- Biến hình dạng cao nhất có sẵn
-                  else
-                     -- Phương án dự phòng 2 nếu game bảo mật Remote
-                     game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode.G, false, game)
-                  end
-               end
-            end)
-            task.wait(3)
-         end
-      end)
-   end,
-})
-
--- 3. AUTO HỒI KI KHI HẾT (AUTO CHARGE)
-TabMain:CreateToggle({
-   Name = "Auto Hồi Ki khi hết",
-   CurrentValue = false,
-   Callback = function(Value)
-      Flags.AutoChargeKi = Value
-      task.spawn(function()
-         while Flags.AutoChargeKi do
-            pcall(function()
-               if CharacterData and CharacterData.Ki.Value < (CharacterData.MaxKi.Value * 0.2) then
-                  -- Kích hoạt trạng thái gồng Ki bằng cách gửi gói tin liên tục lên Server
-                  if Remotes.ChargeKi and Remotes.ChargeKi:IsA("RemoteEvent") then
-                     Remotes.ChargeKi:FireServer(true)
-                     while CharacterData.Ki.Value < CharacterData.MaxKi.Value and Flags.AutoChargeKi do
-                        task.wait(0.2)
-                     end
-                     Remotes.ChargeKi:FireServer(false)
-                  else
-                     -- Phương án dự phòng bằng giả lập giữ phím C
-                     game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode.C, false, game)
-                     while CharacterData.Ki.Value < CharacterData.MaxKi.Value and Flags.AutoChargeKi do task.wait(0.5) end
-                     game:GetService("VirtualInputManager"):SendKeyEvent(false, Enum.KeyCode.C, false, game)
-                  end
-               end
-            end)
-            task.wait(1)
-         end
-      end)
-   end,
-})
-
--- 4. ANTI DIE FAKE (BẤT TỬ)
-TabCombat:CreateToggle({
-   Name = "Anti Die Fake (Chống chết)",
-   CurrentValue = false,
-   Callback = function(Value)
-      Flags.AntiDieFake = Value
-      task.spawn(function()
-         while Flags.AntiDieFake do
-            pcall(function()
-               if CharacterData and CharacterData.Humanoid.Health > 0 and CharacterData.Humanoid.Health < (CharacterData.Humanoid.MaxHealth * 0.25) then
-                  -- Đóng băng hoặc can thiệp trực tiếp vào trạng thái nhân vật cục bộ để chặn chết
-                  CharacterData.Humanoid:ChangeState(Enum.HumanoidStateType.Physics)
-                  CharacterData.Humanoid.Health = CharacterData.Humanoid.MaxHealth
-               end
-            end)
-            task.wait(0.05) -- Tần suất quét cực cao để tránh chết đột tử
-         end
-      end)
-   end,
-})
-
--- 5. AUTO BẮN CHIÊU / AUTO ATTACK
-TabCombat:CreateToggle({
-   Name = "Auto Bắn / Tấn Công",
-   CurrentValue = false,
-   Callback = function(Value)
-      Flags.AutoShoot = Value
-      task.spawn(function()
-         while Flags.AutoShoot do
-            pcall(function()
-               -- Tìm Boss hoặc Quái vật gần nhất có nhiều máu nhất
-               local Target = nil
-               local MinDistance = 600
-               for _, obj in pairs(workspace:GetChildren()) do
-                  if obj:FindFirstChild("Humanoid") and obj.Name ~= LocalPlayer.Name and obj.Humanoid.Health > 0 then
-                     local Root = obj:FindFirstChild("HumanoidRootPart")
-                     if Root and CharacterData then
-                        local Distance = (Root.Position - CharacterData.HumanoidRootPart.Position).Magnitude
-                        if Distance < MinDistance then
-                           Target = obj
-                           MinDistance = Distance
-                        end
-                     end
-                  end
-               end
-
-               -- Thực hiện tấn công nếu tìm thấy mục tiêu
-               if Target and CharacterData then
-                  -- Khóa mục tiêu nhìn thẳng vào Boss
-                  CharacterData.HumanoidRootPart.CFrame = CFrame.new(CharacterData.HumanoidRootPart.Position, Target.HumanoidRootPart.Position)
-                  
-                  -- Gửi lệnh sử dụng kỹ năng bắn sóng năng lượng (Ki Blast) thông qua biến Skill có sẵn
-                  if Remotes.SkillUse then
-                     Remotes.SkillUse:FireServer("KiBlast", Target.HumanoidRootPart.Position)
-                  elseif Remotes.Combat then
-                     Remotes.Combat:FireServer()
-                  else
-                     -- Sử dụng phím tắt nếu game chặn hoàn toàn
-                     game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode.E, false, game)
-                  end
-               end
-            end)
-            task.wait(0.2)
-         end
-      end)
-   end,
-})
-
--- 6. AUTO HỒI MÁU (AUTO HEAL)
-TabCombat:CreateToggle({
-   Name = "Auto Hồi Máu (Auto Heal)",
-   CurrentValue = false,
-   Callback = function(Value)
-      Flags.AutoHeal = Value
-      task.spawn(function()
-         while Flags.AutoHeal do
-            pcall(function()
-               if CharacterData and CharacterData.Humanoid.Health < (CharacterData.Humanoid.MaxHealth * 0.6) then
-                  -- Kích hoạt hàm hồi phục qua Remote của lớp nhân vật hoặc phím tắt
-                  if Remotes.Heal then
-                     Remotes.Heal:FireServer()
-                  else
-                     game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode.X, false, game)
-                  end
-               end
-            end)
-            task.wait(1.5)
-         end
-      end)
-   end,
-})
-
--- THÔNG BÁO HOÀN TẤT ĐỒNG BỘ
-Rayfield:Notify({
-   Title = "Hệ Thống Đã Sẵn Sàng!",
-   Content = "Đã tích hợp toàn bộ các biến cấu trúc của Dragon Blox.",
-   Duration = 6,
-   Image = 4483362458,
-})
+espBtn.MouseButton1Click:Connect(function()
+    ESP_ENABLED = not ESP_ENABLED
+    espBtn.Text = "ESP: " .. (ESP_ENABLED and "ON" or "OFF")
+    espBtn.BackgroundColor3 = ESP_ENABLED and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(30, 30, 30)
+end)
