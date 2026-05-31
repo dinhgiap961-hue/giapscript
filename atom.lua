@@ -1,121 +1,76 @@
 -- ====================================================================================================
--- DRAGON BLOX ELITE HUB V3 - FULL SYSTEM (ANTI-LAG & OPTIMIZED)
+-- DRAGON BLOX ELITE HUB V16 - FULL AUTOMATION (TRANSFORM + FUSION)
 -- ====================================================================================================
 
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local VirtualInputManager = game:GetService("VirtualInputManager")
+local RunService = game:GetService("RenderStepped")
+local VIM = game:GetService("VirtualInputManager")
 local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
-local CoreGui = game:GetService("CoreGui")
 
--- [HỆ THỐNG GIAO DIỆN MỞ RỘNG]
-local ScreenGui = Instance.new("ScreenGui", CoreGui)
-local MainFrame = Instance.new("Frame", ScreenGui)
-MainFrame.Size = UDim2.new(0, 250, 0, 500)
-MainFrame.Position = UDim2.new(0.5, 0, 0.1, 0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-MainFrame.Active = true
-MainFrame.Draggable = true
-Instance.new("UICorner", MainFrame)
+-- UI (Giữ nguyên gọn nhẹ)
+local Main = Instance.new("ScreenGui", game:GetService("CoreGui"))
+local Frame = Instance.new("Frame", Main)
+Frame.Size = UDim2.new(0, 200, 0, 350) Frame.Position = UDim2.new(0.5, 0, 0.2, 0)
+Frame.Active = true Frame.Draggable = true Frame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 
-local Title = Instance.new("TextLabel", MainFrame)
-Title.Size = UDim2.new(1, 0, 0, 40)
-Title.Text = "ELITE HUB - PERFORMANCE MODE"
-Title.TextColor3 = Color3.new(1, 1, 1)
+local Settings = {Lock = false, Farm = false, Raid = false, Trans = false, Fusion = false}
 
-local Settings = {Fly = false, Farm = false, Raid = false, Transform = false, AntiLag = false}
-
-local function CreateButton(text, settingKey)
-    local btn = Instance.new("TextButton", MainFrame)
-    btn.Size = UDim2.new(0.9, 0, 0, 45)
-    btn.Position = UDim2.new(0.05, 0, 0, #MainFrame:GetChildren() * 55 - 50)
-    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    btn.Text = text .. ": OFF"
-    btn.MouseButton1Click:Connect(function()
-        Settings[settingKey] = not Settings[settingKey]
-        btn.Text = text .. ": " .. (Settings[settingKey] and "ON" or "OFF")
-    end)
+local function AddBtn(n, k)
+    local b = Instance.new("TextButton", Frame)
+    b.Size = UDim2.new(0.9, 0, 0, 40) b.Position = UDim2.new(0.05, 0, 0, #Frame:GetChildren() * 45 - 40)
+    b.Text = n .. ": OFF"
+    b.MouseButton1Click:Connect(function() Settings[k] = not Settings[k] b.Text = n .. ": " .. (Settings[k] and "ON" or "OFF") end)
 end
+AddBtn("LOCK-BOSS", "Lock") AddBtn("AUTO-FARM", "Farm") AddBtn("AUTO-RAID", "Raid")
+AddBtn("TRANSFORM", "Trans") AddBtn("FUSION", "Fusion")
 
-CreateButton("FLY-HIGH", "Fly")
-CreateButton("AUTO-FARM", "Farm")
-CreateButton("AUTO-RAID", "Raid")
-CreateButton("TRANSFORM", "Transform")
-CreateButton("ANTI-LAG", "AntiLag") -- Chế độ giảm lag cho máy yếu
-
--- [HỆ THỐNG GIẢM LAG (FEED LAG ENGINE)]
-local function EnableAntiLag()
-    if Settings.AntiLag then
-        for _, v in pairs(workspace:GetDescendants()) do
-            if v:IsA("BasePart") then
-                v.Material = Enum.Material.Plastic
-                v.Reflectance = 0
-            end
-            if v:IsA("Decal") or v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Fire") or v:IsA("Smoke") then
-                v:Destroy()
-            end
-        end
-        UserSettings().GameSettings.GraphicsQualityLevel = 1
-    end
-end
-
--- [BỘ XỬ LÝ REMOTE ĐA NĂNG]
-local function SendAttack(targetPos)
-    local remotes = {"Attack", "Skill", "Combat", "Fire", "Click"}
-    for _, name in pairs(remotes) do
-        local remote = ReplicatedStorage:FindFirstChild(name, true)
-        if remote then
-            pcall(function() remote:FireServer(targetPos) end)
-        end
-    end
-end
-
--- [VÒNG LẶP LOGIC CHÍNH]
-RunService.RenderStepped:Connect(function()
+-- LOGIC
+game:GetService("RunService").RenderStepped:Connect(function()
     local Char = LocalPlayer.Character
     if not Char or not Char:FindFirstChild("HumanoidRootPart") then return end
 
-    if Settings.AntiLag then EnableAntiLag() end
-
-    if Settings.Fly then
-        Char.HumanoidRootPart.CFrame = CFrame.new(Char.HumanoidRootPart.Position.X, 600, Char.HumanoidRootPart.Position.Z)
-        Char.HumanoidRootPart.Anchored = true
-    else
-        Char.HumanoidRootPart.Anchored = false
+    -- Target Lock
+    local target = nil
+    for _, v in pairs(workspace:GetChildren()) do
+        if v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 and v:FindFirstChild("HumanoidRootPart") and v.Name:lower():find("boss") then
+            target = v break
+        end
     end
 
+    if Settings.Lock and target then
+        local pos = target.HumanoidRootPart.Position
+        Char.HumanoidRootPart.CFrame = CFrame.new(Char.HumanoidRootPart.Position, Vector3.new(pos.X, Char.HumanoidRootPart.Position.Y, pos.Z))
+    end
+
+    -- Auto Farm
     if Settings.Farm then
-        local target = nil
-        local minDist = 99999
-        for _, v in pairs(workspace:GetChildren()) do
-            if v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 and v ~= Char and v.Name:lower():find("boss") then
-                local dist = (Char.HumanoidRootPart.Position - v.HumanoidRootPart.Position).Magnitude
-                if dist < minDist then minDist = dist; target = v end
-            end
-        end
-        if target then
-            SendAttack(target.HumanoidRootPart.Position)
-            Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, target.HumanoidRootPart.Position)
-        end
+        local keys = {Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three, Enum.KeyCode.Four, Enum.KeyCode.Five, Enum.KeyCode.Six}
+        for _, k in pairs(keys) do VIM:SendKeyEvent(true, k, false, game) task.wait(0.05) VIM:SendKeyEvent(false, k, false, game) end
     end
 end)
 
--- [HỆ THỐNG PHỤ TRỢ]
+-- AUTO ACTIONS (TRANSFORM, FUSION, RAID)
 task.spawn(function()
-    while task.wait(0.3) do
-        if Settings.Raid then
-            for _, v in pairs(CoreGui:GetDescendants()) do
-                if v:IsA("TextButton") and (v.Text:lower():find("start") or v.Text:lower():find("next") or v.Text:lower():find("again")) then
-                    VirtualInputManager:MouseButton1Click(Vector2.new(0,0))
+    while task.wait(1) do
+        -- Auto Transform (G)
+        if Settings.Trans then VIM:SendKeyEvent(true, Enum.KeyCode.G, false, game) task.wait(0.1) VIM:SendKeyEvent(false, Enum.KeyCode.G, false, game) end
+        
+        -- Auto Fusion (Quét nút Fusion trong UI)
+        if Settings.Fusion then
+            for _, v in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
+                if v:IsA("TextButton") and v.Text:lower():find("fusion") then
+                    VIM:MouseButton1Click(v.AbsolutePosition + Vector2.new(v.AbsoluteSize.X/2, v.AbsoluteSize.Y/2))
                 end
             end
         end
-        if Settings.Transform then
-            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.G, false, game)
-            task.wait(0.1)
-            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.G, false, game)
+
+        -- Raid & Next
+        if Settings.Raid then
+            for _, v in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
+                if (v:IsA("TextButton") or v:IsA("ImageButton")) and (v.Name:lower():find("start") or v.Name:lower():find("next")) then
+                    VIM:MouseButton1Click(v.AbsolutePosition + Vector2.new(v.AbsoluteSize.X/2, v.AbsoluteSize.Y/2))
+                end
+            end
         end
     end
 end)
