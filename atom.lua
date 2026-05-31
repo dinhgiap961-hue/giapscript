@@ -1,12 +1,13 @@
 local Kavo = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
 local Win = Kavo.CreateLib("Atom Max Hub", "BloodTheme")
-local Tab = Win:NewTab("Main"):NewSection("Automation")
+local Tab = Win:NewTab("Main"):NewSection("Automation (Bring Mob Version)")
 
 local Plr = game:GetService("Players").LocalPlayer
 local RepStore = game:GetService("ReplicatedStorage")
 local VU = game:GetService("VirtualUser")
 
 _G.AtomConfig = {
+    BringMob = false,
     SpamDan = false,
     AutoKi = false,
     AutoEarring = false,
@@ -15,66 +16,91 @@ _G.AtomConfig = {
     RaidStart = false
 }
 
--- Tìm mục tiêu quái vật gần nhất để định vị sát thương
-local function getMonster()
-    local target, dist = nil, math.huge
+-- Hàm gom quái về vị trí trước mặt người chơi (Giống hệt video mẫu)
+local function doBringMob()
     local char = Plr.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return nil end
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
     
+    -- Xác định điểm gom quái lý tưởng ngay trước mặt nhân vật
+    local bringTargetPos = hrp.CFrame * CFrame.new(0, 0, -6)
+
     for _, v in ipairs(workspace:GetDescendants()) do
         if v:IsA("Model") and v:FindFirstChild("HumanoidRootPart") and v:FindFirstChild("Humanoid") and v.Name ~= Plr.Name then
             if v.Humanoid.Health > 0 and not v:FindFirstChild("ForceField") then
-                local d = (v.HumanoidRootPart.Position - char.HumanoidRootPart.Position).Magnitude
-                if d < dist then 
-                    dist = d
-                    target = v 
-                end
+                -- Ép quái đứng im và kéo tụ lại một điểm duy nhất
+                v.HumanoidRootPart.Anchored = true
+                v.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
+                v.HumanoidRootPart.CFrame = bringTargetPos
             end
         end
     end
-    return target
 end
 
 -- =======================================================
--- 1. XOÁ XOAY CAM - CHỈ CẦN TUNG SKILL LÀ TỰ TRÚNG QUÁI
+-- TÍNH NĂNG CHÍNH: GOM QUÁI + ĐỨNG IM XẢ SKILL
 -- =======================================================
-Tab:NewToggle("Spam Đạn Đuổi", "Nhân vật đứng im, sát thương tự động nổ trên người quái", function(s)
+
+-- 1. Bật Gom Quái & Khóa Vị Trí Nhân Vật
+Tab:NewToggle("Auto Bring Mob (Gom Quái)", "Gom toàn bộ quái về trước mặt và khóa vị trí đứng im", function(s)
+    _G.AtomConfig.BringMob = s
+    if s then
+        task.spawn(function()
+            while _G.AtomConfig.BringMob do
+                pcall(function()
+                    local char = Plr.Character
+                    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                    if hrp then
+                        -- Khóa cứng nhân vật đứng im tại chỗ cực kỳ an toàn
+                        hrp.Anchored = true
+                        hrp.Velocity = Vector3.new(0, 0, 0)
+                        
+                        -- Thực hiện gom quái liên tục
+                        doBringMob()
+                    end
+                end)
+                task.wait(0.02)
+            end
+            -- Khi tắt hack, trả lại trạng thái tự do cho nhân vật
+            pcall(function()
+                if Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart") then
+                    Plr.Character.HumanoidRootPart.Anchored = false
+                end
+            end)
+        end)
+    end
+end)
+
+-- 2. Spam Đạn Đuổi Vào Tâm Gom Quái
+Tab:NewToggle("Spam Đạn Đuổi", "Tự động xả chiêu liên tục vào vị trí gom quái", function(s)
     _G.AtomConfig.SpamDan = s
     if s then
         task.spawn(function()
             while _G.AtomConfig.SpamDan do
                 pcall(function()
-                    local target = getMonster()
-                    if target and target:FindFirstChild("HumanoidRootPart") then
-                        -- Không xoay camera, gửi thẳng tọa độ quái vào Server để đạn tự tìm đến trúng 100%
+                    local char = Plr.Character
+                    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                    if hrp then
+                        -- Bắn trực tiếp vào điểm phía trước mặt (Nơi quái đang bị gom)
+                        local targetPos = (hrp.CFrame * CFrame.new(0, 0, -6)).Position
                         local attackRemote = RepStore:FindFirstChild("Remotes") and RepStore.Remotes:FindFirstChild("EnergyBlast") or RepStore:FindFirstChild("AttackRemote")
+                        
                         if attackRemote then
-                            attackRemote:FireServer(target.HumanoidRootPart.Position)
+                            attackRemote:FireServer(targetPos)
                         else
-                            -- Phương án dự phòng nếu game chặn Remote
                             game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode.E, false, game)
                             task.wait(0.02)
                             game:GetService("VirtualInputManager"):SendKeyEvent(false, Enum.KeyCode.E, false, game)
-                        end
-                    else
-                        -- Khi hết quái, khóa cứng nhân vật đứng im tại chỗ để nhận thưởng an toàn
-                        if Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart") then
-                            Plr.Character.HumanoidRootPart.Velocity = Vector3.new(0,0,0)
-                            Plr.Character.HumanoidRootPart.Anchored = true
                         end
                     end
                 end)
                 task.wait(0.05)
             end
-            -- Tắt hack thì mở khóa di chuyển bình thường
-            if Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart") then
-                Plr.Character.HumanoidRootPart.Anchored = false
-            end
         end)
     end
 end)
 
--- 2. Tự động gồng Ki khi cạn năng lượng
+-- 3. Tự động gồng Ki khi cạn năng lượng
 Tab:NewToggle("Auto Charge Ki", "Tự động gồng Ki khi cạn năng lượng", function(s)
     _G.AtomConfig.AutoKi = s
     if s then
@@ -104,8 +130,8 @@ Tab:NewToggle("Auto Charge Ki", "Tự động gồng Ki khi cạn năng lượng
     end
 end)
 
--- 3. Auto Bông Tai (Luồng độc lập hoàn toàn - Không lo loạn phím)
-Tab:NewToggle("Auto Bông Tai", "Tự động kích hoạt bông tai Potara qua hệ thống", function(s)
+-- 4. Auto Bông Tai (Chạy ngầm tách biệt)
+Tab:NewToggle("Auto Bông Tai", "Tự động đeo bông tai qua hệ thống mạng", function(s)
     _G.AtomConfig.AutoEarring = s
     if s then
         task.spawn(function()
@@ -117,14 +143,14 @@ Tab:NewToggle("Auto Bông Tai", "Tự động kích hoạt bông tai Potara qua 
                         if remote then remote:FireServer(true) end
                     end
                 end)
-                task.wait(4)
+                task.wait(5)
             end
         end)
     end
 end)
 
--- 4. Auto Form (Luồng độc lập hoàn toàn - Không lo loạn phím)
-Tab:NewToggle("Auto Form", "Tự động lên trạng thái biến hình mạnh nhất", function(s)
+-- 5. Auto Form (Chạy ngầm tách biệt)
+Tab:NewToggle("Auto Form", "Tự động hóa trạng thái biến hình tối thượng", function(s)
     _G.AtomConfig.AutoForm = s
     if s then
         task.spawn(function()
@@ -136,14 +162,14 @@ Tab:NewToggle("Auto Form", "Tự động lên trạng thái biến hình mạnh 
                         if remote then remote:FireServer("EquipCurrentForm") end
                     end
                 end)
-                task.wait(4)
+                task.wait(5)
             end
         end)
     end
 end)
 
--- 5. Auto Next Raid (Sửa lỗi kẹt màn hình nhận thưởng)
-Tab:NewToggle("Auto Next Raid", "Tự động qua màn kế tiếp sử dụng hệ thống gọi từ xa", function(s)
+-- 6. Auto Next Raid
+Tab:NewToggle("Auto Next Raid", "Tự động nhấn chuyển màn nhanh chóng", function(s)
     _G.AtomConfig.RaidNext = s
     if s then
         task.spawn(function()
@@ -155,7 +181,6 @@ Tab:NewToggle("Auto Next Raid", "Tự động qua màn kế tiếp sử dụng h
                         dungeonRemote:FireServer("ClaimRewards")
                     end
                     
-                    -- Kích hoạt tất cả nút bấm "Next", "Leave", "Tạo phòng" có trên màn hình
                     local pGui = Plr:FindFirstChild("PlayerGui")
                     if pGui then
                         for _, v in ipairs(pGui:GetDescendants()) do
@@ -175,8 +200,8 @@ Tab:NewToggle("Auto Next Raid", "Tự động qua màn kế tiếp sử dụng h
     end
 end)
 
--- 6. Auto Start Raid (Sửa lỗi phòng chờ kẹt trận)
-Tab:NewToggle("Auto Start Raid", "Tự động bắt đầu trận đấu ngay khi vào sảnh phòng chờ", function(s)
+-- 7. Auto Start Raid
+Tab:NewToggle("Auto Start Raid", "Tự động bắt đầu trận sảnh chờ", function(s)
     _G.AtomConfig.RaidStart = s
     if s then
         task.spawn(function()
@@ -188,7 +213,6 @@ Tab:NewToggle("Auto Start Raid", "Tự động bắt đầu trận đấu ngay k
                         lobbyRemote:FireServer("Ready")
                     end
                     
-                    -- Tự động click kích hoạt nút sảnh chờ ảo
                     local pGui = Plr:FindFirstChild("PlayerGui")
                     if pGui then
                         for _, v in ipairs(pGui:GetDescendants()) do
@@ -208,14 +232,6 @@ Tab:NewToggle("Auto Start Raid", "Tự động bắt đầu trận đấu ngay k
     end
 end)
 
--- Nút hỗ trợ hiển thị lại nút di chuyển cảm ứng bị ẩn lỗi
-Tab:NewButton("Hiện Nút Di Chuyển", "Khắc phục lỗi mất thanh điều hướng ảo", function()
-    pcall(function()
-        local tg = Plr.PlayerGui:FindFirstChild("TouchGui")
-        if tg then tg.Enabled = false task.wait(0.1) tg.Enabled = true end
-    end)
-end)
-
 -- Nút điều khiển ẩn/hiện bảng menu Kavo chính
 local ScreenGui = game:GetService("CoreGui"):FindFirstChild("KavoL") or game:GetService("CoreGui"):FindFirstChild("RobloxGui")
 local Btn = Instance.new("TextButton", ScreenGui)
@@ -223,7 +239,6 @@ Btn.Size = UDim2.new(0,50,0,50) Btn.Position = UDim2.new(0,10,0,150) Btn.Backgro
 Btn.Text = "Atom" Btn.TextColor3 = Color3.fromRGB(255,255,255) Btn.Font = Enum.Font.SourceSansBold Btn.TextSize = 16
 Instance.new("UICorner", Btn).CornerRadius = UDim.new(0,25)
 Btn.MouseButton1Click:Connect(function() Kavo:ToggleUI() end)
-Tab:NewButton("Thu Nhỏ Menu", "Bấm để ẩn bảng giao diện chính", function() Kavo:ToggleUI() end)
 
 -- Kích hoạt chống treo máy tự động chống văng game (Anti-AFK)
 Plr.Idled:Connect(function() VU:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame) task.wait(1) VU:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame) end)
