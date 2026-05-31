@@ -1,6 +1,6 @@
 local Kavo = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Win = Kavo.CreateLib("Atom God Mode", "BloodTheme")
-local Tab = Win:NewTab("Main"):NewSection("Ultra Fast Attack Mode")
+local Win = Kavo.CreateLib("Atom Fast Attack V3", "BloodTheme")
+local Tab = Win:NewTab("Main"):NewSection("God Speed Fast Attack")
 
 local Plr = game:GetService("Players").LocalPlayer
 local RepStore = game:GetService("ReplicatedStorage")
@@ -9,12 +9,12 @@ local RunService = game:GetService("RunService")
 
 _G.AtomConfig = {
     FlyAboveBoss = false,
-    SuperFastAttack = false, -- Tính năng đánh siêu nhanh mới
+    FastAttack = false,
     AutoKi = false,
     AutoForm = false
 }
 
--- Hàm quét lấy mục tiêu chuẩn xác nhất
+-- Hàm quét lấy mục tiêu nhanh nhất hệ mặt trời
 local function getAbsoluteBoss()
     local target = nil
     local minDist = math.huge
@@ -36,11 +36,11 @@ local function getAbsoluteBoss()
 end
 
 -- =======================================================
--- HỆ THỐNG SKILL SIÊU TỐC ĐỘ & BAY QUANH BOSS
+-- CORE TÍNH NĂNG: FAST ATTACK + FLY 30CM
 -- =======================================================
 
--- 1. Bay sát đầu Boss 30cm
-Tab:NewToggle("Auto Fly Above Boss (30cm)", "Bay siêu sát trên đầu Boss để tối đa sát thương", function(s)
+-- 1. Bay siêu sát trên đầu Boss (30cm)
+Tab:NewToggle("Auto Fly Above Boss (30cm)", "Giữ khoảng cách cực sát để dồn toàn bộ đạn vào Boss", function(s)
     _G.AtomConfig.FlyAboveBoss = s
     if s then
         task.spawn(function()
@@ -62,35 +62,36 @@ Tab:NewToggle("Auto Fly Above Boss (30cm)", "Bay siêu sát trên đầu Boss đ
     end
 end)
 
--- 2. TÍNH NĂNG MỚI: ĐÁNH SIÊU NHANH (FAST ATTACK X3 SPEED)
-Tab:NewToggle("Đánh Siêu Nhanh (Energy Blast)", "Xả đạn liên thanh tốc độ ánh sáng, ghim thẳng vào Boss", function(s)
-    _G.AtomConfig.SuperFastAttack = s
+-- 2. TÍNH NĂNG FAST ATTACK (SIÊU TỐC ĐỘ KHÔNG DELAY)
+Tab:NewToggle("ULTRA FAST ATTACK", "Bật chế độ sấy Energy Blast tốc độ ánh sáng", function(s)
+    _G.AtomConfig.FastAttack = s
     if s then
         task.spawn(function()
-            while _G.AtomConfig.SuperFastAttack do
+            while _G.AtomConfig.FastAttack do
                 pcall(function()
                     local boss = getAbsoluteBoss()
                     if boss and boss:FindFirstChild("HumanoidRootPart") then
                         local bossPos = boss.HumanoidRootPart.Position
                         
-                        -- Auto Lock góc nhìn camera thẳng xuống mục tiêu
+                        -- Khóa camera nhìn thẳng xuống mục tiêu
                         if workspace.CurrentCamera then
                             workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, bossPos)
                         end
                         
-                        -- Tìm kiếm Remote chiến đấu
+                        -- Luồng 1: Xả trực tiếp vào hệ thống Remote chiến đấu của Game (X5 Tốc Độ)
                         local remotes = RepStore:FindFirstChild("Remotes")
                         if remotes then
                             local blast = remotes:FindFirstChild("EnergyBlast") or remotes:FindFirstChild("AttackRemote") or remotes:FindFirstChild("KiBlast")
                             if blast then
-                                -- ÉP X3 LUỒNG GỬI LỆNH (Gây sát thương siêu tốc)
-                                blast:FireServer(bossPos)
-                                blast:FireServer(bossPos)
-                                blast:FireServer(bossPos)
+                                task.spawn(function() blast:FireServer(bossPos) end)
+                                task.spawn(function() blast:FireServer(bossPos) end)
+                                task.spawn(function() blast:FireServer(bossPos) end)
+                                task.spawn(function() blast:FireServer(bossPos) end)
+                                task.spawn(function() blast:FireServer(bossPos) end)
                             end
                         end
                         
-                        -- Click siêu tốc nút bấm UI cảm ứng trên Mobile
+                        -- Luồng 2: Kích hoạt nút UI ảo (Dự phòng cho Mobile)
                         local pGui = Plr:FindFirstChild("PlayerGui")
                         if pGui then
                             for _, gui in ipairs(pGui:GetChildren()) do
@@ -108,15 +109,17 @@ Tab:NewToggle("Đánh Siêu Nhanh (Energy Blast)", "Xả đạn liên thanh tố
                         end
                     end
                 end)
-                -- Chờ cực ngắn (0.005 giây) để tạo hiệu ứng xả liên thanh không ngừng nghỉ
-                task.wait(0.005) 
+                RunService.RenderStepped:Wait() -- Đạt tốc độ xả đạn mượt và nhanh nhất theo FPS của bạn
             end
         end)
     end
 end)
 
--- 3. Auto Forms
-Tab:NewToggle("Auto Forms", "Tự động kích hoạt Form biến hình tăng chỉ số", function(s)
+-- =======================================================
+-- TỰ ĐỘNG BỔ TRỢ (AUTO FORM & AUTO KI)
+-- =======================================================
+
+Tab:NewToggle("Auto Forms", "Tự động hóa trạng thái biến hình mạnh nhất", function(s)
     _G.AtomConfig.AutoForm = s
     if s then
         task.spawn(function()
@@ -126,9 +129,7 @@ Tab:NewToggle("Auto Forms", "Tự động kích hoạt Form biến hình tăng c
                     if char and not (char:FindFirstChild("Transformed") or char:FindFirstChild("ActiveForm")) then
                         local remotes = RepStore:FindFirstChild("Remotes")
                         local remote = remotes and (remotes:FindFirstChild("Transform") or remotes:FindFirstChild("TransformRemote")) or RepStore:FindFirstChild("TransformRemote")
-                        if remote then 
-                            remote:FireServer("EquipCurrentForm") 
-                        end
+                        if remote then remote:FireServer("EquipCurrentForm") end
                     end
                 end)
                 task.wait(3)
@@ -137,8 +138,7 @@ Tab:NewToggle("Auto Forms", "Tự động kích hoạt Form biến hình tăng c
     end
 end)
 
--- 4. Auto Ki
-Tab:NewToggle("Auto Charge Ki", "Tự động gồng Ki khi năng lượng xuống thấp", function(s)
+Tab:NewToggle("Auto Charge Ki", "Tự động gồng Ki siêu tốc khi cạn năng lượng", function(s)
     _G.AtomConfig.AutoKi = s
     if s then
         task.spawn(function()
@@ -152,7 +152,7 @@ Tab:NewToggle("Auto Charge Ki", "Tự động gồng Ki khi năng lượng xuố
                             local charge = remotes and (remotes:FindFirstChild("ChargeKi") or remotes:FindFirstChild("Charge"))
                             if charge then
                                 charge:FireServer(true)
-                                repeat task.wait(0.1) until Ki.Value >= Ki.MaxKi.Value or not _G.AtomConfig.AutoKi
+                                repeat task.wait(0.05) until Ki.Value >= Ki.MaxKi.Value or not _G.AtomConfig.AutoKi
                                 charge:FireServer(false)
                             else
                                 local pGui = Plr:FindFirstChild("PlayerGui")
@@ -167,16 +167,13 @@ Tab:NewToggle("Auto Charge Ki", "Tự động gồng Ki khi năng lượng xuố
                         end
                     end
                 end)
-                task.wait(0.5)
+                task.wait(0.3)
             end
         end)
     end
 end)
 
--- =======================================================
--- GIAO DIỆN & CHỐNG KICK AFK
--- =======================================================
-
+-- Tạo nút bấm thu gọn Menu
 local ScreenGui = game:GetService("CoreGui"):FindFirstChild("KavoL") or game:GetService("CoreGui"):FindFirstChild("RobloxGui")
 local Btn = Instance.new("TextButton", ScreenGui)
 Btn.Size = UDim2.new(0,50,0,50) Btn.Position = UDim2.new(0,10,0,150) Btn.BackgroundColor3 = Color3.fromRGB(150,0,0)
@@ -184,4 +181,5 @@ Btn.Text = "Atom" Btn.TextColor3 = Color3.fromRGB(255,255,255) Btn.Font = Enum.F
 Instance.new("UICorner", Btn).CornerRadius = UDim.new(0,25)
 Btn.MouseButton1Click:Connect(function() Kavo:ToggleUI() end)
 
+-- Anti-AFK chống văng game
 Plr.Idled:Connect(function() VU:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame) task.wait(1) VU:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame) end)
