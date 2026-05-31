@@ -1,6 +1,6 @@
 local Kavo = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Win = Kavo.CreateLib("Atom Fast Attack V3", "BloodTheme")
-local Tab = Win:NewTab("Main"):NewSection("God Speed Fast Attack")
+local Win = Kavo.CreateLib("Atom God-Speed Melee V5", "BloodTheme")
+local Tab = Win:NewTab("Main"):NewSection("Hyper Fast Melee Mode")
 
 local Plr = game:GetService("Players").LocalPlayer
 local RepStore = game:GetService("ReplicatedStorage")
@@ -9,12 +9,12 @@ local RunService = game:GetService("RunService")
 
 _G.AtomConfig = {
     FlyAboveBoss = false,
-    FastAttack = false,
+    HyperMelee = false,
     AutoKi = false,
     AutoForm = false
 }
 
--- Hàm quét lấy mục tiêu nhanh nhất hệ mặt trời
+-- Hàm quét lấy mục tiêu nhanh nhất
 local function getAbsoluteBoss()
     local target = nil
     local minDist = math.huge
@@ -36,11 +36,11 @@ local function getAbsoluteBoss()
 end
 
 -- =======================================================
--- CORE TÍNH NĂNG: FAST ATTACK + FLY 30CM
+-- CORE TÍNH NĂNG: HYPER FAST MELEE (TỐC ĐỘ BÀN THỜ)
 -- =======================================================
 
--- 1. Bay siêu sát trên đầu Boss (30cm)
-Tab:NewToggle("Auto Fly Above Boss (30cm)", "Giữ khoảng cách cực sát để dồn toàn bộ đạn vào Boss", function(s)
+-- 1. Bay siêu sát trên đầu Boss (30cm - Ghim chặt để đấm không hụt)
+Tab:NewToggle("Auto Fly Above Boss (30cm)", "Ghim sát rạt để toàn bộ đấm thường trúng Boss", function(s)
     _G.AtomConfig.FlyAboveBoss = s
     if s then
         task.spawn(function()
@@ -53,7 +53,7 @@ Tab:NewToggle("Auto Fly Above Boss (30cm)", "Giữ khoảng cách cực sát đ�
                     if hrp and boss and boss:FindFirstChild("HumanoidRootPart") then
                         hrp.Velocity = Vector3.new(0, 0, 0)
                         local bossPos = boss.HumanoidRootPart.Position
-                        hrp.CFrame = CFrame.new(bossPos + Vector3.new(0, 1.5, 0), bossPos)
+                        hrp.CFrame = CFrame.new(bossPos + Vector3.new(0, 1.2, 0), bossPos)
                     end
                 end)
                 RunService.Heartbeat:Wait()
@@ -62,36 +62,34 @@ Tab:NewToggle("Auto Fly Above Boss (30cm)", "Giữ khoảng cách cực sát đ�
     end
 end)
 
--- 2. TÍNH NĂNG FAST ATTACK (SIÊU TỐC ĐỘ KHÔNG DELAY)
-Tab:NewToggle("ULTRA FAST ATTACK", "Bật chế độ sấy Energy Blast tốc độ ánh sáng", function(s)
-    _G.AtomConfig.FastAttack = s
+-- 2. TÍNH NĂNG ĐẤNH THƯỜNG SIÊU SIÊU NHANH (HYPER FAST MELEE - ZERO DELAY)
+Tab:NewToggle("HYPER FAST MELEE ATTACK", "Đấm thường tốc độ bàn thờ (Max Speed)", function(s)
+    _G.AtomConfig.HyperMelee = s
     if s then
         task.spawn(function()
-            while _G.AtomConfig.FastAttack do
+            while _G.AtomConfig.HyperMelee do
                 pcall(function()
                     local boss = getAbsoluteBoss()
                     if boss and boss:FindFirstChild("HumanoidRootPart") then
-                        local bossPos = boss.HumanoidRootPart.Position
                         
-                        -- Khóa camera nhìn thẳng xuống mục tiêu
-                        if workspace.CurrentCamera then
-                            workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, bossPos)
-                        end
-                        
-                        -- Luồng 1: Xả trực tiếp vào hệ thống Remote chiến đấu của Game (X5 Tốc Độ)
-                        local remotes = RepStore:FindFirstChild("Remotes")
+                        -- KIỂU 1: ÉP GỬI ĐỒNG THỜI 10 LỆNH ĐẤM CÙNG LÚC (X10 DAMAGE OUTPUT)
+                        local remotes = RepStore:FindFirstChild("Remotes") or RepStore:FindFirstChild("Events") or workspace:FindFirstChild("Remotes")
                         if remotes then
-                            local blast = remotes:FindFirstChild("EnergyBlast") or remotes:FindFirstChild("AttackRemote") or remotes:FindFirstChild("KiBlast")
-                            if blast then
-                                task.spawn(function() blast:FireServer(bossPos) end)
-                                task.spawn(function() blast:FireServer(bossPos) end)
-                                task.spawn(function() blast:FireServer(bossPos) end)
-                                task.spawn(function() blast:FireServer(bossPos) end)
-                                task.spawn(function() blast:FireServer(bossPos) end)
+                            local combatRemote = remotes:FindFirstChild("Attack") or remotes:FindFirstChild("Combat") or remotes:FindFirstChild("Punch") or remotes:FindFirstChild("Hit") or remotes:FindFirstChild("Melee")
+                            if combatRemote then
+                                for i = 1, 10 do -- Nhân bản luồng gửi lệnh lên 10 lần một lúc
+                                    task.spawn(function() combatRemote:FireServer() end)
+                                end
                             end
                         end
                         
-                        -- Luồng 2: Kích hoạt nút UI ảo (Dự phòng cho Mobile)
+                        -- KIỂU 2: FAST CLICK BẰNG VIRTUAL USER KHÔNG HOÀN LẠI DELAY
+                        task.spawn(function()
+                            VU:Button1Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+                            VU:Button1Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+                        end)
+                        
+                        -- KIỂU 3: BỨT TỐC NÚT BẤM CẢM ỨNG TRÊN MOBILE
                         local pGui = Plr:FindFirstChild("PlayerGui")
                         if pGui then
                             for _, gui in ipairs(pGui:GetChildren()) do
@@ -99,8 +97,8 @@ Tab:NewToggle("ULTRA FAST ATTACK", "Bật chế độ sấy Energy Blast tốc �
                                     for _, btn in ipairs(gui:GetDescendants()) do
                                         if (btn:IsA("ImageButton") or btn:IsA("TextButton")) and btn.Visible then
                                             local name = string.lower(btn.Name)
-                                            if string.find(name, "blast") or string.find(name, "energy") or name == "e" or string.find(name, "slot1") then
-                                                btn:Activate()
+                                            if string.find(name, "punch") or string.find(name, "combat") or string.find(name, "hit") or name == "click" or name == "fist" or string.find(name, "melee") then
+                                                task.spawn(function() btn:Activate() end)
                                             end
                                         end
                                     end
@@ -109,7 +107,8 @@ Tab:NewToggle("ULTRA FAST ATTACK", "Bật chế độ sấy Energy Blast tốc �
                         end
                     end
                 end)
-                RunService.RenderStepped:Wait() -- Đạt tốc độ xả đạn mượt và nhanh nhất theo FPS của bạn
+                -- Không dùng task.wait nữa, ép chạy thẳng theo RenderStepped của hệ thống màn hình để đạt tốc độ tối đa
+                RunService.RenderStepped:Wait()
             end
         end)
     end
@@ -173,7 +172,7 @@ Tab:NewToggle("Auto Charge Ki", "Tự động gồng Ki siêu tốc khi cạn n�
     end
 end)
 
--- Tạo nút bấm thu gọn Menu
+-- Nút tròn "Atom" ẩn hiện menu
 local ScreenGui = game:GetService("CoreGui"):FindFirstChild("KavoL") or game:GetService("CoreGui"):FindFirstChild("RobloxGui")
 local Btn = Instance.new("TextButton", ScreenGui)
 Btn.Size = UDim2.new(0,50,0,50) Btn.Position = UDim2.new(0,10,0,150) Btn.BackgroundColor3 = Color3.fromRGB(150,0,0)
@@ -181,5 +180,5 @@ Btn.Text = "Atom" Btn.TextColor3 = Color3.fromRGB(255,255,255) Btn.Font = Enum.F
 Instance.new("UICorner", Btn).CornerRadius = UDim.new(0,25)
 Btn.MouseButton1Click:Connect(function() Kavo:ToggleUI() end)
 
--- Anti-AFK chống văng game
+-- Anti-AFK
 Plr.Idled:Connect(function() VU:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame) task.wait(1) VU:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame) end)
