@@ -1,20 +1,17 @@
 -- ============================================================================
--- SCRIPT AUTO ENERGY BLAST (CHỈ SPAM CHIÊU NÀY)
+-- DRAGON BLOX V2 - V8: FORCE ENERGY BLAST (FIXED)
 -- ============================================================================
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
--- HÀM TỰ DÒ TÌM REMOTE ĐẶC BIỆT CHO CHIÊU THỨC
+-- 1. Tìm RemoteEvent chuyên biệt cho chiêu thức
 local function GetAbilityRemote()
-    -- Danh sách các tên Remote thường thấy cho skill
-    local possibleRemotes = {"CombatEvent", "SkillEvent", "AbilityEvent", "Input"}
-    
-    for _, name in pairs(possibleRemotes) do
-        local remote = ReplicatedStorage:FindFirstChild(name, true)
-        if remote and remote:IsA("RemoteEvent") then 
-            return remote 
+    -- Thử quét tất cả các Remote trong ReplicatedStorage
+    for _, v in pairs(ReplicatedStorage:GetDescendants()) do
+        if v:IsA("RemoteEvent") and (v.Name:lower():find("skill") or v.Name:lower():find("ability")) then
+            return v
         end
     end
     return nil
@@ -22,19 +19,33 @@ end
 
 local AbilityRemote = GetAbilityRemote()
 
--- BẬT/TẮT TỰ ĐỘNG
+-- 2. Hàm ép bắn vào mục tiêu (Fix đứng im)
 _G.AutoEnergyBlast = true 
 
 task.spawn(function()
     while _G.AutoEnergyBlast do
         if AbilityRemote then
-            pcall(function()
-                -- Thay "EnergyBlast" bằng tên chiêu thức trong game nếu cần
-                -- Nếu game dùng phím, hãy để là "Q" hoặc tên chiêu của nó
-                AbilityRemote:FireServer("EnergyBlast") 
-            end)
+            -- Lấy vị trí quái/boss gần nhất
+            local targetHrp = nil
+            local dist = 9e9
+            for _, v in pairs(workspace:GetDescendants()) do
+                if v:IsA("Humanoid") and v.Parent ~= LocalPlayer.Character and v.Health > 0 then
+                    local hrp = v.Parent:FindFirstChild("HumanoidRootPart")
+                    if hrp then
+                        local d = (LocalPlayer.Character.HumanoidRootPart.Position - hrp.Position).Magnitude
+                        if d < dist then dist = d; targetHrp = hrp end
+                    end
+                end
+            end
+
+            -- Bắn chiêu vào mục tiêu tìm được
+            if targetHrp then
+                pcall(function()
+                    -- Cấu trúc: FireServer(Tên_Chiêu, Vị_Trí_Mục_Tiêu)
+                    AbilityRemote:FireServer("Energy Blast", targetHrp.Position)
+                end)
+            end
         end
-        -- Tốc độ spam chiêu (0.1s là an toàn để không bị lỗi cooldown skill)
-        task.wait(0.1) 
+        task.wait(0.2) -- Thời gian hồi chiêu Energy Blast
     end
 end)
