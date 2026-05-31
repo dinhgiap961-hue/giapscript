@@ -1,6 +1,5 @@
 local Player = game:GetService("Players").LocalPlayer
 local RunService = game:GetService("RunService")
-local VirtualInputManager = game:GetService("VirtualInputManager")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
@@ -15,7 +14,7 @@ Screen.Name = "AutoBossGui"
 Screen.ResetOnSpawn = false
 
 -- ==========================================
--- THIẾT KẾ GIAO DIỆN MENU CHUYÊN NGHIỆP
+-- THIẾT KẾ GIAO DIỆN MENU PHẲNG
 -- ==========================================
 
 local MainFrame = Instance.new("Frame", Screen)
@@ -117,7 +116,7 @@ TitleBar.InputChanged:Connect(function(input) if input.UserInputType == Enum.Use
 UserInputService.InputChanged:Connect(function(input) if input == dragInput and dragging then update(input) end end)
 
 -- ==========================================
--- LOGIC HOẠT ĐỘNG VÀ XỬ LÝ GAMEPLAY
+-- LOGIC HOẠT ĐỘNG HOÀN TOÀN NGẦM
 -- ==========================================
 
 local AutoFarmActive = false
@@ -132,15 +131,10 @@ FarmBtn.MouseButton1Click:Connect(function()
     FarmBtn.BackgroundColor3 = AutoFarmActive and Color3.fromRGB(40, 160, 40) or Color3.fromRGB(180, 40, 40)
 end)
 
--- Khi tắt Auto Boss, lập tức giải phóng PlatformStand để hồi phục di chuyển bình thường
 BossBtn.MouseButton1Click:Connect(function()
     AutoBossActive = not AutoBossActive
     BossBtn.Text = AutoBossActive and "AUTO BOSS: ON" or "AUTO BOSS: OFF"
     BossBtn.BackgroundColor3 = AutoBossActive and Color3.fromRGB(40, 160, 40) or Color3.fromRGB(180, 40, 40)
-    if not AutoBossActive then
-        local Char = Player.Character
-        if Char then local Humn = Char:FindFirstChildOfClass("Humanoid") if Humn then Humn.PlatformStand = false end end
-    end
 end)
 
 StartBtn.MouseButton1Click:Connect(function()
@@ -161,6 +155,7 @@ PlayAgainBtn.MouseButton1Click:Connect(function()
     PlayAgainBtn.BackgroundColor3 = AutoPlayAgain and Color3.fromRGB(40, 160, 40) or Color3.fromRGB(140, 140, 0)
 end)
 
+-- Tìm quái vật/Boss gần nhất dựa trên khoảng cách thực tế
 local function FindAnyMonster()
     local targetMonster = nil
     local shortestDistance = math.huge
@@ -184,58 +179,44 @@ local function FindAnyMonster()
     return targetMonster
 end
 
--- Vòng lặp dịch chuyển (Chỉ khóa di chuyển khi đang thực sự bay trên đầu Boss)
-RunService.Heartbeat:Connect(function()
-    local Char = Player.Character
-    if AutoBossActive then
-        local Monster = FindAnyMonster()
-        if Monster and Char and Char:FindFirstChild("HumanoidRootPart") then
-            local Humanoid = Char:FindFirstChildOfClass("Humanoid")
-            if Humanoid then Humanoid.PlatformStand = true end
-            
-            local TargetPos = Monster.HumanoidRootPart.Position + Vector3.new(0, 35, 0)
-            Char.HumanoidRootPart.CFrame = CFrame.new(TargetPos, Monster.HumanoidRootPart.Position)
-            Char.HumanoidRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-        end
-    end
-end)
-
 -- ====================================================================
--- CƠ CHẾ ĐÓNG BĂNG VÀ PHÁ COOLDOWN CHIÊU THỨC
+-- CƠ CHẾ TẤN CÔNG XẢ REMOTE THẲNG VÀO BOSS (ĐỨNG IM 1 CHỖ)
 -- ====================================================================
 local attackRemote = ReplicatedStorage:FindFirstChild("Attack", true) or ReplicatedStorage:FindFirstChild("Skill", true) or ReplicatedStorage:FindFirstChild("UseSkill", true)
 
+-- Ép Client bỏ qua hệ thống đếm giây hồi chiêu nội bộ
 if setfflag then
     pcall(function() setfflag("UserSkillCooldownBypass", "True") end)
 end
 
-local function DirectNoCooldownFire(target)
-    if attackRemote and attackRemote:IsA("RemoteEvent") and target and target:FindFirstChild("HumanoidRootPart") then
-        attackRemote:FireServer(target.HumanoidRootPart.Position)
-    end
-end
-
-local skillKeys = {Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three, Enum.KeyCode.Four, Enum.KeyCode.Five, Enum.KeyCode.E}
-
+-- Spam Remote cường độ cao trực tiếp lên dữ liệu của Boss trên Server
 task.spawn(function()
     while true do
         if AutoBossActive or AutoFarmActive then
             local Monster = FindAnyMonster()
-            if Monster then
-                DirectNoCooldownFire(Monster)
-                
-                for i = 1, #skillKeys do
-                    VirtualInputManager:SendKeyEvent(true, skillKeys[i], false, game)
-                    VirtualInputManager:SendKeyEvent(false, skillKeys[i], false, game)
+            if Monster and Monster:FindFirstChild("HumanoidRootPart") then
+                -- Gửi dữ liệu tấn công dồn dập (Không dùng phím ảo để kỹ năng không nhảy Cooldown)
+                if attackRemote and attackRemote:IsA("RemoteEvent") then
+                    local targetPos = Monster.HumanoidRootPart.Position
+                    
+                    attackRemote:FireServer(targetPos)
+                    attackRemote:FireServer({["Target"] = Monster, ["Position"] = targetPos})
+                    
+                    -- Đẩy tốc độ phản hồi lệnh lên mức cao nhất tùy thuộc vào cấu hình nút bật
+                    if AutoBossActive and AutoFarmActive then
+                        -- Tăng gấp đôi luồng dữ liệu ngầm khi kích hoạt cả 2 chế độ
+                        attackRemote:FireServer(targetPos) 
+                        task.wait(0.005)
+                    elseif AutoBossActive then
+                        task.wait(0.01)
+                    else
+                        task.wait(0.05)
+                    end
+                else
+                    task.wait(0.1)
                 end
-            end
-            
-            if AutoBossActive and AutoFarmActive then
-                task.wait(0.01)
-            elseif AutoBossActive then
-                task.wait(0.02)
             else
-                task.wait(0.08)
+                task.wait(0.2)
             end
         else
             task.wait(0.3)
@@ -244,13 +225,11 @@ task.spawn(function()
 end)
 
 -- ====================================================================
--- HỆ THỐNG AUTO CLICK GAMEPLAY CHỐNG MẤT NÚT DI CHUYỂN (TỐI ƯU MỚI)
+-- HỆ THỐNG AUTO CLICK GAMEPLAY CHỐNG MẤT NÚT DI CHUYỂN
 -- ====================================================================
 local function SafeActivateButton(gui)
     if gui and gui.Visible and gui.Parent ~= MainFrame then
-        -- Kích hoạt trực tiếp bằng code logic thay vì nhấp chuột ảo vào màn hình
         pcall(function() gui:Activate() end)
-        -- Dự phòng thêm sự kiện click ngầm (Không chiếm quyền cảm ứng của người chơi)
         local events = {"MouseButton1Click", "MouseButton1Down", "Activated"}
         for _, eventName in pairs(events) do
             if gui[eventName] then
