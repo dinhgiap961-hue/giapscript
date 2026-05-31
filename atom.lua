@@ -193,7 +193,7 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ====================================================================
--- CHỨC NĂNG 2: XẢ ĐẠN X10 SIÊU CẤP VIP PRO & ĐÓNG BĂNG SKILL
+-- CHỨC NĂNG 2: XẢ ĐẠN X10 SIÊU CẤP VIP PRO & ĐÓNG BĂNG SKILL & GHIM ĐẠN
 -- ====================================================================
 local attackRemote = ReplicatedStorage:FindFirstChild("Attack", true) or ReplicatedStorage:FindFirstChild("Skill", true) or ReplicatedStorage:FindFirstChild("UseSkill", true)
 
@@ -204,14 +204,60 @@ end
 
 local skillKeys = {Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three, Enum.KeyCode.Four, Enum.KeyCode.Five, Enum.KeyCode.E}
 
+-- HÀM LOGIC: TỰ ĐỘNG BẮT ĐẠN TRÊN MAP VÀ GHIM VÀO QUÁI
+local function GhimBulletToMonster(bullet, monsterRoot)
+    if not bullet:IsA("BasePart") or bullet:FindFirstChild("AtomPinned") then return end
+    
+    -- Đánh dấu đạn đã xử lý để tránh lặp logic
+    local marker = Instance.new("BoolValue", bullet)
+    marker.Name = "AtomPinned"
+    
+    -- Dùng Tween để ép viên đạn bay thẳng vào người quái ngay lập tức
+    local tweenInfo = TweenInfo.new(0.1, Enum.EasingStyle.Linear)
+    local tween = TweenService:Create(bullet, tweenInfo, {CFrame = monsterRoot.CFrame})
+    tween:Play()
+    
+    -- Chờ tween chạy xong rồi thực hiện ghim dính vật lý
+    tween.Completed:Connect(function()
+        if monsterRoot and monsterRoot.Parent and bullet and bullet.Parent then
+            bullet.CanCollide = false
+            bullet.Anchored = false
+            
+            -- Tạo mối hàn ghim chặt đạn vào quái
+            local weld = Instance.new("WeldConstraint", monsterRoot)
+            weld.Part0 = monsterRoot
+            weld.Part1 = bullet
+            
+            -- Tự hủy đạn sau 4 giây tránh nặng game
+            game:GetService("Debris"):AddItem(bullet, 4)
+        end
+    end)
+end
+
+-- Vòng lặp chính quản lý AutoFarm + Xả đạn x10 + Quét Ghim Đạn
 task.spawn(function()
     while true do
         if AutoFarmActive then
             local Monster = FindAnyMonster()
             if Monster and Monster:FindFirstChild("HumanoidRootPart") then
                 local targetPos = Monster.HumanoidRootPart.Position
+                local monsterRoot = Monster.HumanoidRootPart
                 
-                -- LUỒNG XẢ ĐẠN X10 (MULTICAST CHỒNG GÓI TIN LÊN SERVER)
+                -- 1. LUỒNG QUÉT TOÀN MAP ĐỂ GHIM ĐẠN (Chạy song song)
+                task.spawn(function()
+                    for _, child in pairs(Workspace:GetChildren()) do
+                        -- Nhận diện các object đạn bay tự do do bạn tạo ra (Thường tên Bullet, Part, v.v...)
+                        -- Đoạn này quét tất cả các Part rơi ngoài Workspace không thuộc về nhân vật của bạn
+                        if child:IsA("BasePart") and child.Name ~= "Terrain" and not child:IsDescendantOf(Player.Character) and not child:IsDescendantOf(Monster) then
+                            -- Nếu viên đạn ở khoảng cách gần hoặc bay tự do, lập tức hút ghim vào boss
+                            if (child.Position - Player.Character.HumanoidRootPart.Position).Magnitude < 250 then
+                                GhimBulletToMonster(child, monsterRoot)
+                            end
+                        end
+                    end
+                end)
+                
+                -- 2. LUỒNG XẢ ĐẠN X10 (MULTICAST CHỒNG GÓI TIN LÊN SERVER)
                 if attackRemote and attackRemote:IsA("RemoteEvent") then
                     for i = 1, 10 do -- Lặp lệnh phát đạn x10 lần cùng lúc tại một thời điểm
                         attackRemote:FireServer(targetPos)
@@ -219,8 +265,7 @@ task.spawn(function()
                     end
                 end
                 
-                -- LUỒNG PHÁ ĐÓNG BĂNG SKILL KHÔNG HỒI GIÂY
-                -- Gửi tín hiệu phím ảo cực nhanh nhằm giữ các ô trạng thái của Client luôn mở rộng (Không đếm số)
+                -- 3. LUỒNG PHÁ ĐÓNG BĂNG SKILL KHÔNG HỒI GIÂY
                 for k = 1, #skillKeys do
                     VirtualInputManager:SendKeyEvent(true, skillKeys[k], false, game)
                     VirtualInputManager:SendKeyEvent(false, skillKeys[k], false, game)
