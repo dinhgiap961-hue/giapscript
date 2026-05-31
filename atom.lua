@@ -1,56 +1,50 @@
 -- ============================================================================
--- DRAGON BLOX: GIAO DIỆN & ĐỘNG CƠ TỰ ĐỘNG (FULL GÓI)
+-- DRAGON BLOX: TARGET LOCK & AUTO SPAM ENGINE (Bản chuẩn)
 -- ============================================================================
 
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Window = Library.CreateLib("Dragon Blox V1.4 - Control Panel", "DarkTheme")
+local RS = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
 
--- BẢNG CẤU HÌNH GỐC
-getgenv().Settings = {
-    AutoSkills = false,
-    AutoLock = false,
-    Target = "Atom"
-}
+-- BẢNG CẤU HÌNH (THAY TÊN REMOTE Ở ĐÂY SAU KHI DÙNG SPY)
+local REMOTE_NAME = "SkillEvent" -- Cần thay đúng tên sau khi dùng SimpleSpy
 
-local Tab = Window:NewTab("Menu Chính")
-local Section = Tab:NewSection("Công Cụ Tự Động")
-
-Section:NewToggle("Auto Skill (Spam)", "Tự động kích hoạt chiêu", function(state)
-    getgenv().Settings.AutoSkills = state
-end)
-
-Section:NewToggle("Auto Lock Target", "Khóa vào Atom", function(state)
-    getgenv().Settings.AutoLock = state
-end)
-
--- [CƠ CHẾ ĐỘNG CƠ CỐT LÕI - PHẦN NÀY QUYẾT ĐỊNH NÓ CÓ CHẠY HAY KHÔNG]
-task.spawn(function()
-    while task.wait(0.05) do
-        pcall(function()
-            -- Phần 1: Tự động tìm Remote (Nếu script không chạy, thay "SkillEvent" bằng tên trong SimpleSpy)
-            local CombatRemote = game:GetService("ReplicatedStorage"):FindFirstChild("SkillEvent") 
-            
-            if getgenv().Settings.AutoSkills and CombatRemote then
-                CombatRemote:FireServer("Energy Ball")
-                CombatRemote:FireServer("Ego")
+-- HÀM TÌM QUÁI GẦN NHẤT (KHÔNG CẦN CHỌN MỤC TIÊU)
+local function GetNearestEnemy()
+    local nearest = nil
+    local shortestDist = math.huge
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        -- Lọc đối tượng là Quái hoặc Boss (thay tên nếu cần)
+        if obj.Name == "Atom" and obj:FindFirstChild("HumanoidRootPart") then
+            local dist = (LocalPlayer.Character.HumanoidRootPart.Position - obj.HumanoidRootPart.Position).Magnitude
+            if dist < shortestDist then
+                shortestDist = dist
+                nearest = obj
             end
+        end
+    end
+    return nearest
+end
 
-            -- Phần 2: Cơ chế bám đuổi (Lock)
-            if getgenv().Settings.AutoLock then
-                local player = game:GetService("Players").LocalPlayer
-                local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-                for _, v in pairs(game:GetService("Workspace"):GetDescendants()) do
-                    if v.Name == getgenv().Settings.Target and v:FindFirstChild("HumanoidRootPart") then
-                        hrp.CFrame = v.HumanoidRootPart.CFrame * CFrame.new(0, 5, 5)
-                    end
+-- VÒNG LẶP CHIẾN ĐẤU (Ghim mục tiêu & Spam)
+task.spawn(function()
+    while task.wait(0.04) do
+        pcall(function()
+            local target = GetNearestEnemy()
+            if target then
+                -- 1. Tự động Ghim vị trí (Teleport hoặc xoay mặt về phía quái)
+                local hrp = LocalPlayer.Character.HumanoidRootPart
+                hrp.CFrame = CFrame.new(hrp.Position, target.HumanoidRootPart.Position)
+                
+                -- 2. Spam Skill vào Target (Gửi Instance hoặc vị trí)
+                local remote = RS:FindFirstChild(REMOTE_NAME)
+                if remote then
+                    -- Lưu ý: Nhiều game yêu cầu tham số là Vị trí (CFrame/Vector3) hoặc Target
+                    remote:FireServer("Energy Ball", target) -- Thêm 'target' làm tham số 2
+                    remote:FireServer("Ego", target)         -- để server tự khóa mục tiêu
                 end
             end
         end)
     end
-end)
-
--- [ANTI-AFK ĐỂ KHÔNG BỊ KICK]
-game:GetService("Players").LocalPlayer.Idled:Connect(function()
-    game:GetService("VirtualUser"):CaptureController()
-    game:GetService("VirtualUser"):ClickButton2(Vector2.new(0,0))
 end)
