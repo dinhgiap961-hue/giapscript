@@ -184,10 +184,7 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
-
--- ==================== CƠ CHẾ MỚI: ĐỨNG IM KHÔNG VUNG TAY + XẢ CHIÊU LIÊN TỤC ====================
-
--- 1. Luồng chặn đứng toàn bộ Animation vung tay của nhân vật
+-- Tối ưu hóa tốc độ chạy Animation trên Client
 RunService.RenderStepped:Connect(function()
     if Active then
         local Char = Player.Character
@@ -195,8 +192,8 @@ RunService.RenderStepped:Connect(function()
             local Humanoid = Char:FindFirstChildOfClass("Humanoid")
             if Humanoid then
                 local Animator = Humanoid:FindFirstChildOfClass("Animator") or Humanoid
-                -- Quét dứt điểm toàn bộ hoạt ảnh đang chạy và ép dừng ngay lập tức
                 for _, track in pairs(Animator:GetPlayingAnimationTracks()) do
+                    -- Chặn đứng các animation thừa để giữ trạng thái đứng im ra chiêu mượt mà
                     track:Stop()
                 end
             end
@@ -204,7 +201,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- 2. Vòng lặp kích hoạt chiêu trực tiếp ở mức 0.1s (Bypass phím vật lý)
+-- Vòng lặp kích hoạt chiêu trực tiếp ở mức 0.1s
 task.spawn(function()
     while true do
         if Active then
@@ -212,33 +209,25 @@ task.spawn(function()
             if Boss then
                 local Char = Player.Character
                 if Char then
-                    -- Kiểm tra xem nhân vật có đang cầm Vũ khí/Kỹ năng (Tool) trên tay không
                     local Tool = Char:FindFirstChildOfClass("Tool")
-                    
-                    -- Nếu không cầm trên tay, tự động tìm trong Backpack (Túi đồ) để kích hoạt ngầm
                     if not Tool and Player:FindFirstChild("Backpack") then
                         Tool = Player.Backpack:FindFirstChildOfClass("Tool")
                     end
-                    
                     if Tool then
-                        -- Ép Tool kích hoạt trực tiếp từ code hệ thống (Không chạy animation vung tay)
                         pcall(function() 
                             Tool:Activate() 
                         end)
                     end
                 end
                 
-                -- Giữ phím E phòng hờ trường hợp game bắt buộc nhận diện phím bấm vật lý
+                -- Giả lập nhấn phím vật lý để kích hoạt kịch trần tốc độ Client cho phép
                 VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
                 VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
             end
         end
-        task.wait(0.1) -- Độ trễ 0.1 giây chuẩn hóa
+        task.wait(0.1)
     end
 end)
-
--- =========================================================================================
-
 
 -- Hàm hỗ trợ Click UI
 local function ClickGuiObject(gui)
