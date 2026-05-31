@@ -13,7 +13,7 @@ local Screen = Instance.new("ScreenGui", Player:WaitForChild("PlayerGui"))
 Screen.Name = "AutoBossGui"
 Screen.ResetOnSpawn = false
 
--- Khung chứa (Frame) - Giữ nguyên kích thước 5 nút gốc
+-- Khung chứa (Frame) - Quản lý menu 5 nút gốc
 local MainFrame = Instance.new("Frame", Screen)
 MainFrame.Size = UDim2.new(0, 160, 0, 270)
 MainFrame.Position = UDim2.new(0.8, 0, 0.3, 0)
@@ -39,7 +39,7 @@ LockBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 LockBtn.Font = Enum.Font.SourceSansBold
 LockBtn.TextSize = 16
 
--- Nút 3: Tự động Start Raid (Giữ nguyên)
+-- Nút 3: Tự động Start Raid
 local StartBtn = Instance.new("TextButton", MainFrame)
 StartBtn.Size = UDim2.new(1, 0, 0, 50)
 StartBtn.Position = UDim2.new(0, 0, 0, 110)
@@ -49,7 +49,7 @@ StartBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 StartBtn.Font = Enum.Font.SourceSansBold
 StartBtn.TextSize = 16
 
--- Nút 4: Tự động Next Raid (Đã sửa theo ảnh mới)
+-- Nút 4: Tự động Next Raid
 local NextBtn = Instance.new("TextButton", MainFrame)
 NextBtn.Size = UDim2.new(1, 0, 0, 50)
 NextBtn.Position = UDim2.new(0, 0, 0, 165)
@@ -59,7 +59,7 @@ NextBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 NextBtn.Font = Enum.Font.SourceSansBold
 NextBtn.TextSize = 16
 
--- Nút 5: Tự động Play Again (Giữ nguyên)
+-- Nút 5: Tự động Play Again
 local PlayAgainBtn = Instance.new("TextButton", MainFrame)
 PlayAgainBtn.Size = UDim2.new(1, 0, 0, 50)
 PlayAgainBtn.Position = UDim2.new(0, 0, 0, 220)
@@ -207,49 +207,22 @@ task.spawn(function()
     end
 end)
 
--- HÀM THỰC HIỆN ÉP CLICK VÀO NÚT BẤM (Hỗ trợ cả nút chữ lẫn nút hình ảnh ẩn)
-local function ClickTargetUi(searchKey)
-    for _, gui in pairs(Player.PlayerGui:GetDescendants()) do
-        -- Chỉ xử lý các nút bấm thực tế của game, bỏ qua menu tool hack
-        if (gui:IsA("TextButton") or gui:IsA("ImageButton")) and gui.Parent ~= MainFrame and gui.Visible then
-            local match = false
-            
-            -- Kiểm tra nếu là nút chữ thông thường
-            if gui:IsA("TextButton") then
-                local txt = string.lower(gui.Text)
-                if string.find(txt, searchKey) then match = true end
-            end
-            
-            -- Kiểm tra qua tên của Object nút bấm (áp dụng cho cả nút hình ảnh)
-            local name = string.lower(gui.Name)
-            if string.find(name, searchKey) then match = true end
-            
-            if match then
-                -- Ép lệnh Click trực tiếp qua hệ thống tọa độ màn hình
-                local x = gui.AbsolutePosition.X + (gui.AbsoluteSize.X / 2)
-                local y = gui.AbsolutePosition.Y + (gui.AbsoluteSize.Y / 2) + 36
-                VirtualInputManager:SendMouseButtonEvent(x, y, 0, true, game, 1)
-                task.wait(0.02)
-                VirtualInputManager:SendMouseButtonEvent(x, y, 0, false, game, 1)
-                
-                -- Ép kích hoạt bằng hàm sự kiện nội bộ của game
-                pcall(function() gui:Activate() end)
-                pcall(function()
-                    local oldSelected = GuiService.SelectedObject
-                    GuiService.SelectedObject = gui
-                    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
-                    task.wait(0.02)
-                    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
-                    GuiService.SelectedObject = oldSelected
-                end)
-                return true
-            end
-        end
+-- Hàm hỗ trợ Click trực tiếp bằng tọa độ tuyệt đối của Roblox UI
+local function ClickGuiObject(gui)
+    if gui and gui.Visible and gui.AbsoluteSize.X > 0 then
+        local x = gui.AbsolutePosition.X + (gui.AbsoluteSize.X / 2)
+        local y = gui.AbsolutePosition.Y + (gui.AbsoluteSize.Y / 2) + 36
+        VirtualInputManager:SendMouseButtonEvent(x, y, 0, true, game, 1)
+        task.wait(0.02)
+        VirtualInputManager:SendMouseButtonEvent(x, y, 0, false, game, 1)
+        pcall(function() gui:Activate() end)
     end
-    return false
 end
 
--- VÒNG LẶP: TỰ ĐỘNG START RAID TỪ XA
+
+-- ==================== PHẦN SỬA ĐỔI TOÀN BỘ LOGIC CLICK THEO ẢNH MỚI ====================
+
+-- 1. VÒNG LẶP: TỰ ĐỘNG START RAID TỪ XA
 task.spawn(function()
     while true do
         if AutoStart then
@@ -270,26 +243,20 @@ task.spawn(function()
     end
 end)
 
--- VÒNG LẶP: TỰ ĐỘNG NEXT RAID (Đã sửa: Nhấp vào nút "Start" ở dưới cùng bảng Dungeons mới chụp)
+-- 2. VÒNG LẶP: TỰ ĐỘNG NEXT RAID (Bảng chọn màn hình Dungeon ở ảnh 164849)
 task.spawn(function()
     while true do
         if AutoNext then
-            -- Chỉ quét nút "Start" nằm bên trong cụm UI chọn Dungeon, né nút Leave ra
+            -- Quét để tìm đúng nút bấm có chữ "Start" nằm dưới cùng bên phải của bảng chọn màn
             for _, gui in pairs(Player.PlayerGui:GetDescendants()) do
-                if (gui:IsA("TextButton") or gui:IsA("ImageButton")) and gui.Parent ~= MainFrame and gui.Visible then
-                    local nameLower = string.lower(gui.Name)
-                    local textLower = gui:IsA("TextButton") and string.lower(gui.Text) or ""
+                if (gui:IsA("TextButton") or gui:IsA("ImageButton")) and gui.Parent ~= MainFrame and gui.Visible and gui.AbsolutePosition.Y > 150 then
+                    local txt = gui:IsA("TextButton") and string.lower(gui.Text) or ""
+                    local name = string.lower(gui.Name)
                     
-                    -- Tìm đúng chữ "Start" ở góc dưới bên phải bảng dungeon
-                    if string.find(nameLower, "start") or string.find(textLower, "start") then
-                        -- Không click nếu nó là nút Leave ở phía trên thanh topbar
-                        if not string.find(nameLower, "leave") and gui.AbsolutePosition.Y > 100 then
-                            local x = gui.AbsolutePosition.X + (gui.AbsoluteSize.X / 2)
-                            local y = gui.AbsolutePosition.Y + (gui.AbsoluteSize.Y / 2) + 36
-                            VirtualInputManager:SendMouseButtonEvent(x, y, 0, true, game, 1)
-                            task.wait(0.02)
-                            VirtualInputManager:SendMouseButtonEvent(x, y, 0, false, game, 1)
-                            pcall(function() gui:Activate() end)
+                    -- Xác định chính xác nút "Start" khởi chạy màn mới chứ không quét nhầm nút topbar
+                    if string.find(txt, "start") or string.find(name, "start") then
+                        if not string.find(name, "leave") then
+                            ClickGuiObject(gui)
                         end
                     end
                 end
@@ -299,12 +266,37 @@ task.spawn(function()
     end
 end)
 
--- VÒNG LẶP: TỰ ĐỘNG PLAY AGAIN
+-- 3. VÒNG LẶP: TỰ ĐỘNG PLAY AGAIN (Giải quyết kẹt bảng Rewards ở ảnh 164825)
 task.spawn(function()
     while true do
         if AutoPlayAgain then
-            ClickTargetUi("again")
-            ClickTargetUi("play")
+            local foundRewardsFrame = false
+            
+            -- Bước A: Quét xem bảng "Rewards Collected" có đang hiển thị đè màn hình hay không
+            for _, gui in pairs(Player.PlayerGui:GetDescendants()) do
+                if gui:IsA("TextLabel") and gui.Visible and (string.find(string.lower(gui.Text), "rewards") or string.find(string.lower(gui.Text), "cleared")) then
+                    foundRewardsFrame = true
+                    break
+                end
+            end
+            
+            -- Nếu có bảng phần thưởng hiện lên, giả lập click vào vùng trống (tọa độ trung tâm màn hình) để tắt nó đi
+            if foundRewardsFrame then
+                VirtualInputManager:SendMouseButtonEvent(400, 300, 0, true, game, 1)
+                task.wait(0.05)
+                VirtualInputManager:SendMouseButtonEvent(400, 300, 0, false, game, 1)
+                task.wait(0.3) -- Chờ bảng biến mất hoàn toàn
+            end
+            
+            -- Bước B: Sau khi đã xóa vật cản, thực hiện quét và click chính xác nút Play Again
+            for _, gui in pairs(Player.PlayerGui:GetDescendants()) do
+                if gui:IsA("TextButton") and gui.Parent ~= MainFrame and gui.Visible then
+                    local txt = string.lower(gui.Text)
+                    if string.find(txt, "again") or string.find(txt, "play") then
+                        ClickGuiObject(gui)
+                    end
+                end
+            end
         end
         task.wait(0.5)
     end
