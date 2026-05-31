@@ -4,11 +4,11 @@ local VirtualInputManager = game:GetService("VirtualInputManager")
 local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
 
--- Xóa sạch GUI cũ tránh trùng lặp dữ liệu
+-- Xóa sạch GUI cũ tránh trùng lặp
 local oldGui = Player:WaitForChild("PlayerGui"):FindFirstChild("AutoBossGui")
 if oldGui then oldGui:Destroy() end
 
--- Khởi tạo ScreenGui mới hoàn toàn
+-- Khởi tạo ScreenGui
 local Screen = Instance.new("ScreenGui", Player:WaitForChild("PlayerGui"))
 Screen.Name = "AutoBossGui"
 Screen.ResetOnSpawn = false
@@ -79,7 +79,7 @@ end)
 Btn.InputChanged:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end end)
 UserInputService.InputChanged:Connect(function(input) if input == dragInput and dragging then update(input) end end)
 
--- Biến logic
+-- Biến điều hướng câu lệnh
 local Active = false
 local LockMode = "ALL"
 local AutoStart = false
@@ -116,7 +116,7 @@ PlayAgainBtn.MouseButton1Click:Connect(function()
     PlayAgainBtn.BackgroundColor3 = AutoPlayAgain and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(120, 120, 0)
 end)
 
--- Quét tìm Boss nâng cao
+-- Quét tìm mục tiêu Boss
 local function FindBossDeep()
     for _, v in pairs(workspace:GetDescendants()) do
         if v:IsA("Model") and v:FindFirstChild("HumanoidRootPart") then
@@ -129,8 +129,7 @@ local function FindBossDeep()
     return nil
 end
 
--- ==================== ĐỘNG CƠ SILENT AIM VÀ KHÓA HƯỚNG MỚI ====================
--- Thay vì dùng hook chuột dễ lỗi, ta ép trực tiếp góc nhìn Camera và hướng đạn vật lý
+-- Vòng lặp khóa hướng dịch chuyển và bẻ hướng Camera (Silent Aim hướng đạn)
 RunService.Heartbeat:Connect(function()
     if Active then
         local Char = Player.Character
@@ -140,15 +139,14 @@ RunService.Heartbeat:Connect(function()
             local Humanoid = Char:FindFirstChildOfClass("Humanoid")
             if Humanoid then Humanoid.PlatformStand = true end
             
-            -- Neo vị trí an toàn phía trên Boss
-            local SafeHeight = Vector3.new(0, 35, 0)
-            local TargetPos = Boss.HumanoidRootPart.Position + SafeHeight
+            -- Giữ độ cao an toàn 35 stud phía trên quái
+            local TargetPos = Boss.HumanoidRootPart.Position + Vector3.new(0, 35, 0)
             
-            -- Ép Nhân vật nhìn thẳng xuống Boss
+            -- Ép người nhân vật xoay thẳng về hướng Boss
             Char.HumanoidRootPart.CFrame = CFrame.new(TargetPos, Boss.HumanoidRootPart.Position)
             Char.HumanoidRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
             
-            -- Ép Camera của máy bạn hướng thẳng vào Boss (Bẻ hướng đạn dựa trên Camera)
+            -- Ép Camera nhìn thẳng vào Boss để đạn tự tìm mục tiêu chính xác 100%
             if workspace.CurrentCamera then
                 workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, Boss.HumanoidRootPart.Position)
             end
@@ -159,23 +157,8 @@ RunService.Heartbeat:Connect(function()
         local Char = Player.Character if Char then local Humanoid = Char:FindFirstChildOfClass("Humanoid") if Humanoid then Humanoid.PlatformStand = false end end
     end
 end)
--- =============================================================================
 
--- Đóng băng hoạt ảnh cơ thể
-RunService.RenderStepped:Connect(function()
-    if Active then
-        local Char = Player.Character
-        if Char then
-            local Humanoid = Char:FindFirstChildOfClass("Humanoid")
-            if Humanoid then
-                local Animator = Humanoid:FindFirstChildOfClass("Animator") or Humanoid
-                for _, track in pairs(Animator:GetPlayingAnimationTracks()) do track:Stop() end
-            end
-        end
-    end
-end)
-
--- Vòng lặp xả chiêu mượt mà tương thích Server dữ liệu mới
+-- KHÔI PHỤC VÀ TỐI ƯU LUỒNG SPAM SKILL LIÊN TỤC (Đã gỡ bỏ Đóng băng Animation lỗi)
 task.spawn(function()
     while true do
         if Active then
@@ -183,25 +166,29 @@ task.spawn(function()
             if Boss then
                 local Char = Player.Character
                 if Char then
+                    -- Tự động cầm vũ khí/skill nếu đang cất trong balo
                     local Tool = Char:FindFirstChildOfClass("Tool")
                     if not Tool and Player:FindFirstChild("Backpack") then
                         Tool = Player.Backpack:FindFirstChildOfClass("Tool")
+                        if Tool then Tool.Parent = Char end
                     end
                     
+                    -- Thực hiện kích hoạt chiêu liên hoàn
                     if Tool then
-                        -- Ra chiêu khi Camera đã bị khóa hướng vào mục tiêu
                         pcall(function() Tool:Activate() end)
-                        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
-                        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
                     end
                 end
+                
+                -- Giả lập nhấn phím E siêu tốc độ
+                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
             end
         end
-        task.wait(0.12) -- Nhịp độ chuẩn xác để đạn tìm quái liên tục mà không nghẽn dữ liệu
+        task.wait(0.1) -- Tốc độ spam chiêu tiêu chuẩn và mượt mà nhất
     end
 end)
 
--- Hệ thống Auto UI phụ trợ
+-- Hệ thống hỗ trợ Click UI tự động
 local function ClickGuiObject(gui)
     if gui and gui.Visible and gui.AbsoluteSize.X > 0 then
         local x = gui.AbsolutePosition.X + (gui.AbsoluteSize.X / 2)
