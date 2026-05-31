@@ -1,5 +1,5 @@
 -- ============================================================================
--- DRAGON BLOX V2 - PREMIUM HUB (ATOM MAX - SPAM E ONLY FINAL EDITION)
+-- DRAGON BLOX V2 - PREMIUM HUB (ATOM MAX - ULTRA FAST SPAM E FINAL PACK)
 -- ============================================================================
 
 -- 1. KHỞI TẠO HỆ THỐNG VÀ KIỂM TRA KẾT NỐI UI
@@ -202,8 +202,8 @@ MainSection:NewToggle("Auto Boss V1 (30 Studs + Auto Aim)", "Tự bay cao, tự 
     end
 end)
 
--- Auto Boss V2: Tự động xoay Aim + Chỉ Spam duy nhất phím E (Đã bỏ hoàn toàn F, G, X)
-MainSection:NewToggle("Auto Boss V2 (Auto Aim + Spam phím E Only)", "Tự động Aim trúng đích và tự Spam DUY NHẤT chiêu E", function(state)
+-- Auto Boss V2: Tự động xoay Aim + Tối ưu hóa gửi gói tin nhấn phím E siêu tốc (Bỏ hẳn task.wait bên trong)
+MainSection:NewToggle("Auto Boss V2 (Auto Aim + Ultra Spam E)", "Tự động Aim trúng đích và tự Spam phím E tốc độ phần cứng", function(state)
     getgenv().AutoBossV2 = state
     
     if state then
@@ -219,12 +219,11 @@ MainSection:NewToggle("Auto Boss V2 (Auto Aim + Spam phím E Only)", "Tự độ
                         workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, target.Position)
                     end
                     
-                    -- Tự động gửi tín hiệu gõ phím E siêu tốc độ
+                    -- Gửi liên tục sự kiện nhấn và nhả phím E kịch trần không có độ trễ
                     InputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
-                    task.wait(0.01)
                     InputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
                 end)
-                task.wait(0.03)
+                task.wait() -- Chờ theo chu kỳ khung hình máy để chống văng game
             end
         end)
     end
