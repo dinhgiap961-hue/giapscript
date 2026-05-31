@@ -18,7 +18,6 @@ Screen.ResetOnSpawn = false
 -- THIẾT KẾ GIAO DIỆN MENU CHUYÊN NGHIỆP
 -- ==========================================
 
--- Khung chứa chính (Main Frame)
 local MainFrame = Instance.new("Frame", Screen)
 MainFrame.Size = UDim2.new(0, 180, 0, 320)
 MainFrame.Position = UDim2.new(0.8, 0, 0.25, 0)
@@ -29,7 +28,6 @@ MainFrame.ClipsDescendants = true
 local MainCorner = Instance.new("UICorner", MainFrame)
 MainCorner.CornerRadius = UDim.new(0, 8)
 
--- Thanh Tiêu Đề (Title Bar - Dùng để kéo thả)
 local TitleBar = Instance.new("Frame", MainFrame)
 TitleBar.Size = UDim2.new(1, 0, 0, 35)
 TitleBar.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
@@ -48,7 +46,6 @@ TitleText.TextSize = 15
 TitleText.TextXAlignment = Enum.TextXAlignment.Left
 TitleText.BackgroundTransparency = 1
 
--- Nút Thu Nhỏ / Phóng To (- / +)
 local ToggleSizeBtn = Instance.new("TextButton", TitleBar)
 ToggleSizeBtn.Size = UDim2.new(0, 25, 0, 25)
 ToggleSizeBtn.Position = UDim2.new(1, -30, 0, 5)
@@ -61,13 +58,11 @@ ToggleSizeBtn.TextSize = 18
 local BtnCorner = Instance.new("UICorner", ToggleSizeBtn)
 BtnCorner.CornerRadius = UDim.new(0, 5)
 
--- Khung chứa các nút chức năng (Container)
 local ButtonContainer = Instance.new("Frame", MainFrame)
 ButtonContainer.Size = UDim2.new(1, 0, 1, -35)
 ButtonContainer.Position = UDim2.new(0, 0, 0, 35)
 ButtonContainer.BackgroundTransparency = 1
 
--- Hàm tạo nút chuẩn hóa giao diện phẳng hiện đại
 local function CreateMenuButton(name, text, posIndex, defaultColor)
     local btn = Instance.new("TextButton", ButtonContainer)
     btn.Size = UDim2.new(1, -20, 0, 42)
@@ -83,7 +78,6 @@ local function CreateMenuButton(name, text, posIndex, defaultColor)
     return btn
 end
 
--- Khởi tạo các nút bấm vào Khung chứa
 local FarmBtn = CreateMenuButton("FarmBtn", "AUTO FARM: OFF", 0, Color3.fromRGB(180, 40, 40))
 local BossBtn = CreateMenuButton("BossBtn", "AUTO BOSS: OFF", 1, Color3.fromRGB(180, 40, 40))
 local StartBtn = CreateMenuButton("StartBtn", "START RAID: OFF", 2, Color3.fromRGB(200, 100, 0))
@@ -94,7 +88,6 @@ local PlayAgainBtn = CreateMenuButton("PlayAgainBtn", "PLAY AGAIN: OFF", 4, Colo
 -- LOGIC KÉO THẢ & PHÓNG TO / THU NHỎ UI
 -- ==========================================
 
--- Tính năng thu nhỏ / phóng to bảng
 local isMinimized = false
 ToggleSizeBtn.MouseButton1Click:Connect(function()
     isMinimized = not isMinimized
@@ -109,7 +102,6 @@ ToggleSizeBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Hệ thống kéo thả menu bằng thanh Tiêu đề (TitleBar)
 local dragging, dragInput, dragStart, startPos
 local function update(input)
     local delta = input.Position - dragStart
@@ -140,10 +132,15 @@ FarmBtn.MouseButton1Click:Connect(function()
     FarmBtn.BackgroundColor3 = AutoFarmActive and Color3.fromRGB(40, 160, 40) or Color3.fromRGB(180, 40, 40)
 end)
 
+-- Khi tắt Auto Boss, lập tức giải phóng PlatformStand để hồi phục di chuyển bình thường
 BossBtn.MouseButton1Click:Connect(function()
     AutoBossActive = not AutoBossActive
     BossBtn.Text = AutoBossActive and "AUTO BOSS: ON" or "AUTO BOSS: OFF"
     BossBtn.BackgroundColor3 = AutoBossActive and Color3.fromRGB(40, 160, 40) or Color3.fromRGB(180, 40, 40)
+    if not AutoBossActive then
+        local Char = Player.Character
+        if Char then local Humn = Char:FindFirstChildOfClass("Humanoid") if Humn then Humn.PlatformStand = false end end
+    end
 end)
 
 StartBtn.MouseButton1Click:Connect(function()
@@ -164,7 +161,6 @@ PlayAgainBtn.MouseButton1Click:Connect(function()
     PlayAgainBtn.BackgroundColor3 = AutoPlayAgain and Color3.fromRGB(40, 160, 40) or Color3.fromRGB(140, 140, 0)
 end)
 
--- Hàm tìm mục tiêu quái/Boss gần nhất
 local function FindAnyMonster()
     local targetMonster = nil
     local shortestDistance = math.huge
@@ -188,7 +184,7 @@ local function FindAnyMonster()
     return targetMonster
 end
 
--- Vòng lặp quản lý vị trí dịch chuyển (Chỉ dịch chuyển đứng trên đầu khi có Auto Boss)
+-- Vòng lặp dịch chuyển (Chỉ khóa di chuyển khi đang thực sự bay trên đầu Boss)
 RunService.Heartbeat:Connect(function()
     local Char = Player.Character
     if AutoBossActive then
@@ -200,16 +196,12 @@ RunService.Heartbeat:Connect(function()
             local TargetPos = Monster.HumanoidRootPart.Position + Vector3.new(0, 35, 0)
             Char.HumanoidRootPart.CFrame = CFrame.new(TargetPos, Monster.HumanoidRootPart.Position)
             Char.HumanoidRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-        else
-            if Char then local Humanoid = Char:FindFirstChildOfClass("Humanoid") if Humanoid then Humanoid.PlatformStand = false end end
         end
-    else
-        if Char then local Humanoid = Char:FindFirstChildOfClass("Humanoid") if Humanoid then Humanoid.PlatformStand = false end end
     end
 end)
 
 -- ====================================================================
--- CƠ CHẾ ĐÓNG BĂNG VÀ PHÁ COOLDOWN CHIÊU THỨC (GIỐNG VIDEO MẪU)
+-- CƠ CHẾ ĐÓNG BĂNG VÀ PHÁ COOLDOWN CHIÊU THỨC
 -- ====================================================================
 local attackRemote = ReplicatedStorage:FindFirstChild("Attack", true) or ReplicatedStorage:FindFirstChild("Skill", true) or ReplicatedStorage:FindFirstChild("UseSkill", true)
 
@@ -251,15 +243,24 @@ task.spawn(function()
     end
 end)
 
--- [Hệ thống Auto Click UI phụ trợ màn chơi]
-local function ClickGuiObject(gui)
-    if gui and gui.Visible and gui.AbsoluteSize.X > 0 then
-        local x = gui.AbsolutePosition.X + (gui.AbsoluteSize.X / 2)
-        local y = gui.AbsolutePosition.Y + (gui.AbsoluteSize.Y / 2) + 36
-        VirtualInputManager:SendMouseButtonEvent(x, y, 0, true, game, 1)
-        task.wait(0.02)
-        VirtualInputManager:SendMouseButtonEvent(x, y, 0, false, game, 1)
+-- ====================================================================
+-- HỆ THỐNG AUTO CLICK GAMEPLAY CHỐNG MẤT NÚT DI CHUYỂN (TỐI ƯU MỚI)
+-- ====================================================================
+local function SafeActivateButton(gui)
+    if gui and gui.Visible and gui.Parent ~= MainFrame then
+        -- Kích hoạt trực tiếp bằng code logic thay vì nhấp chuột ảo vào màn hình
         pcall(function() gui:Activate() end)
+        -- Dự phòng thêm sự kiện click ngầm (Không chiếm quyền cảm ứng của người chơi)
+        local events = {"MouseButton1Click", "MouseButton1Down", "Activated"}
+        for _, eventName in pairs(events) do
+            if gui[eventName] then
+                pcall(function()
+                    for _, connection in pairs(getconnections(gui[eventName])) do
+                        connection:Fire()
+                    end
+                end)
+            end
+        end
     end
 end
 
@@ -271,7 +272,6 @@ task.spawn(function()
                     if string.find(string.lower(prompt.ObjectText), "start") or string.find(string.lower(prompt.ActionText), "start") then
                         prompt.MaxActivationDistance = math.huge; prompt.RequiresLineOfSight = false
                         pcall(function() fireproximityprompt(prompt) end)
-                        prompt:InputHoldBegin(); task.wait(0.02); prompt:InputHoldEnd()
                     end
                 end
             end
@@ -288,7 +288,7 @@ task.spawn(function()
                     local txt = gui:IsA("TextButton") and string.lower(gui.Text) or ""
                     local name = string.lower(gui.Name)
                     if string.find(txt, "start") or string.find(name, "start") then
-                        if not string.find(name, "leave") then ClickGuiObject(gui) end
+                        if not string.find(name, "leave") then SafeActivateButton(gui) end
                     end
                 end
             end
@@ -300,22 +300,12 @@ end)
 task.spawn(function()
     while true do
         if AutoPlayAgain then
-            local foundRewardsFrame = false
-            for _, gui in pairs(Player.PlayerGui:GetDescendants()) do
-                if gui:IsA("TextLabel") and gui.Visible and (string.find(string.lower(gui.Text), "rewards") or string.find(string.lower(gui.Text), "cleared")) then
-                    foundRewardsFrame = true; break
-                end
-            end
-            if foundRewardsFrame then
-                VirtualInputManager:SendMouseButtonEvent(400, 300, 0, true, game, 1)
-                task.wait(0.05)
-                VirtualInputManager:SendMouseButtonEvent(400, 300, 0, false, game, 1)
-                task.wait(0.3)
-            end
             for _, gui in pairs(Player.PlayerGui:GetDescendants()) do
                 if gui:IsA("TextButton") and gui.Parent ~= MainFrame and gui.Visible then
                     local txt = string.lower(gui.Text)
-                    if string.find(txt, "again") or string.find(txt, "play") then ClickGuiObject(gui) end
+                    if string.find(txt, "again") or string.find(txt, "play") then 
+                        SafeActivateButton(gui) 
+                    end
                 end
             end
         end
