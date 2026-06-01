@@ -29,7 +29,7 @@ Btn.Parent = ScreenGui
 Instance.new("UICorner", Btn).CornerRadius = UDim.new(0,25)
 Btn.MouseButton1Click:Connect(function() Kavo:ToggleUI() end)
 
--- CHO MENU KÉO THẢ
+-- FIX: CHO MENU RA GIỮA MÀN HÌNH + KÉO THẢ
 task.spawn(function()
     repeat task.wait() until CoreGui:FindFirstChild("Kavo")
     local KavoUI = CoreGui:FindFirstChild("Kavo")
@@ -37,6 +37,8 @@ task.spawn(function()
         local main = KavoUI.MainFrame
         main.Active = true
         main.Draggable = true
+        main.AnchorPoint = Vector2.new(0.5, 0.5) -- Thêm dòng này
+        main.Position = UDim2.new(0.5, 0, 0.5, 0) -- Thêm dòng này: Ra giữa màn hình
     end
 end)
 
@@ -81,19 +83,16 @@ local function getMonster()
     return target
 end
 
--- CHECK FORM CHUẨN 100% - 5 LỚP
 local function isInForm()
     local char = Plr.Character
     if not char then return false end
 
-    -- Lớp 1: Check Values trong Character - ƯU TIÊN CAO NHẤT
     local stats = char:FindFirstChild("Stats") or char:FindFirstChild("stats") or char:FindFirstChild("Data")
     if stats then
         local formVal = stats:FindFirstChild("Form") or stats:FindFirstChild("Transformation") or stats:FindFirstChild("Mode")
         if formVal and formVal.Value > 0 then return true end
     end
 
-    -- Lớp 2: Check leaderstats Power > 50M = chắc chắn form
     local leaderstats = Plr:FindFirstChild("leaderstats")
     if leaderstats then
         local form = leaderstats:FindFirstChild("Form") or leaderstats:FindFirstChild("Transformation")
@@ -102,10 +101,8 @@ local function isInForm()
         if power and power.Value > 50000000 then return true end
     end
 
-    -- Lớp 3: Check tên nhân vật
     if string.find(char.Name, "SSJ") or string.find(char.Name, "Form") or string.find(char.Name, "Mystic") or string.find(char.Name, "Ultra") then return true end
 
-    -- Lớp 4: Check Aura/Effect đang bật
     for _,v in pairs(char:GetDescendants()) do
         if v.Name == "Aura" or v.Name == "SSJ" or v.Name == "Transform" or v.Name == "Glow" then return true end
         if v:IsA("ParticleEmitter") and (v.Parent.Name == "HumanoidRootPart" or v.Parent.Name == "Torso" or v.Parent.Name == "UpperTorso") then
@@ -114,7 +111,6 @@ local function isInForm()
         if v:IsA("PointLight") and v.Parent.Name == "HumanoidRootPart" then return true end
     end
 
-    -- Lớp 5: Check Attribute
     if char:GetAttribute("Form") and char:GetAttribute("Form") > 0 then return true end
     if char:GetAttribute("Transformation") then return true end
 
@@ -154,29 +150,60 @@ local function getKiPercent()
     return 100
 end
 
--- CHECK ĐANG CẦM VŨ KHÍ GÌ
-local function getCurrentTool()
-    local char = Plr.Character
-    if not char then return nil end
-    for _, tool in pairs(char:GetChildren()) do
+local function getWeapon()
+    for _, tool in pairs(Plr.Backpack:GetChildren()) do
         if tool:IsA("Tool") then
-            return tool
+            local name = string.lower(tool.Name)
+            if string.find(name, "sword") or string.find(name, "blade") or string.find(name, "katana") or string.find(name, "weapon") then
+                return tool
+            end
         end
     end
     return nil
 end
 
 local function isHoldingWeapon()
-    local tool = getCurrentTool()
-    if not tool then return false end
-    local name = string.lower(tool.Name)
-    return string.find(name, "sword") or string.find(name, "blade") or string.find(name, "katana") or string.find(name, "weapon")
+    local char = Plr.Character
+    if not char then return false end
+    for _, tool in pairs(char:GetChildren()) do
+        if tool:IsA("Tool") then
+            local name = string.lower(tool.Name)
+            if string.find(name, "sword") or string.find(name, "blade") or string.find(name, "katana") or string.find(name, "weapon") then
+                return true, tool
+            end
+        end
+    end
+    return false, nil
 end
 
 local function getRaids()
-    local raidsFolder = workspace:FindFirstChild("Raids") or workspace:FindFirstChild("Raid")
-    if raidsFolder then return raidsFolder:GetChildren() end
-    return {}
+    local raids = {}
+
+    for _, folderName in pairs({"Raids", "Raid", "Dungeons", "Dungeon", "Portals", "Portal", "Stages", "Rooms"}) do
+        local folder = workspace:FindFirstChild(folderName)
+        if folder then
+            for _, v in pairs(folder:GetChildren()) do
+                if v:IsA("Model") or v:IsA("Part") then
+                    table.insert(raids, v)
+                end
+            end
+        end
+    end
+
+    if #raids == 0 then
+        for _, v in pairs(workspace:GetDescendants()) do
+            if v:IsA("Part") or v:IsA("MeshPart") then
+                local name = string.lower(v.Name)
+                if string.find(name, "portal") or string.find(name, "enter") or string.find(name, "raid") or string.find(name, "door") then
+                    if v:FindFirstChild("TouchInterest") or v:FindFirstChild("ProximityPrompt") then
+                        table.insert(raids, v)
+                    end
+                end
+            end
+        end
+    end
+
+    return raids
 end
 
 -- 1. Spam Energy Blast [E]
@@ -263,29 +290,39 @@ Section:NewToggle("Auto Lock Skill", "Tự ghim skill vào boss", function(s)
     end
 end)
 
--- 6. FIX TRIỆT ĐỂ: Auto Boss [1] - Chỉ bấm khi chưa cầm vũ khí
-Section:NewToggle("Auto Boss [1]", "Thông minh - Chỉ bấm khi cần", function(s)
+-- 6. Auto Boss [1] - KHÓA KIẾM - Không nhả
+Section:NewToggle("Auto Boss [1]", "KHÓA KIẾM - Không nhả", function(s)
     _G.AutoBoss = s
     local attackRemote = findRemote("attack") or findRemote("punch") or findRemote("hit")
-    local lastSwitch = 0
-    local wasHoldingWeapon = false
+    local equippedWeapon = nil
 
     while _G.AutoBoss do
         pcall(function()
             local boss = getMonster()
             local hrp = Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart")
-            if boss and hrp then
-                local holding = isHoldingWeapon()
+            local hum = Plr.Character and Plr.Character:FindFirstChild("Humanoid")
 
-                -- Chỉ bấm 1 khi: chưa cầm vũ khí + cooldown 3s + trước đó cũng chưa cầm
-                if not holding and not wasHoldingWeapon and (tick() - lastSwitch) > 3 then
-                    VIM:SendKeyEvent(true, Enum.KeyCode.One, false, game)
-                    VIM:SendKeyEvent(false, Enum.KeyCode.One, false, game)
-                    lastSwitch = tick()
-                    task.wait(0.5) -- Đợi equip xong
+            if boss and hrp and hum then
+                local holding, currentTool = isHoldingWeapon()
+
+                if not holding then
+                    local weapon = getWeapon()
+                    if weapon then
+                        hum:EquipTool(weapon)
+                        equippedWeapon = weapon
+                        task.wait(0.2)
+                    else
+                        VIM:SendKeyEvent(true, Enum.KeyCode.One, false, game)
+                        VIM:SendKeyEvent(false, Enum.KeyCode.One, false, game)
+                        task.wait(0.3)
+                    end
+                else
+                    equippedWeapon = currentTool
                 end
 
-                wasHoldingWeapon = holding
+                if equippedWeapon and not isHoldingWeapon() then
+                    hum:EquipTool(equippedWeapon)
+                end
 
                 local distance = (hrp.Position - boss.HumanoidRootPart.Position).Magnitude
                 if distance < 10 then
@@ -294,12 +331,11 @@ Section:NewToggle("Auto Boss [1]", "Thông minh - Chỉ bấm khi cần", functi
                 if attackRemote then
                     attackRemote:FireServer()
                 end
-            else
-                wasHoldingWeapon = false
             end
         end)
         task.wait(0.1)
     end
+    equippedWeapon = nil
 end)
 
 -- 7. Auto Charge [C] - Thông minh
@@ -321,62 +357,86 @@ Section:NewToggle("Auto Charge [C]", "Tự giữ C khi ki < 90%", function(s)
     VIM:SendKeyEvent(false, Enum.KeyCode.C, false, game)
 end)
 
--- 8. FIX TRIỆT ĐỂ: Auto Form [Y] - Check 5 lớp + Cooldown 8s
-Section:NewToggle("Auto Form [Y]", "Siêu thông minh - Cooldown 8s", function(s)
+-- 8. Auto Form [Y] - KHÓA FORM - Không mất
+Section:NewToggle("Auto Form [Y]", "KHÓA FORM - Không mất", function(s)
     _G.AutoForm = s
     local lastPress = 0
     local lastDeath = false
-    local formState = false
+    local lockedForm = false
 
     Plr.CharacterAdded:Connect(function()
         lastDeath = true
-        formState = false
-        task.wait(8) -- Đợi 8s sau hồi sinh
+        lockedForm = false
+        task.wait(8)
         lastDeath = false
     end)
 
     while _G.AutoForm do
         local currentForm = isInForm()
-        local canPress = (tick() - lastPress) > 8 -- Cooldown 8s
+        local canPress = (tick() - lastPress) > 10
 
-        -- Chỉ bấm Y khi: chưa form + trước đó cũng chưa form + cooldown đủ + không vừa chết
-        if not currentForm and not formState and canPress and not lastDeath then
-            task.wait(1) -- Check lại sau 1s
+        if lockedForm and not currentForm and canPress and not lastDeath then
+            task.wait(0.5)
             if not isInForm() then
-                task.wait(1) -- Check lần 3 cho chắc
+                VIM:SendKeyEvent(true, Enum.KeyCode.Y, false, game)
+                task.wait(0.1)
+                VIM:SendKeyEvent(false, Enum.KeyCode.Y, false, game)
+                lastPress = tick()
+                task.wait(5)
+            end
+        elseif not currentForm and not lockedForm and canPress and not lastDeath then
+            task.wait(1)
+            if not isInForm() then
+                task.wait(1)
                 if not isInForm() then
                     VIM:SendKeyEvent(true, Enum.KeyCode.Y, false, game)
                     task.wait(0.1)
                     VIM:SendKeyEvent(false, Enum.KeyCode.Y, false, game)
                     lastPress = tick()
-                    task.wait(5) -- Đợi biến hình xong
+                    lockedForm = true
+                    task.wait(5)
                 end
             end
+        elseif currentForm then
+            lockedForm = true
         end
-
-        formState = currentForm
-        task.wait(0.5)
+        task.wait(0.3)
     end
 end)
 
--- 9. Auto Next Raid
-local raidIndex = 1
-Section:NewToggle("Auto Next Raid", "Tự chuyển raid tiếp theo", function(s)
+-- 9. Auto Next Raid - Fix 100% - Tự vào raid
+Section:NewToggle("Auto Next Raid", "Fix 100% - Tự vào raid", function(s)
     _G.AutoNextRaid = s
+    local raidIndex = 1
+    local enterRemote = findRemote("enter") or findRemote("join") or findRemote("teleport") or findRemote("raid")
+
     while _G.AutoNextRaid do
         pcall(function()
-            local raids = getRaids()
-            if #raids > 0 then
-                local raid = raids[raidIndex]
-                local hrp = Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart")
-                if raid and raid:FindFirstChild("HumanoidRootPart") and hrp then
-                    hrp.CFrame = raid.HumanoidRootPart.CFrame + Vector3.new(0, 5, 0)
-                    raidIndex = raidIndex + 1
-                    if raidIndex > #raids then raidIndex = 1 end
+            if isDungeonClear() then
+                local raids = getRaids()
+                if #raids > 0 then
+                    local raid = raids[raidIndex]
+                    local hrp = Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart")
+
+                    if raid and hrp then
+                        if enterRemote then
+                            enterRemote:FireServer(raidIndex)
+                        end
+
+                        if raid:IsA("Part") or raid:IsA("MeshPart") then
+                            hrp.CFrame = raid.CFrame + Vector3.new(0, 3, 0)
+                        elseif raid:FindFirstChild("HumanoidRootPart") then
+                            hrp.CFrame = raid.HumanoidRootPart.CFrame + Vector3.new(0, 5, 0)
+                        end
+
+                        task.wait(5)
+                        raidIndex = raidIndex + 1
+                        if raidIndex > #raids then raidIndex = 1 end
+                    end
                 end
             end
         end)
-        task.wait(3)
+        task.wait(2)
     end
 end)
 
@@ -444,20 +504,34 @@ Section:NewToggle("Fix Lag", "Giảm lag khi đánh boss", function(s)
     end
 end)
 
--- 12. Auto Play Raid
-Section:NewToggle("Auto Play Raid", "Bật full auto", function(s)
+-- 12. Auto Play Raid - Fix 100% - Bật full auto
+Section:NewToggle("Auto Play Raid", "Fix 100% - Bật full auto", function(s)
     _G.AutoPlay = s
-    _G.EB = s
-    _G.Tp = s
-    _G.AutoLock = s
-    _G.AutoBoss = s
-    _G.AutoFushi = s
-    _G.AutoForm = s
-    _G.AutoNextRaid = s
-    _G.AutoClick = s
-    _G.AutoBeat = s
-    _G.HideName = s
-    _G.FixLag = s
+    if s then
+        Section.Flags["Spam Energy Blast [E]"]:Set(true)
+        Section.Flags["Treo Cổ Boss"]:Set(true)
+        Section.Flags["Auto Lock Skill"]:Set(true)
+        Section.Flags["Auto Boss [1]"]:Set(true)
+        Section.Flags["Auto Charge [C]"]:Set(true)
+        Section.Flags["Auto Form [Y]"]:Set(true)
+        Section.Flags["Auto Next Raid"]:Set(true)
+        Section.Flags["Auto Click"]:Set(true)
+        Section.Flags["Auto Beat [M]"]:Set(true)
+        Section.Flags["Hide Nametags"]:Set(true)
+        Section.Flags["Fix Lag"]:Set(true)
+    else
+        Section.Flags["Spam Energy Blast [E]"]:Set(false)
+        Section.Flags["Treo Cổ Boss"]:Set(false)
+        Section.Flags["Auto Lock Skill"]:Set(false)
+        Section.Flags["Auto Boss [1]"]:Set(false)
+        Section.Flags["Auto Charge [C]"]:Set(false)
+        Section.Flags["Auto Form [Y]"]:Set(false)
+        Section.Flags["Auto Next Raid"]:Set(false)
+        Section.Flags["Auto Click"]:Set(false)
+        Section.Flags["Auto Beat [M]"]:Set(false)
+        Section.Flags["Hide Nametags"]:Set(false)
+        Section.Flags["Fix Lag"]:Set(false)
+    end
 end)
 
 Section:NewButton("Ẩn Menu", "Thu nhỏ", function()
