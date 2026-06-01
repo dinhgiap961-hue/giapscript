@@ -136,26 +136,7 @@ local function getKiPercent()
     return 100
 end
 
-local function getWeaponByName(name)
-    if not name or name == "" then return nil end
-    for _, tool in pairs(Plr.Backpack:GetChildren()) do
-        if tool:IsA("Tool") and string.lower(tool.Name) == string.lower(name) then
-            return tool
-        end
-    end
-    return nil
-end
-
-local function isHoldingWeapon()
-    local char = Plr.Character
-    if not char then return false end
-    for _, tool in pairs(char:GetChildren()) do
-        if tool:IsA("Tool") then return true, tool end
-    end
-    return false, nil
-end
-
--- TAB MAIN - 5 NÚT CÓ CHỨC NĂNG
+-- TAB MAIN - 6 NÚT
 MainSection:NewToggle("Auto Click", "Tự động click chuột", function(s)
     _G.AutoClick = s
     while _G.AutoClick do
@@ -214,17 +195,48 @@ MainSection:NewToggle("Auto Form [C]", "Tự biến hình phím C - Khóa form",
     end
 end)
 
-MainSection:NewToggle("Auto Lock Skill", "Tự ghim skill vào boss", function(s)
+MainSection:NewToggle("Auto Spam Energy Blast [E]", "Spam skill E liên tục", function(s)
+    _G.AutoEnergyBlast = s
+    local blastRemote = findRemote("blast") or findRemote("energy") or findRemote("skill")
+    while _G.AutoEnergyBlast do
+        pcall(function()
+            VIM:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+            VIM:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+            if blastRemote then
+                local boss = getMonster()
+                if boss then blastRemote:FireServer(boss.HumanoidRootPart.Position) end
+            end
+        end)
+        task.wait(0.1)
+    end
+end)
+
+MainSection:NewToggle("Auto Lock Skill + Bay Cổ", "Ghim skill + bay sau cổ boss", function(s)
     _G.AutoLock = s
     local lockRemote = findRemote("lock") or findRemote("target")
     while _G.AutoLock do
         pcall(function()
             local boss = getMonster()
-            if boss and lockRemote then
-                lockRemote:FireServer(boss)
+            local hrp = Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart")
+            local hum = Plr.Character and Plr.Character:FindFirstChild("Humanoid")
+
+            if boss and hrp and hum then
+                hrp.CFrame = boss.HumanoidRootPart.CFrame * CFrame.new(0, 2, -2)
+                hrp.Velocity = Vector3.new(0,0,0)
+                hum.PlatformStand = true
+
+                if lockRemote then
+                    lockRemote:FireServer(boss)
+                end
+
+                VIM:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+                VIM:SendKeyEvent(false, Enum.KeyCode.E, false, game)
             end
         end)
-        task.wait(0.5)
+        task.wait(0.1)
+    end
+    if Plr.Character and Plr.Character:FindFirstChild("Humanoid") then
+        Plr.Character.Humanoid.PlatformStand = false
     end
 end)
 
@@ -245,16 +257,16 @@ MainSection:NewToggle("Auto Phê Pha V2", "Tự giữ C khi ki < 90%", function(
     VIM:SendKeyEvent(false, Enum.KeyCode.C, false, game)
 end)
 
--- TAB DUNGEON - 3 NÚT CÓ CHỨC NĂNG
-local selectedWeapon = ""
-DungeonSection:NewTextBox("Chọn Vũ Khí Farm", "Nhập tên vũ khí trong backpack", function(txt)
-    selectedWeapon = txt
+-- TAB DUNGEON - 3 NÚT
+local selectedSkill = "Energy Spear"
+DungeonSection:NewDropdown("Chọn Kiểu Farm", "Chọn skill để farm", {"Energy Spear", "Energy Blast"}, function(currentOption)
+    selectedSkill = currentOption
 end)
 
-DungeonSection:NewToggle("Auto Farm", "Farm quái + khóa vũ khí", function(s)
+DungeonSection:NewToggle("Auto Farm", "Farm quái theo skill đã chọn", function(s)
     _G.AutoFarm = s
-    local attackRemote = findRemote("attack") or findRemote("punch")
-    local equippedWeapon = nil
+    local attackRemote = findRemote("attack") or findRemote("punch") or findRemote("melee")
+    local skillRemote = findRemote("skill") or findRemote("blast") or findRemote("energy")
 
     while _G.AutoFarm do
         pcall(function()
@@ -263,28 +275,36 @@ DungeonSection:NewToggle("Auto Farm", "Farm quái + khóa vũ khí", function(s)
             local hum = Plr.Character and Plr.Character:FindFirstChild("Humanoid")
 
             if mob and hrp and hum then
-                local holding, currentTool = isHoldingWeapon()
+                hrp.CFrame = mob.HumanoidRootPart.CFrame * CFrame.new(0, 2, -2)
+                hrp.Velocity = Vector3.new(0,0,0)
+                hum.PlatformStand = true
 
-                if selectedWeapon ~= "" then
-                    local weapon = getWeaponByName(selectedWeapon)
-                    if weapon and not holding then
-                        hum:EquipTool(weapon)
-                        equippedWeapon = weapon
-                        task.wait(0.2)
+                if selectedSkill == "Energy Spear" then
+                    -- SPAM CHÉM SIÊU NHANH 33 CLICK/S
+                    VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+                    VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+                    if attackRemote then
+                        for i = 1, 3 do
+                            attackRemote:FireServer(mob)
+                        end
                     end
-                end
+                    task.wait(0.03)
 
-                if equippedWeapon and not isHoldingWeapon() then
-                    hum:EquipTool(equippedWeapon)
+                elseif selectedSkill == "Energy Blast" then
+                    VIM:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+                    VIM:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+                    if skillRemote then
+                        skillRemote:FireServer(mob.HumanoidRootPart.Position)
+                    end
+                    task.wait(0.1)
                 end
-
-                hrp.CFrame = mob.HumanoidRootPart.CFrame * CFrame.new(0, 0, 3)
-                if attackRemote then attackRemote:FireServer() end
             end
         end)
-        task.wait(0.1)
+        task.wait()
     end
-    equippedWeapon = nil
+    if Plr.Character and Plr.Character:FindFirstChild("Humanoid") then
+        Plr.Character.Humanoid.PlatformStand = false
+    end
 end)
 
 DungeonSection:NewToggle("Auto (Next Area)", "Tự bấm Play Again", function(s)
