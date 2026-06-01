@@ -144,7 +144,7 @@ MainSection:NewToggle("Auto Click", "Tự động click chuột", function(s)
         VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
         VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
         task.wait(0.1)
-        end
+    
     end
 end)
 
