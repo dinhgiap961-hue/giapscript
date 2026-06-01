@@ -7,19 +7,17 @@ local Plr = Players.LocalPlayer
 local Char = Plr.Character or Plr.CharacterAdded:Wait()
 local HRP = Char:WaitForChild("HumanoidRootPart")
 
--- XÓA GUI CŨ NẾU CÓ
 if Plr.PlayerGui:FindFirstChild("DragonBloxV2") then
     Plr.PlayerGui.DragonBloxV2:Destroy()
 end
 
--- TẠO GUI
 local Gui = Instance.new("ScreenGui", Plr.PlayerGui)
 Gui.Name = "DragonBloxV2"
 Gui.ResetOnSpawn = false
 
 local Main = Instance.new("Frame", Gui)
-Main.Size = UDim2.new(0, 480, 0, 400)
-Main.Position = UDim2.new(0.5, -240, 0.5, -200)
+Main.Size = UDim2.new(0, 480, 0, 500)
+Main.Position = UDim2.new(0.5, -240, 0.5, -250)
 Main.BackgroundColor3 = Color3.fromRGB(90, 45, 130)
 Main.BorderSizePixel = 0
 Main.Active = true
@@ -27,13 +25,12 @@ Main.Draggable = true
 
 local Title = Instance.new("TextLabel", Main)
 Title.Size = UDim2.new(1, 0, 0, 35)
-Title.Text = "Dragon Blox V2 - by Admin_script08"
+Title.Text = "Dragon Blox V2 - ALL IN ONE"
 Title.TextColor3 = Color3.new(1,1,1)
 Title.TextSize = 18
 Title.Font = Enum.Font.SourceSansBold
 Title.BackgroundColor3 = Color3.fromRGB(70, 30, 110)
 
--- HÀM TẠO NÚT BẬT/TẮT
 local YPos = 45
 local function createBtn(name, callback)
     local Btn = Instance.new("TextButton", Main)
@@ -58,46 +55,93 @@ local function createBtn(name, callback)
     YPos = YPos + 35
 end
 
--- 1. AUTO LOCK ATOM
-createBtn("auto lock Atom", function(on)
+-- Hàm lấy % Ki
+local function getKiPercent()
+    local stats = Char:FindFirstChild("Stats")
+    if stats and stats:FindFirstChild("Ki") and stats:FindFirstChild("MaxKi") then
+        return (stats.Ki.Value / stats.MaxKi.Value) * 100
+    end
+    return 100
+end
+
+-- Hàm check đã lên form chưa
+local function isTransformed()
+    local stats = Char:FindFirstChild("Stats")
+    if stats and stats:FindFirstChild("Form") then
+        return stats.Form.Value ~= "Base" -- Nếu form khác Base = đã transform
+    end
+    return false
+end
+
+-- 1. AUTO LOCK ALL
+createBtn("Auto Lock ALL", function(on)
     if on then
         return RS.RenderStepped:Connect(function()
             pcall(function()
+                local closest, dist = nil, 9999
                 for _, v in pairs(workspace:GetChildren()) do
-                    if v.Name:lower():find("atom") and v:FindFirstChild("HumanoidRootPart") and v.Humanoid.Health > 0 then
-                        HRP.CFrame = CFrame.lookAt(HRP.Position, v.HumanoidRootPart.Position)
-                        break
+                    if v:FindFirstChild("HumanoidRootPart") and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 and v.Name ~= Plr.Name then
+                        local mag = (HRP.Position - v.HumanoidRootPart.Position).Magnitude
+                        if mag < dist then dist = mag closest = v end
                     end
+                end
+                if closest then
+                    HRP.CFrame = CFrame.lookAt(HRP.Position, closest.HumanoidRootPart.Position)
                 end
             end)
         end)
     end
 end)
 
--- 2. AUTO SKILL + GODMODE V2
-createBtn("Auto Skill + Godmode V2 (Chạy Liên Tục)", function(on)
+-- 2. HITBOX 50X50
+createBtn("Hitbox 50x50 - Farm xa", function(on)
+    if on then
+        return RS.Heartbeat:Connect(function()
+            pcall(function()
+                for _, v in pairs(workspace:GetChildren()) do
+                    if v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") and v.Humanoid.Health > 0 then
+                        if v.Name ~= Plr.Name then
+                            v.HumanoidRootPart.Size = Vector3.new(50, 50, 50)
+                            v.HumanoidRootPart.Transparency = 0.8
+                            v.HumanoidRootPart.CanCollide = false
+                        end
+                    end
+                end
+            end)
+        end)
+    else
+        for _, v in pairs(workspace:GetChildren()) do
+            if v:FindFirstChild("HumanoidRootPart") then
+                pcall(function() v.HumanoidRootPart.Size = Vector3.new(2, 2, 1) end)
+            end
+        end
+    end
+end)
+
+-- 3. AUTO SKILL E + GODMODE
+createBtn("Auto Skill E + Godmode", function(on)
     if on then
         return RS.Heartbeat:Connect(function()
             pcall(function()
                 Char.Humanoid.Health = Char.Humanoid.MaxHealth
-                VIM:SendKeyEvent(true, Enum.KeyCode.One, false, game)
-                task.wait()
-                VIM:SendKeyEvent(false, Enum.KeyCode.One, false, game)
+                VIM:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+                task.wait(0.1)
+                VIM:SendKeyEvent(false, Enum.KeyCode.E, false, game)
             end)
         end)
     end
 end)
 
--- 3. AUTO KILL BOSS PREMIUM  
-createBtn("Auto Kill Boss Premium", function(on)
+-- 4. AUTO KILL BOSS ĐỨNG XA
+createBtn("Auto Kill Boss - Đứng xa", function(on)
     if on then
         return RS.RenderStepped:Connect(function()
             pcall(function()
                 for _, boss in pairs(workspace:GetChildren()) do
                     if boss:IsA("Model") and boss:FindFirstChild("Humanoid") then
                         if boss.Humanoid.MaxHealth > 50000 and boss.Humanoid.Health > 0 then
-                            HRP.CFrame = boss.HumanoidRootPart.CFrame * CFrame.new(0, 0, 3)
-                            VIM:SendKeyEvent(true, Enum.KeyCode.One, false, game)
+                            HRP.CFrame = CFrame.lookAt(HRP.Position, boss.HumanoidRootPart.Position)
+                            VIM:SendKeyEvent(true, Enum.KeyCode.E, false, game)
                         end
                     end
                 end
@@ -106,7 +150,7 @@ createBtn("Auto Kill Boss Premium", function(on)
     end
 end)
 
--- 4. GODMODE
+-- 5. GODMODE RIÊNG
 createBtn("Godmode", function(on)
     if on then
         return RS.Heartbeat:Connect(function()
@@ -115,8 +159,52 @@ createBtn("Godmode", function(on)
     end
 end)
 
--- 5. AUTO PHÊ PHA - NHẶT KI
-createBtn("Auto phê pha", function(on)
+-- 6. AUTO PHÊ PHA THÔNG MINH - PHÍM C
+createBtn("Auto Phê Pha <20% >90%", function(on)
+    if on then
+        return RS.Heartbeat:Connect(function()
+            pcall(function()
+                local kiPercent = getKiPercent()
+                if kiPercent < 20 then
+                    VIM:SendKeyEvent(true, Enum.KeyCode.C, false, game)
+                    task.wait(0.1)
+                    VIM:SendKeyEvent(false, Enum.KeyCode.C, false, game)
+                elseif kiPercent >= 90 then
+                    VIM:SendKeyEvent(false, Enum.KeyCode.C, false, game)
+                end
+            end)
+        end)
+    end
+end)
+
+-- 7. AUTO FORM THÔNG MINH - PHÍM Y
+local formUsed = false -- Biến check đã bật form chưa
+createBtn("Auto Form - Check Form", function(on)
+    if on then
+        return RS.Heartbeat:Connect(function()
+            pcall(function()
+                if isTransformed() then
+                    if not formUsed then
+                        print("[FORM] Đã lên form rồi, không spam Y nữa")
+                        formUsed = true
+                    end
+                else
+                    formUsed = false -- Reset khi rớt form
+                    VIM:SendKeyEvent(true, Enum.KeyCode.Y, false, game)
+                    task.wait(0.2)
+                    VIM:SendKeyEvent(false, Enum.KeyCode.Y, false, game)
+                    print("[FORM] Chưa có form, đang bật Y")
+                    task.wait(1) -- Delay 1s tránh spam
+                end
+            end)
+        end)
+    else
+        formUsed = false
+    end
+end)
+
+-- 8. AUTO NHẶT KI
+createBtn("Auto Nhặt Ki", function(on)
     if on then
         return RS.Heartbeat:Connect(function()
             pcall(function()
@@ -130,21 +218,8 @@ createBtn("Auto phê pha", function(on)
     end
 end)
 
--- 6. AUTO TRẤN SỈ PHOM - BẬT FORM
-createBtn("Auto Trấn sỉ phom", function(on)
-    if on then
-        return RS.Heartbeat:Connect(function()
-            pcall(function()
-                VIM:SendKeyEvent(true, Enum.KeyCode.G, false, game) -- G = form
-                task.wait()
-                VIM:SendKeyEvent(false, Enum.KeyCode.G, false, game)
-            end)
-        end)
-    end
-end)
-
--- 7. AUTO DUNGEON V2
-createBtn("Auto Start Work All Dungeon V2", function(on)
+-- 9. AUTO DUNGEON
+createBtn("Auto Vào Dungeon", function(on)
     if on then
         return RS.Heartbeat:Connect(function()
             pcall(function()
@@ -158,15 +233,14 @@ createBtn("Auto Start Work All Dungeon V2", function(on)
     end
 end)
 
--- NÚT ẨN/HIỆN MENU
 local Toggle = Instance.new("TextButton", Gui)
 Toggle.Size = UDim2.new(0, 100, 0, 30)
 Toggle.Position = UDim2.new(0, 10, 0, 10)
-Toggle.Text = "Ẩn/Hiện DB"
+Toggle.Text = "Ẩn/Hiện"
 Toggle.BackgroundColor3 = Color3.fromRGB(90, 45, 130)
 Toggle.TextColor3 = Color3.new(1,1,1)
 Toggle.MouseButton1Click:Connect(function()
     Main.Visible = not Main.Visible
 end)
 
-print("Dragon Blox V2 Loaded - Đủ chức năng như ảnh")
+print("Dragon Blox V2 - Auto Form thông minh đã load")
