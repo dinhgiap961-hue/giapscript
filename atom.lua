@@ -1,4 +1,4 @@
--- DRAGON BLOX V2 - FULL FEATURES V3.0 - FIX NEXT AREA
+-- DRAGON BLOX V2 - FULL FEATURES V3.1 - AUTO EQUIP + FIX NEXT AREA
 local Kavo = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
 local Win = Kavo.CreateLib("Dragon Blox V2 - FULL", "BloodTheme")
 
@@ -179,6 +179,27 @@ local function getKiPercent()
     return 100
 end
 
+-- NEW: AUTO EQUIP WEAPON
+local function equipWeapon(slot)
+    slot = slot or 1
+    pcall(function()
+        VIM:SendKeyEvent(true, Enum.KeyCode["".. slot], false, game)
+        task.wait(0.1)
+        VIM:SendKeyEvent(false, Enum.KeyCode["".. slot], false, game)
+    end)
+end
+
+local function isWeaponEquipped()
+    local char = Plr.Character
+    if not char then return false end
+    for _, v in pairs(char:GetChildren()) do
+        if v:IsA("Tool") then
+            return true
+        end
+    end
+    return false
+end
+
 -- TAB MAIN - COMBAT
 MainSection:NewToggle("Auto Click", "Tự động click chuột", function(s)
     _G.AutoClick = s
@@ -225,6 +246,23 @@ MainSection:NewToggle("Auto Form [C]", "Tự biến hình phím C - Khóa form",
         elseif currentForm then lockedForm = true end
         task.wait(0.3)
     end
+end)
+
+MainSection:NewToggle("Auto Equip Weapon", "Tự động equip Energy Spear slot 1", function(s)
+    _G.AutoEquipWeapon = s
+    while _G.AutoEquipWeapon do
+        pcall(function()
+            if not isWeaponEquipped() then
+                equipWeapon(1)
+                task.wait(1)
+            end
+        end)
+        task.wait(2)
+    end
+end)
+
+MainSection:NewButton("Equip Energy Spear", "Bấm tay để equip ngay", function()
+    equipWeapon(1)
 end)
 
 MainSection:NewToggle("Auto Spam Energy Blast [E]", "Chỉ spam E", function(s)
@@ -330,6 +368,12 @@ DungeonSection:NewToggle("Auto Farm", "Farm theo Auto Mode + Kiểu Farm - DI CH
     _G.AutoFarm = s
     while _G.AutoFarm do
         pcall(function()
+            -- AUTO EQUIP TRƯỚC KHI FARM
+            if not isWeaponEquipped() then
+                equipWeapon(1)
+                task.wait(0.5)
+            end
+
             local mob = getMonster()
             local hrp = Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart")
             if mob and hrp then
@@ -358,7 +402,6 @@ DungeonSection:NewToggle("Auto Farm", "Farm theo Auto Mode + Kiểu Farm - DI CH
     end
 end)
 
--- FIX: AUTO NEXT AREA TỐI ƯU
 DungeonSection:NewToggle("Auto (Next Area)", "Tự bấm Play Again - FIXED", function(s)
     _G.AutoNextArea = s
     local playRemotes = {
@@ -372,10 +415,8 @@ DungeonSection:NewToggle("Auto (Next Area)", "Tự bấm Play Again - FIXED", fu
             if isDungeonClear() then
                 task.wait(1.5)
 
-                -- Cách 1: Click button
                 clickPlayAgain()
 
-                -- Cách 2: Spam remote
                 task.wait(0.5)
                 for _, remote in ipairs(playRemotes) do
                     if remote then
