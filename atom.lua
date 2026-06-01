@@ -1,30 +1,35 @@
--- DRAGON BLOX V2 - DÒ NÚT START GÓC PHẢI + LOCK ATOM DÍNH ĐẦU BOSS
+-- DRAGON BLOX V2 - HOOK NÚT PLAY AGAIN THẬT - KHÔNG DÒ MAP
 local Plr = game:GetService("Players").LocalPlayer
 local RS = game:GetService("ReplicatedStorage")
+local PG = Plr:WaitForChild("PlayerGui")
 local RunService = game:GetService("RunService")
 
 local Settings = {
     AutoEnergyBall = false,
-    AutoPlayAgain = false,
+    AutoPlayAgain = false,  -- CLICK ĐÚNG NÚT PLAY AGAIN GIỮA MAP
     Godmode = false,
     AutoLockAtom = false,
     FlyHeight = 45
 }
 
 local allRemotes = {}
-local startButtonID = 0 -- NÚT START DƯỚI GÓC PHẢI
-local skillIDs = {1,2,3,4,5,6,7,8}
+local skillRemotes = {}
+local skillIDs = {}
 local inRaid = false
-local isScanningStart = false
 
 -- LOCK ATOM VARS
 local currentBoss = nil
 local lockConnection = nil
 local alignPos, alignOri = nil, nil
 
+-- QUÉT REMOTE
 for _, v in pairs(RS:GetDescendants()) do
     if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then
         table.insert(allRemotes, v)
+        local n = v.Name:lower()
+        if string.find(n, "skill") or string.find(n, "ability") or string.find(n, "attack") or string.find(n, "move") or string.find(n, "blast") or string.find(n, "ki") then
+            table.insert(skillRemotes, v)
+        end
     end
 end
 
@@ -51,7 +56,7 @@ Title.BackgroundTransparency = 1
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.Size = UDim2.new(1, -20, 1, 0)
 Title.Font = Enum.Font.GothamBold
-Title.Text = "Dragon Blox V2 - Start Góc Phải + Lock Atom"
+Title.Text = "Dragon Blox V2 - Hook Play Again Thật"
 Title.TextColor3 = Color3.fromRGB(255,255,255)
 Title.TextSize = 14
 Title.TextXAlignment = Enum.TextXAlignment.Left
@@ -87,7 +92,7 @@ local function createLabel(text)
 end
 
 local StatusLabel = createLabel("Status: Chờ bật Auto Play Again")
-local StartLabel = createLabel("Nút Start Góc Phải: Chưa dò")
+local SkillLabel = createLabel("8 Skill Góc Phải: Chưa dò")
 local BossLabel = createLabel("Boss: Chưa lock")
 
 local function createToggle(name, callback)
@@ -120,7 +125,7 @@ local function checkInRaid()
     return workspace:FindFirstChild("UnstableGrounds") or workspace:FindFirstChild("Raid") or workspace:FindFirstChild("Dungeon")
 end
 
--- TÌM BOSS MÁU TO NHẤT
+-- TÌM BOSS
 local function findBoss()
     local maxHP, boss = 0, nil
     for _, v in pairs(workspace:GetChildren()) do
@@ -135,7 +140,7 @@ local function findBoss()
     return boss
 end
 
--- LOCK ATOM: DÍNH CỨNG LÊN ĐẦU BOSS
+-- LOCK ATOM DÍNH ĐẦU BOSS
 local function startLockAtom()
     local char = Plr.Character
     if not char or not char:FindFirstChild("HumanoidRootPart") then return end
@@ -188,72 +193,87 @@ local function stopLockAtom()
     BossLabel.Text = "Boss: Tắt lock"
 end
 
--- DÒ SỐ NÚT START DƯỚI GÓC PHẢI
-local function scanStartButton()
-    if startButtonID ~= 0 or isScanningStart then return startButtonID end
-    isScanningStart = true
-    StatusLabel.Text = "Status: Đang dò NÚT START GÓC PHẢI 1-100..."
-    StartLabel.Text = "Nút Start Góc Phải: Đang dò..."
-
-    for i = 1, 100 do
-        if checkInRaid() or not Settings.AutoPlayAgain then
-            if checkInRaid() then
-                startButtonID = i - 1
-                StartLabel.Text = "Nút Start Góc Phải: "..startButtonID.." ✓"
-                StatusLabel.Text = "Status: Vào raid thành công"
-            end
-            isScanningStart = false
-            return startButtonID
-        end
-
-        -- ƯU TIÊN REMOTE CÓ CHỮ START/UNSTABLE
-        for _, remote in pairs(allRemotes) do
-            local rn = remote.Name:lower()
-            if string.find(rn, "start") or string.find(rn, "unstable") or string.find(rn, "raid") or string.find(rn, "join") then
-                pcall(function() remote:FireServer(i) end)
-                pcall(function() remote:FireServer(i, "Hard") end)
-                pcall(function() remote:FireServer("Start", i) end)
+-- HOOK NÚT PLAY AGAIN THẬT - KHÔNG DÒ MAP
+local function clickPlayAgainButton()
+    local success = false
+    
+    -- CÁCH 1: TÌM NÚT TRONG PLAYERGUI
+    for _, gui in pairs(PG:GetDescendants()) do
+        if gui:IsA("TextButton") or gui:IsA("ImageButton") then
+            local text = gui.Text:lower()
+            if string.find(text, "play again") or string.find(text, "replay") or string.find(text, "restart") then
+                firesignal(gui.MouseButton1Click)
+                success = true
+                StatusLabel.Text = "Status: Đã bấm Play Again"
+                return
             end
         end
-        
-        for _, remote in pairs(allRemotes) do
-            pcall(function() remote:FireServer(i) end)
-        end
-        task.wait(0.15)
     end
-
-    startButtonID = 6 -- DEFAULT UNSTABLE GROUNDS THƯỜNG LÀ 6
-    StartLabel.Text = "Nút Start Góc Phải: 6 (Default)"
-    isScanningStart = false
-    return 6
+    
+    -- CÁCH 2: TÌM REMOTE CÓ CHỮ PLAYAGAIN
+    if not success then
+        for _, remote in pairs(allRemotes) do
+            local n = remote.Name:lower()
+            if string.find(n, "playagain") or string.find(n, "replay") or string.find(n, "restart") then
+                pcall(function() remote:FireServer() end)
+                pcall(function() remote:FireServer("Hard") end)
+                success = true
+                StatusLabel.Text = "Status: Đã Fire PlayAgain"
+                break
+            end
+        end
+    end
+    
+    if not success then
+        StatusLabel.Text = "Status: Không tìm thấy nút Play Again"
+    end
 end
 
-local function clickStartButton()
-    if startButtonID == 0 then return end
-    for _, remote in pairs(allRemotes) do
-        pcall(function() remote:FireServer(startButtonID) end)
-        pcall(function() remote:FireServer(startButtonID, "Hard") end)
-        pcall(function() remote:FireServer("Start", startButtonID) end)
+-- DÒ 8 NÚT SKILL GÓC PHẢI
+local function scanSkillRight()
+    StatusLabel.Text = "Status: Đang dò 8 SKILL GÓC PHẢI..."
+    SkillLabel.Text = "8 Skill Góc Phải: Đang dò..."
+    local found = {}
+    
+    local targetRemotes = #skillRemotes > 0 and skillRemotes or allRemotes
+    
+    for i = 1, 100 do
+        if not Settings.AutoEnergyBall then break end
+        for _, remote in pairs(targetRemotes) do
+            local success = pcall(function() remote:FireServer(i) end)
+            if success and not table.find(found, i) then
+                table.insert(found, i)
+                SkillLabel.Text = "8 Skill Góc Phải: "..table.concat(found, ", ")
+            end
+            pcall(function() remote:FireServer(i, Vector3.new()) end)
+        end
+        task.wait(0.05)
+    end
+    
+    if #found == 0 then 
+        skillIDs = {1,2,3,4,5,6,7,8}
+        SkillLabel.Text = "8 Skill Góc Phải: 1-8 (Default)"
+    else
+        skillIDs = found 
     end
 end
 
 local function spamSkillsRight()
+    local targetRemotes = #skillRemotes > 0 and skillRemotes or allRemotes
     for _, skillID in pairs(skillIDs) do
-        for _, remote in pairs(allRemotes) do
+        for _, remote in pairs(targetRemotes) do
             pcall(function() remote:FireServer(skillID) end)
         end
     end
 end
 
-createToggle("Auto Energy Ball [SPAM SKILL PHẢI]", function(v) 
+createToggle("Auto Energy Ball [DÒ 8 SKILL GÓC PHẢI]", function(v) 
     Settings.AutoEnergyBall = v
+    if v then scanSkillRight() end
 end)
 
-createToggle("Auto Play Again [DÒ NÚT START GÓC PHẢI]", function(v) 
+createToggle("Auto Play Again [HOOK NÚT THẬT]", function(v) 
     Settings.AutoPlayAgain = v
-    if v and not inRaid and not isScanningStart and startButtonID == 0 then
-        scanStartButton()
-    end
 end)
 
 createToggle("Godmode", function(v) 
@@ -285,10 +305,11 @@ RunService.Heartbeat:Connect(function()
 
     local nowInRaid = checkInRaid()
     
-    if Settings.AutoPlayAgain and not nowInRaid and not isScanningStart and startButtonID ~= 0 then
+    -- HẾT RAID + BẬT AUTO -> HOOK NÚT PLAY AGAIN THẬT
+    if Settings.AutoPlayAgain and not nowInRaid then
         inRaid = false
-        clickStartButton()
-        task.wait(2)
+        clickPlayAgainButton()
+        task.wait(3) -- CHỜ 3S MỚI BẤM LẠI
         return
     end
 
@@ -322,6 +343,5 @@ end)
 
 Plr.CharacterAdded:Connect(function()
     task.wait(3)
-    if Settings.AutoPlayAgain and startButtonID ~= 0 then clickStartButton() end
     if Settings.AutoLockAtom then startLockAtom() end
 end)
