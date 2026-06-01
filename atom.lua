@@ -1,16 +1,23 @@
+-- DRAGON BLOX V2 - FULL FEATURES V3.0
 local Kavo = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Win = Kavo.CreateLib("Dragon Blox V2", "BloodTheme")
+local Win = Kavo.CreateLib("Dragon Blox V2 - FULL", "BloodTheme")
 
 local MainTab = Win:NewTab("Main")
 local DungeonTab = Win:NewTab("Dungeon★")
-local MainSection = MainTab:NewSection("Main Features")
+local VisualTab = Win:NewTab("Visual")
+local MiscTab = Win:NewTab("Misc")
+
+local MainSection = MainTab:NewSection("Combat Features")
 local DungeonSection = DungeonTab:NewSection("Dungeon Features")
+local VisualSection = VisualTab:NewSection("ESP & Visual")
+local MiscSection = MiscTab:NewSection("Misc Features")
 
 local Plr = game:GetService("Players").LocalPlayer
 local VU = game:GetService("VirtualUser")
 local VIM = game:GetService("VirtualInputManager")
 local CoreGui = game:GetService("CoreGui")
 local RS = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 
 -- Nút Atom
 local ScreenGui = Instance.new("ScreenGui")
@@ -44,13 +51,9 @@ task.spawn(function()
     main.Draggable = true
     main.AnchorPoint = Vector2.new(0.5, 0.5)
     main.Position = UDim2.new(0.5, 0, 0.5, 0)
-    while task.wait(1) do
-        if main and main.Parent then
-            main.Position = UDim2.new(0.5, 0, 0.5, 0)
-        else break end
-    end
 end)
 
+-- FUNCTIONS
 local function findRemote(keyword)
     for _,v in pairs(RS:GetDescendants()) do
         if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then
@@ -106,6 +109,25 @@ local function getMonster()
     return target
 end
 
+local function getAllMonsters(range)
+    local mobs = {}
+    if isDungeonClear() then return mobs end
+    local hrp = Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return mobs end
+
+    for _, v in ipairs(workspace:GetDescendants()) do
+        if v:IsA("Model") and v:FindFirstChild("HumanoidRootPart") and v:FindFirstChild("Humanoid") and v.Name ~= Plr.Name then
+            if v.Humanoid.Health > 0 and v.Humanoid:GetState() ~= Enum.HumanoidStateType.Dead then
+                local d = (v.HumanoidRootPart.Position - hrp.Position).Magnitude
+                if d <= range then
+                    table.insert(mobs, v)
+                end
+            end
+        end
+    end
+    return mobs
+end
+
 local function isInForm()
     local char = Plr.Character
     if not char then return false end
@@ -136,7 +158,7 @@ local function getKiPercent()
     return 100
 end
 
--- TAB MAIN
+-- TAB MAIN - COMBAT
 MainSection:NewToggle("Auto Click", "Tự động click chuột", function(s)
     _G.AutoClick = s
     while _G.AutoClick do
@@ -214,7 +236,6 @@ MainSection:NewToggle("Auto Lock Skill", "Chỉ ghim skill vào boss", function(
     end
 end)
 
--- FIX: BAY TRÊN ĐỈU ĐẦU BOSS - Y=6
 MainSection:NewToggle("Auto Bay Cổ Boss", "Bay trên đỉnh đầu boss", function(s)
     _G.AutoBayCo = s
     while _G.AutoBayCo do
@@ -223,7 +244,6 @@ MainSection:NewToggle("Auto Bay Cổ Boss", "Bay trên đỉnh đầu boss", fun
             local hrp = Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart")
             local hum = Plr.Character and Plr.Character:FindFirstChild("Humanoid")
             if boss and hrp and hum then
-                -- FIX: Y=6 để bay cao trên đầu, không bị đấm
                 hrp.CFrame = boss.HumanoidRootPart.CFrame * CFrame.new(0, 6, 0)
                 hrp.Velocity = Vector3.new(0,0,0)
                 hum.PlatformStand = true
@@ -251,6 +271,34 @@ MainSection:NewToggle("Auto Phê Pha V2", "Tự giữ C khi ki < 90%", function(
     VIM:SendKeyEvent(false, Enum.KeyCode.C, false, game)
 end)
 
+local killAuraRange = 50
+MainSection:NewSlider("Kill Aura Range", "Bán kính Kill Aura", 500, 10, function(v)
+    killAuraRange = v
+end)
+
+MainSection:NewToggle("Kill Aura", "Tự đánh quái xung quanh", function(s)
+    _G.KillAura = s
+    local attackRemote = findRemote("attack") or findRemote("punch") or findRemote("melee")
+    local skillRemote = findRemote("skill") or findRemote("blast") or findRemote("energy")
+
+    while _G.KillAura do
+        pcall(function()
+            local mobs = getAllMonsters(killAuraRange)
+            for _, mob in ipairs(mobs) do
+                for i = 1, 3 do
+                    VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+                    VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+                    if attackRemote then attackRemote:FireServer(mob) end
+                end
+                VIM:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+                VIM:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+                if skillRemote then skillRemote:FireServer(mob.HumanoidRootPart.Position) end
+            end
+        end)
+        task.wait(0.05)
+    end
+end)
+
 -- TAB DUNGEON
 local selectedAutoMode = "Strength"
 DungeonSection:NewDropdown("Chọn Auto Mode", "Chọn chỉ số để farm", {"Strength", "Energy", "Defense"}, function(currentOption)
@@ -262,38 +310,30 @@ DungeonSection:NewDropdown("Chọn Kiểu Farm", "Chọn skill để farm", {"En
     selectedSkill = currentOption
 end)
 
--- FIX: AUTO FARM HOẠT ĐỘNG THEO AUTO MODE
 DungeonSection:NewToggle("Auto Farm", "Farm theo Auto Mode + Kiểu Farm", function(s)
     _G.AutoFarm = s
-    local attackRemote = findRemote("attack") or findRemote("punch") or findRemote("melee")
-    local skillRemote = findRemote("skill") or findRemote("blast") or findRemote("energy")
-
     while _G.AutoFarm do
         pcall(function()
             local mob = getMonster()
             local hrp = Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart")
             local hum = Plr.Character and Plr.Character:FindFirstChild("Humanoid")
             if mob and hrp and hum then
-                -- FIX: BAY TRÊN ĐỈU ĐẦU Y=6
                 hrp.CFrame = mob.HumanoidRootPart.CFrame * CFrame.new(0, 6, 0)
                 hrp.Velocity = Vector3.new(0,0,0)
                 hum.PlatformStand = true
 
-                -- ƯU TIÊN AUTO MODE, NẾU KHÔNG CÓ THÌ DÙNG KIỂU FARM
                 if selectedAutoMode == "Strength" or selectedSkill == "Energy Spear" then
-                    -- Strength = Spam đấm siêu nhanh 33 hit/s
-                    VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
-                    VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
-                    if attackRemote then for i = 1, 3 do attackRemote:FireServer(mob) end end
+                    for i = 1, 3 do
+                        VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+                        VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+                    end
                     task.wait(0.03)
                 elseif selectedAutoMode == "Energy" or selectedSkill == "Energy Blast" then
-                    -- Energy = Spam E
                     VIM:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+                    task.wait(0.05)
                     VIM:SendKeyEvent(false, Enum.KeyCode.E, false, game)
-                    if skillRemote then skillRemote:FireServer(mob.HumanoidRootPart.Position) end
-                    task.wait(0.1)
+                    task.wait(0.05)
                 elseif selectedAutoMode == "Defense" then
-                    -- Defense = Đứng tank + đấm chậm
                     VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
                     VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
                     task.wait(0.2)
@@ -334,7 +374,92 @@ DungeonSection:NewToggle("Godmode", "Bất tử", function(s)
     end
 end)
 
+-- TAB VISUAL - ESP
+VisualSection:NewToggle("ESP Boss", "Nhìn thấy boss qua tường", function(s)
+    _G.ESPBoss = s
+    while _G.ESPBoss do
+        pcall(function()
+            for _, v in ipairs(workspace:GetDescendants()) do
+                if v:IsA("Model") and v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") then
+                    if v.Humanoid.Health > 0 and v.Name ~= Plr.Name then
+                        if not v:FindFirstChild("ESP_Highlight") then
+                            local highlight = Instance.new("Highlight")
+                            highlight.Name = "ESP_Highlight"
+                            highlight.FillColor = Color3.fromRGB(255, 0, 0)
+                            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                            highlight.FillTransparency = 0.5
+                            highlight.Parent = v
+                        end
+                    end
+                end
+            end
+        end)
+        task.wait(1)
+    end
+    for _, v in ipairs(workspace:GetDescendants()) do
+        if v:FindFirstChild("ESP_Highlight") then
+            v.ESP_Highlight:Destroy()
+        end
+    end
+end)
+
+VisualSection:NewToggle("ESP Player", "Nhìn thấy người chơi khác", function(s)
+    _G.ESPPlayer = s
+    while _G.ESPPlayer do
+        pcall(function()
+            for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
+                if player ~= Plr and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    if not player.Character:FindFirstChild("ESP_Player") then
+                        local highlight = Instance.new("Highlight")
+                        highlight.Name = "ESP_Player"
+                        highlight.FillColor = Color3.fromRGB(0, 255, 0)
+                        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                        highlight.FillTransparency = 0.7
+                        highlight.Parent = player.Character
+                    end
+                end
+            end
+        end)
+        task.wait(1)
+    end
+    for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
+        if player.Character and player.Character:FindFirstChild("ESP_Player") then
+            player.Character.ESP_Player:Destroy()
+        end
+    end
+end)
+
+-- TAB MISC
+MiscSection:NewToggle("Anti AFK", "Chống bị kick AFK", function(s)
+    _G.AntiAFK = s
+    while _G.AntiAFK do
+        VU:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+        task.wait(1)
+        VU:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+        task.wait(30)
+    end
+end)
+
+MiscSection:NewButton("Rejoin Server", "Vào lại server", function()
+    game:GetService("TeleportService"):Teleport(game.PlaceId, Plr)
+end)
+
+MiscSection:NewButton("Server Hop", "Đổi server khác", function()
+    local servers = {}
+    local req = game:HttpGet("https://games.roblox.com/v1/games/".. game.PlaceId.. "/servers/Public?sortOrder=Desc&limit=100")
+    local data = game:GetService("HttpService"):JSONDecode(req)
+    for _, v in pairs(data.data) do
+        if v.playing < v.maxPlayers and v.id ~= game.JobId then
+            table.insert(servers, v.id)
+        end
+    end
+    if #servers > 0 then
+        game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, servers[math.random(1, #servers)], Plr)
+    end
+end)
+
 Plr.Idled:Connect(function()
+    if _G.AntiAFK then return end
     VU:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
     task.wait(1)
     VU:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
