@@ -73,23 +73,50 @@ local function isTransformed()
     return false
 end
 
--- 1. AUTO LOCK ALL
-createBtn("Auto Lock ALL", function(on)
+-- 1. AUTO LOCK ALL + DÍ THEO QUÁI
+local bodyGyro, bodyPos
+createBtn("Auto Lock ALL - Dí theo", function(on)
     if on then
-        return RS.RenderStepped:Connect(function()
+        bodyGyro = Instance.new("BodyGyro")
+        bodyGyro.P = 5000
+        bodyGyro.MaxTorque = Vector3.new(400000, 400000, 400000)
+        bodyGyro.Parent = HRP
+        
+        bodyPos = Instance.new("BodyPosition")
+        bodyPos.P = 10000
+        bodyPos.MaxForce = Vector3.new(400000, 400000) -- Sửa thành 3 số
+        bodyPos.Parent = HRP
+        
+        return RS.Heartbeat:Connect(function()
             pcall(function()
                 local closest, dist = nil, 9999
                 for _, v in pairs(workspace:GetChildren()) do
                     if v:FindFirstChild("HumanoidRootPart") and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 and v.Name ~= Plr.Name then
                         local mag = (HRP.Position - v.HumanoidRootPart.Position).Magnitude
-                        if mag < dist then dist = mag closest = v end
+                        if mag < dist and mag < 200 then
+                            dist = mag
+                            closest = v
+                        end
                     end
                 end
+                
                 if closest then
-                    HRP.CFrame = CFrame.lookAt(HRP.Position, closest.HumanoidRootPart.Position)
+                    local targetPos = closest.HumanoidRootPart.CFrame * CFrame.new(0, 0, 5)
+                    bodyGyro.CFrame = CFrame.lookAt(HRP.Position, closest.HumanoidRootPart.Position)
+                    bodyPos.Position = targetPos.Position
+                else
+                    bodyPos.Position = HRP.Position
                 end
             end)
         end)
+    else
+        if bodyGyro then bodyGyro:Destroy() end
+        if bodyPos then bodyPos:Destroy() end
+    end
+end)
+        -- Tắt thì xóa BodyGyro/BodyPosition
+        if bodyGyro then bodyGyro:Destroy() end
+        if bodyPos then bodyPos:Destroy() end
     end
 end)
 
