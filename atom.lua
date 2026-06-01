@@ -1,7 +1,18 @@
 local Kavo = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Win = Kavo.CreateLib("Atom Max Hub", "BloodTheme")
-local Tab = Win:NewTab("Main")
-local Section = Tab:NewSection("Dragon Blox")
+local Win = Kavo.CreateLib("Dragon Blox V2", "BloodTheme")
+
+-- CÁC TAB THEO ẢNH
+local MainTab = Win:NewTab("Main")
+local CheckTab = Win:NewTab("Check") 
+local SupportTab = Win:NewTab("Support")
+local DungeonTab = Win:NewTab("Dungeon★")
+local SettingTab = Win:NewTab("Setting")
+local DungeonPremTab = Win:NewTab("Dungeon Premium")
+local SkillTab = Win:NewTab("Skill support")
+
+local MainSection = MainTab:NewSection("Main Features")
+local DungeonSection = DungeonTab:NewSection("Dungeon Features")
+local DungeonPremSection = DungeonPremTab:NewSection("Premium Features")
 
 local Plr = game:GetService("Players").LocalPlayer
 local VU = game:GetService("VirtualUser")
@@ -29,7 +40,7 @@ Btn.Parent = ScreenGui
 Instance.new("UICorner", Btn).CornerRadius = UDim.new(0,25)
 Btn.MouseButton1Click:Connect(function() Kavo:ToggleUI() end)
 
--- FIX TRIỆT ĐỂ: ÉP MENU RA GIỮA MÀN HÌNH
+-- ÉP MENU RA GIỮA MÀN HÌNH + KHÓA VỊ TRÍ
 task.spawn(function()
     local main = nil
     repeat
@@ -38,17 +49,18 @@ task.spawn(function()
         if KavoUI then main = KavoUI:FindFirstChild("MainFrame") end
     until main
 
-    task.wait(1) -- Đợi Kavo load xong hẳn
+    task.wait(1)
     main.Active = true
     main.Draggable = true
     main.AnchorPoint = Vector2.new(0.5, 0.5)
     main.Position = UDim2.new(0.5, 0, 0.5, 0)
+    main.Size = UDim2.new(0, 550, 0, 400) -- Tăng size cho giống ảnh
 
-    -- Khóa vị trí mỗi 2s để không bị lệch
-    while task.wait(2) do
+    -- Khóa vị trí mỗi 1s
+    while task.wait(1) do
         if main and main.Parent then
             main.Position = UDim2.new(0.5, 0, 0.5, 0)
-        end
+        else break end
     end
 end)
 
@@ -67,30 +79,22 @@ local function isDungeonClear()
     local gui = Plr:FindFirstChild("PlayerGui")
     if gui then
         for _, v in pairs(gui:GetDescendants()) do
-            if v:IsA("TextLabel") and (string.find(v.Text, "0 Mob Left") or string.find(v.Text, "Dungeon Cleared") or string.find(v.Text, "Wave")) then
+            if v:IsA("TextLabel") and (string.find(v.Text, "0 Mob Left") or string.find(v.Text, "Dungeon Cleared")) then
                 if string.find(v.Text, "0") then return true end
             end
-            if v:IsA("TextButton") and (v.Text == "Play Again" or v.Text == "Return to World") then
-                return true
-            end
+            if v:IsA("TextButton") and v.Text == "Play Again" and v.Visible then return true end
         end
     end
     return false
 end
 
--- CLICK NÚT PLAY AGAIN
 local function clickPlayAgain()
     local gui = Plr:FindFirstChild("PlayerGui")
     if gui then
         for _, v in pairs(gui:GetDescendants()) do
             if v:IsA("TextButton") and v.Text == "Play Again" and v.Visible then
-                -- Giả lập click
-                local events = {"MouseButton1Click", "Activated", "MouseButton1Down"}
-                for _, evt in pairs(events) do
-                    if v[evt] then
-                        pcall(function() firesignal(v[evt]) end)
-                    end
-                end
+                pcall(function() firesignal(v.MouseButton1Click) end)
+                pcall(function() firesignal(v.Activated) end)
                 return true
             end
         end
@@ -119,66 +123,37 @@ end
 local function isInForm()
     local char = Plr.Character
     if not char then return false end
-
     local stats = char:FindFirstChild("Stats") or char:FindFirstChild("stats") or char:FindFirstChild("Data")
     if stats then
-        local formVal = stats:FindFirstChild("Form") or stats:FindFirstChild("Transformation") or stats:FindFirstChild("Mode")
+        local formVal = stats:FindFirstChild("Form") or stats:FindFirstChild("Transformation")
         if formVal and formVal.Value > 0 then return true end
     end
-
     local leaderstats = Plr:FindFirstChild("leaderstats")
     if leaderstats then
-        local form = leaderstats:FindFirstChild("Form") or leaderstats:FindFirstChild("Transformation")
-        if form and form.Value > 0 then return true end
         local power = leaderstats:FindFirstChild("Power") or leaderstats:FindFirstChild("power")
         if power and power.Value > 50000000 then return true end
     end
-
-    if string.find(char.Name, "SSJ") or string.find(char.Name, "Form") or string.find(char.Name, "Mystic") or string.find(char.Name, "Ultra") then return true end
-
     for _,v in pairs(char:GetDescendants()) do
-        if v.Name == "Aura" or v.Name == "SSJ" or v.Name == "Transform" or v.Name == "Glow" then return true end
-        if v:IsA("ParticleEmitter") and (v.Parent.Name == "HumanoidRootPart" or v.Parent.Name == "Torso" or v.Parent.Name == "UpperTorso") then
-            if v.Enabled then return true end
-        end
-        if v:IsA("PointLight") and v.Parent.Name == "HumanoidRootPart" then return true end
+        if v.Name == "Aura" or v.Name == "SSJ" then return true end
+        if v:IsA("ParticleEmitter") and v.Parent.Name == "HumanoidRootPart" and v.Enabled then return true end
     end
-
-    if char:GetAttribute("Form") and char:GetAttribute("Form") > 0 then return true end
-    if char:GetAttribute("Transformation") then return true end
-
     return false
 end
 
 local function getKiPercent()
     local leaderstats = Plr:FindFirstChild("leaderstats")
     if leaderstats then
-        local ki = leaderstats:FindFirstChild("Ki") or leaderstats:FindFirstChild("ki") or leaderstats:FindFirstChild("Energy")
+        local ki = leaderstats:FindFirstChild("Ki") or leaderstats:FindFirstChild("ki")
         local maxKi = leaderstats:FindFirstChild("MaxKi") or leaderstats:FindFirstChild("MaxEnergy")
-        if ki and maxKi and maxKi.Value > 0 then
-            return (ki.Value / maxKi.Value) * 100
-        end
+        if ki and maxKi and maxKi.Value > 0 then return (ki.Value / maxKi.Value) * 100 end
     end
+    return 100
+end
 
+local function getHealthPercent()
     local char = Plr.Character
-    if char then
-        local stats = char:FindFirstChild("Stats") or char:FindFirstChild("stats")
-        if stats then
-            local ki = stats:FindFirstChild("Ki") or stats:FindFirstChild("Energy")
-            local maxKi = stats:FindFirstChild("MaxKi") or stats:FindFirstChild("MaxEnergy")
-            if ki and maxKi and maxKi.Value > 0 then
-                return (ki.Value / maxKi.Value) * 100
-            end
-        end
-    end
-
-    local gui = Plr:FindFirstChild("PlayerGui")
-    if gui then
-        for _,v in pairs(gui:GetDescendants()) do
-            if v:IsA("ImageLabel") and v.Name == "Ki" and v:FindFirstChild("Bar") then
-                return v.Bar.Size.X.Scale * 100
-            end
-        end
+    if char and char:FindFirstChild("Humanoid") then
+        return (char.Humanoid.Health / char.Humanoid.MaxHealth) * 100
     end
     return 100
 end
@@ -187,7 +162,7 @@ local function getWeapon()
     for _, tool in pairs(Plr.Backpack:GetChildren()) do
         if tool:IsA("Tool") then
             local name = string.lower(tool.Name)
-            if string.find(name, "sword") or string.find(name, "blade") or string.find(name, "katana") or string.find(name, "weapon") then
+            if string.find(name, "sword") or string.find(name, "blade") or string.find(name, "katana") then
                 return tool
             end
         end
@@ -199,155 +174,36 @@ local function isHoldingWeapon()
     local char = Plr.Character
     if not char then return false end
     for _, tool in pairs(char:GetChildren()) do
-        if tool:IsA("Tool") then
-            local name = string.lower(tool.Name)
-            if string.find(name, "sword") or string.find(name, "blade") or string.find(name, "katana") or string.find(name, "weapon") then
-                return true, tool
-            end
-        end
+        if tool:IsA("Tool") then return true, tool end
     end
     return false, nil
 end
 
--- 1. Spam Energy Blast [E]
-Section:NewToggle("Spam Energy Blast [E]", "Tự spam phím E", function(s)
-    _G.EB = s
-    while _G.EB do
-        VIM:SendKeyEvent(true, Enum.KeyCode.E, false, game)
-        VIM:SendKeyEvent(false, Enum.KeyCode.E, false, game)
-        task.wait(0.05)
-    end
+-- TAB MAIN
+-- 1. Anti AFK
+MainSection:NewToggle("Anti afk", "Chống AFK", function(s)
+    _G.AntiAfk = s
 end)
 
--- 2. Auto Click
-Section:NewToggle("Auto Click", "Vừa spam skill vừa đấm", function(s)
-    _G.AutoClick = s
-    while _G.AutoClick do
-        VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
-        VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+-- 2. Auto Skill Khi Mất Máu
+MainSection:NewToggle("Auto Skill Khi Mất Máu", "Máu < 50% tự dùng skill", function(s)
+    _G.AutoSkillLowHP = s
+    while _G.AutoSkillLowHP do
+        if getHealthPercent() < 50 then
+            VIM:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+            VIM:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+            task.wait(0.2)
+        end
         task.wait(0.1)
     end
 end)
 
--- 3. Auto Beat [M]
-Section:NewToggle("Auto Beat [M]", "Tự spam phím M", function(s)
-    _G.AutoBeat = s
-    while _G.AutoBeat do
-        VIM:SendKeyEvent(true, Enum.KeyCode.M, false, game)
-        VIM:SendKeyEvent(false, Enum.KeyCode.M, false, game)
-        task.wait(0.1)
-    end
-end)
-
--- 4. Treo Cổ Boss - Reset khi sang raid
-Section:NewToggle("Treo Cổ Boss", "Clear/Sang raid là đáp đất", function(s)
-    _G.Tp = s
-    local lastPos = nil
-    local lastRaid = nil
-    while _G.Tp do
-        pcall(function()
-            local t = getMonster()
-            local char = Plr.Character
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            local hum = char and char:FindFirstChild("Humanoid")
-            local currentRaid = workspace:FindFirstChild("CurrentRaid")
-
-            if currentRaid ~= lastRaid then
-                lastPos = nil
-                lastRaid = currentRaid
-                if hum then hum.PlatformStand = false end
-                task.wait(3)
-            end
-
-            if t and hrp and hum and not isDungeonClear() then
-                if not lastPos then lastPos = hrp.CFrame end
-                hrp.CFrame = t.HumanoidRootPart.CFrame * CFrame.new(0, 8, 0)
-                hrp.Velocity = Vector3.new(0,0,0)
-                hum.PlatformStand = true
-            else
-                if hum then hum.PlatformStand = false end
-                if lastPos and hrp then
-                    hrp.CFrame = lastPos + Vector3.new(0, 3, 0)
-                    lastPos = nil
-                end
-            end
-        end)
-        task.wait()
-    end
-    local hum = Plr.Character and Plr.Character:FindFirstChild("Humanoid")
-    if hum then hum.PlatformStand = false end
-end)
-
--- 5. Auto Lock Skill
-Section:NewToggle("Auto Lock Skill", "Tự ghim skill vào boss", function(s)
-    _G.AutoLock = s
-    local lockRemote = findRemote("lock") or findRemote("target")
-    while _G.AutoLock do
-        pcall(function()
-            local boss = getMonster()
-            if boss and lockRemote then
-                lockRemote:FireServer(boss)
-            end
-        end)
-        task.wait(0.5)
-    end
-end)
-
--- 6. Auto Boss [1] - KHÓA KIẾM - Không nhả
-Section:NewToggle("Auto Boss [1]", "KHÓA KIẾM - Không nhả", function(s)
-    _G.AutoBoss = s
-    local attackRemote = findRemote("attack") or findRemote("punch") or findRemote("hit")
-    local equippedWeapon = nil
-
-    while _G.AutoBoss do
-        pcall(function()
-            local boss = getMonster()
-            local hrp = Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart")
-            local hum = Plr.Character and Plr.Character:FindFirstChild("Humanoid")
-
-            if boss and hrp and hum then
-                local holding, currentTool = isHoldingWeapon()
-
-                if not holding then
-                    local weapon = getWeapon()
-                    if weapon then
-                        hum:EquipTool(weapon)
-                        equippedWeapon = weapon
-                        task.wait(0.2)
-                    else
-                        VIM:SendKeyEvent(true, Enum.KeyCode.One, false, game)
-                        VIM:SendKeyEvent(false, Enum.KeyCode.One, false, game)
-                        task.wait(0.3)
-                    end
-                else
-                    equippedWeapon = currentTool
-                end
-
-                if equippedWeapon and not isHoldingWeapon() then
-                    hum:EquipTool(equippedWeapon)
-                end
-
-                local distance = (hrp.Position - boss.HumanoidRootPart.Position).Magnitude
-                if distance < 10 then
-                    hrp.CFrame = hrp.CFrame * CFrame.new(0, 15, 0)
-                end
-                if attackRemote then
-                    attackRemote:FireServer()
-                end
-            end
-        end)
-        task.wait(0.1)
-    end
-    equippedWeapon = nil
-end)
-
--- 7. Auto Charge [C] - Thông minh
-Section:NewToggle("Auto Charge [C]", "Tự giữ C khi ki < 90%", function(s)
+-- 3. Auto Phê Pha V2 - Auto Charge Ki
+MainSection:NewToggle("Auto Phê Pha V2", "Tự giữ C khi ki < 90%", function(s)
     _G.AutoFushi = s
     local charging = false
     while _G.AutoFushi do
         local ki = getKiPercent()
-
         if ki < 90 and not charging then
             VIM:SendKeyEvent(true, Enum.KeyCode.C, false, game)
             charging = true
@@ -360,45 +216,30 @@ Section:NewToggle("Auto Charge [C]", "Tự giữ C khi ki < 90%", function(s)
     VIM:SendKeyEvent(false, Enum.KeyCode.C, false, game)
 end)
 
--- 8. Auto Form [Y] - KHÓA FORM - Không mất
-Section:NewToggle("Auto Form [Y]", "KHÓA FORM - Không mất", function(s)
+-- 4. Auto beast - Auto Form
+MainSection:NewToggle("Auto beast", "Tự biến hình Y", function(s)
     _G.AutoForm = s
     local lastPress = 0
-    local lastDeath = false
     local lockedForm = false
 
     Plr.CharacterAdded:Connect(function()
-        lastDeath = true
         lockedForm = false
         task.wait(8)
-        lastDeath = false
     end)
 
     while _G.AutoForm do
         local currentForm = isInForm()
         local canPress = (tick() - lastPress) > 10
 
-        if lockedForm and not currentForm and canPress and not lastDeath then
-            task.wait(0.5)
+        if not currentForm and canPress then
+            task.wait(1)
             if not isInForm() then
                 VIM:SendKeyEvent(true, Enum.KeyCode.Y, false, game)
                 task.wait(0.1)
                 VIM:SendKeyEvent(false, Enum.KeyCode.Y, false, game)
                 lastPress = tick()
+                lockedForm = true
                 task.wait(5)
-            end
-        elseif not currentForm and not lockedForm and canPress and not lastDeath then
-            task.wait(1)
-            if not isInForm() then
-                task.wait(1)
-                if not isInForm() then
-                    VIM:SendKeyEvent(true, Enum.KeyCode.Y, false, game)
-                    task.wait(0.1)
-                    VIM:SendKeyEvent(false, Enum.KeyCode.Y, false, game)
-                    lastPress = tick()
-                    lockedForm = true
-                    task.wait(5)
-                end
             end
         elseif currentForm then
             lockedForm = true
@@ -407,134 +248,183 @@ Section:NewToggle("Auto Form [Y]", "KHÓA FORM - Không mất", function(s)
     end
 end)
 
--- 9. FIX TRIỆT ĐỂ: Auto Next Raid - Tự bấm Play Again
-Section:NewToggle("Auto Next Raid", "Tự bấm Play Again", function(s)
-    _G.AutoNextRaid = s
-    local playRemote = findRemote("play") or findRemote("replay") or findRemote("next") or findRemote("again")
+-- 5. Auto fusion
+MainSection:NewToggle("Auto fusion", "Tự hợp thể", function(s)
+    _G.AutoFusion = s
+    while _G.AutoFusion do
+        VIM:SendKeyEvent(true, Enum.KeyCode.F, false, game)
+        task.wait(0.1)
+        VIM:SendKeyEvent(false, Enum.KeyCode.F, false, game)
+        task.wait(10)
+    end
+end)
 
-    while _G.AutoNextRaid do
+-- TAB DUNGEON
+-- 6. Auto Start Work All Dungeon V2
+DungeonSection:NewToggle("Auto Start Work All Dungeon V2", "Tự vào dungeon", function(s)
+    _G.AutoStartDungeon = s
+    local startRemote = findRemote("start") or findRemote("enter") or findRemote("dungeon")
+    while _G.AutoStartDungeon do
+        if startRemote then
+            startRemote:FireServer()
+        end
+        task.wait(5)
+    end
+end)
+
+-- 7. Auto Kill Boss Premium
+DungeonSection:NewToggle("Auto Kill Boss Premium", "Farm boss premium", function(s)
+    _G.AutoKillBoss = s
+    local attackRemote = findRemote("attack") or findRemote("punch")
+    local equippedWeapon = nil
+
+    while _G.AutoKillBoss do
         pcall(function()
-            -- Chỉ chạy khi màn hình Dungeon Cleared hiện ra
-            if isDungeonClear() then
-                task.wait(2) -- Đợi UI load
+            local boss = getMonster()
+            local hrp = Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart")
+            local hum = Plr.Character and Plr.Character:FindFirstChild("Humanoid")
 
-                -- Cách 1: Bấm nút Play Again
-                if clickPlayAgain() then
-                    task.wait(5) -- Đợi vào map mới
+            if boss and hrp and hum then
+                local holding, currentTool = isHoldingWeapon()
+                if not holding then
+                    local weapon = getWeapon()
+                    if weapon then
+                        hum:EquipTool(weapon)
+                        equippedWeapon = weapon
+                        task.wait(0.2)
+                    end
+                else
+                    equippedWeapon = currentTool
                 end
 
-                -- Cách 2: Dùng RemoteEvent nếu có
+                if equippedWeapon and not isHoldingWeapon() then
+                    hum:EquipTool(equippedWeapon)
+                end
+
+                hrp.CFrame = boss.HumanoidRootPart.CFrame * CFrame.new(0, 8, 0)
+                hrp.Velocity = Vector3.new(0,0,0)
+                if attackRemote then attackRemote:FireServer() end
+            end
+        end)
+        task.wait(0.1)
+    end
+end)
+
+-- 8. Auto (Next Area)
+DungeonSection:NewToggle("Auto (Next Area)", "Tự bấm Play Again", function(s)
+    _G.AutoNextArea = s
+    local playRemote = findRemote("play") or findRemote("replay") or findRemote("next")
+
+    while _G.AutoNextArea do
+        pcall(function()
+            if isDungeonClear() then
+                task.wait(2)
+                clickPlayAgain()
                 if playRemote then
                     playRemote:FireServer()
-                    task.wait(5)
                 end
+                task.wait(5)
             end
         end)
         task.wait(1)
     end
 end)
 
--- 10. Hide Nametags
-Section:NewToggle("Hide Nametags", "Ẩn tên Player_01 + boss", function(s)
-    _G.HideName = s
-    while _G.HideName do
+-- 9. Godmode
+DungeonSection:NewToggle("Godmode", "Bất tử", function(s)
+    _G.Godmode = s
+    while _G.Godmode do
         pcall(function()
-            for _, plr in pairs(game:GetService("Players"):GetPlayers()) do
-                if plr.Character and plr.Character:FindFirstChild("Humanoid") then
-                    plr.Character.Humanoid.DisplayDistanceType = s and Enum.HumanoidDisplayDistanceType.None or Enum.HumanoidDisplayDistanceType.Viewer
-                end
+            local hum = Plr.Character and Plr.Character:FindFirstChild("Humanoid")
+            if hum then
+                hum.Health = hum.MaxHealth
             end
-            for _, v in ipairs(workspace:GetDescendants()) do
-                if v:IsA("Model") and v:FindFirstChild("Humanoid") and v:FindFirstChild("Head") then
-                    for _, gui in pairs(v.Head:GetChildren()) do
-                        if gui:IsA("BillboardGui") then
-                            gui.Enabled = not s
-                        end
-                    end
+        end)
+        task.wait()
+    end
+end)
+
+-- 10. auto lock Atom - Auto Lock Boss
+DungeonSection:NewToggle("auto lock Atom", "Khóa boss", function(s)
+    _G.AutoLockAtom = s
+    local lockRemote = findRemote("lock") or findRemote("target")
+    while _G.AutoLockAtom do
+        pcall(function()
+            local boss = getMonster()
+            if boss and lockRemote then
+                lockRemote:FireServer(boss)
+            end
+        end)
+        task.wait(0.5)
+    end
+end)
+
+-- TAB DUNGEON PREMIUM
+-- 11. Auto Skill + Godmode V2
+DungeonPremSection:NewToggle("Auto Skill + Godmode V2 (Chạy Liên Tục)", "Skill + bất tử", function(s)
+    _G.AutoSkillGod = s
+    while _G.AutoSkillGod do
+        pcall(function()
+            local hum = Plr.Character and Plr.Character:FindFirstChild("Humanoid")
+            if hum then hum.Health = hum.MaxHealth end
+            VIM:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+            VIM:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+        end)
+        task.wait(0.05)
+    end
+end)
+
+-- 12. Auto equiptools dls
+DungeonPremSection:NewToggle("Auto equiptools dls", "Tự cầm tool", function(s)
+    _G.AutoEquipDLS = s
+    local equippedWeapon = nil
+    while _G.AutoEquipDLS do
+        pcall(function()
+            local hum = Plr.Character and Plr.Character:FindFirstChild("Humanoid")
+            if hum and not isHoldingWeapon() then
+                local weapon = getWeapon()
+                if weapon then
+                    hum:EquipTool(weapon)
+                    equippedWeapon = weapon
                 end
             end
         end)
-        task.wait(1)
-    end
-    for _, plr in pairs(game:GetService("Players"):GetPlayers()) do
-        if plr.Character and plr.Character:FindFirstChild("Humanoid") then
-            plr.Character.Humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Viewer
-        end
+        task.wait(0.5)
     end
 end)
 
--- 11. Fix Lag
-Section:NewToggle("Fix Lag", "Giảm lag khi đánh boss", function(s)
-    _G.FixLag = s
-    if s then
-        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-        Lighting.GlobalShadows = false
-        Lighting.FogEnd = 9e9
-        Lighting.Brightness = 0
-        settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level04
+-- 13. Auto EquipTools
+DungeonPremSection:NewToggle("Auto EquipTools", "Khóa tool", function(s)
+    _G.AutoEquipTools = s
+    local equippedWeapon = nil
+    while _G.AutoEquipTools do
+        pcall(function()
+            local hum = Plr.Character and Plr.Character:FindFirstChild("Humanoid")
+            local holding, currentTool = isHoldingWeapon()
 
-        for _, v in pairs(workspace:GetDescendants()) do
-            if v:IsA("ParticleEmitter") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") then
-                v.Enabled = false
+            if not holding then
+                local weapon = getWeapon()
+                if weapon then
+                    hum:EquipTool(weapon)
+                    equippedWeapon = weapon
+                end
+            else
+                equippedWeapon = currentTool
             end
-            if v:IsA("Explosion") then
-                v:Destroy()
-            end
-            if v:IsA("Decal") or v:IsA("Texture") then
-                v.Transparency = 1
-            end
-        end
 
-        for _, v in pairs(workspace:GetDescendants()) do
-            if v:IsA("BasePart") then
-                v.CastShadow = false
+            if equippedWeapon and not isHoldingWeapon() then
+                hum:EquipTool(equippedWeapon)
             end
-        end
-    else
-        settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
-        Lighting.GlobalShadows = true
-        Lighting.FogEnd = 100000
-        Lighting.Brightness = 2
+        end)
+        task.wait(0.1)
     end
 end)
 
--- 12. Auto Play Raid - Fix 100% - Bật full auto
-Section:NewToggle("Auto Play Raid", "Fix 100% - Bật full auto", function(s)
-    _G.AutoPlay = s
-    if s then
-        Section.Flags["Spam Energy Blast [E]"]:Set(true)
-        Section.Flags["Treo Cổ Boss"]:Set(true)
-        Section.Flags["Auto Lock Skill"]:Set(true)
-        Section.Flags["Auto Boss [1]"]:Set(true)
-        Section.Flags["Auto Charge [C]"]:Set(true)
-        Section.Flags["Auto Form [Y]"]:Set(true)
-        Section.Flags["Auto Next Raid"]:Set(true)
-        Section.Flags["Auto Click"]:Set(true)
-        Section.Flags["Auto Beat [M]"]:Set(true)
-        Section.Flags["Hide Nametags"]:Set(true)
-        Section.Flags["Fix Lag"]:Set(true)
-    else
-        Section.Flags["Spam Energy Blast [E]"]:Set(false)
-        Section.Flags["Treo Cổ Boss"]:Set(false)
-        Section.Flags["Auto Lock Skill"]:Set(false)
-        Section.Flags["Auto Boss [1]"]:Set(false)
-        Section.Flags["Auto Charge [C]"]:Set(false)
-        Section.Flags["Auto Form [Y]"]:Set(false)
-        Section.Flags["Auto Next Raid"]:Set(false)
-        Section.Flags["Auto Click"]:Set(false)
-        Section.Flags["Auto Beat [M]"]:Set(false)
-        Section.Flags["Hide Nametags"]:Set(false)
-        Section.Flags["Fix Lag"]:Set(false)
-    end
-end)
-
-Section:NewButton("Ẩn Menu", "Thu nhỏ", function()
-    Kavo:ToggleUI()
-end)
-
--- Anti AFK
+-- Anti AFK Handler
 Plr.Idled:Connect(function()
-    VU:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-    task.wait(1)
-    VU:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+    if _G.AntiAfk then
+        VU:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+        task.wait(1)
+        VU:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+    end
 end)
