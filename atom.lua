@@ -1,4 +1,4 @@
--- DRAGON BLOX V2 - FULL FEATURES V3.1 - AUTO EQUIP + FIX NEXT AREA
+-- DRAGON BLOX V2 - FULL FEATURES V3.2 - FINAL
 local Kavo = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
 local Win = Kavo.CreateLib("Dragon Blox V2 - FULL", "BloodTheme")
 
@@ -78,7 +78,6 @@ local function isDungeonClear()
     return false
 end
 
--- FIX: CLICK PLAY AGAIN TỐI ƯU
 local function clickPlayAgain()
     local gui = Plr:FindFirstChild("PlayerGui")
     if not gui then return false end
@@ -179,13 +178,24 @@ local function getKiPercent()
     return 100
 end
 
--- NEW: AUTO EQUIP WEAPON
 local function equipWeapon(slot)
     slot = slot or 1
     pcall(function()
         VIM:SendKeyEvent(true, Enum.KeyCode["".. slot], false, game)
         task.wait(0.1)
         VIM:SendKeyEvent(false, Enum.KeyCode["".. slot], false, game)
+
+        task.wait(0.2)
+        local char = Plr.Character
+        local backpack = Plr:FindFirstChild("Backpack")
+        if char and backpack then
+            for _, tool in pairs(backpack:GetChildren()) do
+                if tool:IsA("Tool") and (tool.Name:find("Spear") or tool.Name:find("Energy")) then
+                    char.Humanoid:EquipTool(tool)
+                    break
+                end
+            end
+        end
     end)
 end
 
@@ -193,9 +203,7 @@ local function isWeaponEquipped()
     local char = Plr.Character
     if not char then return false end
     for _, v in pairs(char:GetChildren()) do
-        if v:IsA("Tool") then
-            return true
-        end
+        if v:IsA("Tool") then return true end
     end
     return false
 end
@@ -248,16 +256,16 @@ MainSection:NewToggle("Auto Form [C]", "Tự biến hình phím C - Khóa form",
     end
 end)
 
-MainSection:NewToggle("Auto Equip Weapon", "Tự động equip Energy Spear slot 1", function(s)
-    _G.AutoEquipWeapon = s
-    while _G.AutoEquipWeapon do
+MainSection:NewToggle("Auto Equip Spear", "Tự equip Energy Spear +30", function(s)
+    _G.AutoEquipSpear = s
+    while _G.AutoEquipSpear do
         pcall(function()
             if not isWeaponEquipped() then
                 equipWeapon(1)
-                task.wait(1)
+                task.wait(0.5)
             end
         end)
-        task.wait(2)
+        task.wait(1)
     end
 end)
 
@@ -265,19 +273,15 @@ MainSection:NewButton("Equip Energy Spear", "Bấm tay để equip ngay", functi
     equipWeapon(1)
 end)
 
-MainSection:NewToggle("Auto Spam Energy Blast [E]", "Chỉ spam E", function(s)
+MainSection:NewToggle("Auto Spam Energy Blast [E]", "Chỉ spam E - FIX LỖI", function(s)
     _G.AutoEnergyBlast = s
-    local blastRemote = findRemote("blast") or findRemote("energy") or findRemote("skill")
     while _G.AutoEnergyBlast do
         pcall(function()
             VIM:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+            task.wait(0.05)
             VIM:SendKeyEvent(false, Enum.KeyCode.E, false, game)
-            if blastRemote then
-                local boss = getMonster()
-                if boss then blastRemote:FireServer(boss.HumanoidRootPart.Position) end
-            end
         end)
-        task.wait(0.1)
+        task.wait(0.15)
     end
 end)
 
@@ -330,11 +334,8 @@ MainSection:NewSlider("Kill Aura Range", "Bán kính Kill Aura", 500, 10, functi
     killAuraRange = v
 end)
 
-MainSection:NewToggle("Kill Aura", "Tự đánh quái xung quanh", function(s)
+MainSection:NewToggle("Kill Aura", "Tự đánh quái xung quanh - FIX LỖI", function(s)
     _G.KillAura = s
-    local attackRemote = findRemote("attack") or findRemote("punch") or findRemote("melee")
-    local skillRemote = findRemote("skill") or findRemote("blast") or findRemote("energy")
-
     while _G.KillAura do
         pcall(function()
             local mobs = getAllMonsters(killAuraRange)
@@ -342,14 +343,12 @@ MainSection:NewToggle("Kill Aura", "Tự đánh quái xung quanh", function(s)
                 for i = 1, 3 do
                     VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
                     VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
-                    if attackRemote then attackRemote:FireServer(mob) end
                 end
                 VIM:SendKeyEvent(true, Enum.KeyCode.E, false, game)
                 VIM:SendKeyEvent(false, Enum.KeyCode.E, false, game)
-                if skillRemote then skillRemote:FireServer(mob.HumanoidRootPart.Position) end
             end
         end)
-        task.wait(0.05)
+        task.wait(0.1)
     end
 end)
 
@@ -364,11 +363,10 @@ DungeonSection:NewDropdown("Chọn Kiểu Farm", "Chọn skill để farm", {"En
     selectedSkill = currentOption
 end)
 
-DungeonSection:NewToggle("Auto Farm", "Farm theo Auto Mode + Kiểu Farm - DI CHUYỂN ĐƯỢC", function(s)
+DungeonSection:NewToggle("Auto Farm", "Farm Spear - TỰ ĐÁNH 100%", function(s)
     _G.AutoFarm = s
     while _G.AutoFarm do
         pcall(function()
-            -- AUTO EQUIP TRƯỚC KHI FARM
             if not isWeaponEquipped() then
                 equipWeapon(1)
                 task.wait(0.5)
@@ -381,11 +379,11 @@ DungeonSection:NewToggle("Auto Farm", "Farm theo Auto Mode + Kiểu Farm - DI CH
                 hrp.Velocity = Vector3.new(0,0,0)
 
                 if selectedAutoMode == "Strength" or selectedSkill == "Energy Spear" then
-                    for i = 1, 3 do
+                    for i = 1, 5 do
                         VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
                         VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+                        task.wait(0.05)
                     end
-                    task.wait(0.03)
                 elseif selectedAutoMode == "Energy" or selectedSkill == "Energy Blast" then
                     VIM:SendKeyEvent(true, Enum.KeyCode.E, false, game)
                     task.wait(0.05)
@@ -398,7 +396,7 @@ DungeonSection:NewToggle("Auto Farm", "Farm theo Auto Mode + Kiểu Farm - DI CH
                 end
             end
         end)
-        task.wait()
+        task.wait(0.03)
     end
 end)
 
