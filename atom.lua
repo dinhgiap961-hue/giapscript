@@ -136,7 +136,7 @@ local function getKiPercent()
     return 100
 end
 
--- TAB MAIN - 6 NÚT
+-- TAB MAIN
 MainSection:NewToggle("Auto Click", "Tự động click chuột", function(s)
     _G.AutoClick = s
     while _G.AutoClick do
@@ -159,24 +159,17 @@ MainSection:NewToggle("Auto Form [C]", "Tự biến hình phím C - Khóa form",
     _G.AutoForm = s
     local lastPress = 0
     local lockedForm = false
-
-    Plr.CharacterAdded:Connect(function()
-        lockedForm = false
-        task.wait(8)
-    end)
-
+    Plr.CharacterAdded:Connect(function() lockedForm = false; task.wait(8) end)
     while _G.AutoForm do
         local currentForm = isInForm()
         local canPress = (tick() - lastPress) > 8
-
         if lockedForm and not currentForm and canPress then
             task.wait(0.5)
             if not isInForm() then
                 VIM:SendKeyEvent(true, Enum.KeyCode.C, false, game)
                 task.wait(0.1)
                 VIM:SendKeyEvent(false, Enum.KeyCode.C, false, game)
-                lastPress = tick()
-                task.wait(3)
+                lastPress = tick(); task.wait(3)
             end
         elseif not currentForm and not lockedForm and canPress then
             task.wait(1)
@@ -184,18 +177,14 @@ MainSection:NewToggle("Auto Form [C]", "Tự biến hình phím C - Khóa form",
                 VIM:SendKeyEvent(true, Enum.KeyCode.C, false, game)
                 task.wait(0.1)
                 VIM:SendKeyEvent(false, Enum.KeyCode.C, false, game)
-                lastPress = tick()
-                lockedForm = true
-                task.wait(3)
+                lastPress = tick(); lockedForm = true; task.wait(3)
             end
-        elseif currentForm then
-            lockedForm = true
-        end
+        elseif currentForm then lockedForm = true end
         task.wait(0.3)
     end
 end)
 
-MainSection:NewToggle("Auto Spam Energy Blast [E]", "Spam skill E liên tục", function(s)
+MainSection:NewToggle("Auto Spam Energy Blast [E]", "Chỉ spam E", function(s)
     _G.AutoEnergyBlast = s
     local blastRemote = findRemote("blast") or findRemote("energy") or findRemote("skill")
     while _G.AutoEnergyBlast do
@@ -211,26 +200,31 @@ MainSection:NewToggle("Auto Spam Energy Blast [E]", "Spam skill E liên tục", 
     end
 end)
 
-MainSection:NewToggle("Auto Lock Skill + Bay Cổ", "Ghim skill + bay sau cổ boss", function(s)
-    _G.AutoLock = s
+MainSection:NewToggle("Auto Lock Skill", "Chỉ ghim skill vào boss", function(s)
+    _G.AutoLockSkill = s
     local lockRemote = findRemote("lock") or findRemote("target")
-    while _G.AutoLock do
+    while _G.AutoLockSkill do
+        pcall(function()
+            local boss = getMonster()
+            if boss and lockRemote then
+                lockRemote:FireServer(boss)
+            end
+        end)
+        task.wait(0.5)
+    end
+end)
+
+MainSection:NewToggle("Auto Bay Cổ Boss", "Chỉ bay sau cổ boss", function(s)
+    _G.AutoBayCo = s
+    while _G.AutoBayCo do
         pcall(function()
             local boss = getMonster()
             local hrp = Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart")
             local hum = Plr.Character and Plr.Character:FindFirstChild("Humanoid")
-
             if boss and hrp and hum then
                 hrp.CFrame = boss.HumanoidRootPart.CFrame * CFrame.new(0, 2, -2)
                 hrp.Velocity = Vector3.new(0,0,0)
                 hum.PlatformStand = true
-
-                if lockRemote then
-                    lockRemote:FireServer(boss)
-                end
-
-                VIM:SendKeyEvent(true, Enum.KeyCode.E, false, game)
-                VIM:SendKeyEvent(false, Enum.KeyCode.E, false, game)
             end
         end)
         task.wait(0.1)
@@ -246,24 +240,27 @@ MainSection:NewToggle("Auto Phê Pha V2", "Tự giữ C khi ki < 90%", function(
     while _G.AutoFushi do
         local ki = getKiPercent()
         if ki < 90 and not charging then
-            VIM:SendKeyEvent(true, Enum.KeyCode.C, false, game)
-            charging = true
+            VIM:SendKeyEvent(true, Enum.KeyCode.C, false, game); charging = true
         elseif ki >= 95 and charging then
-            VIM:SendKeyEvent(false, Enum.KeyCode.C, false, game)
-            charging = false
+            VIM:SendKeyEvent(false, Enum.KeyCode.C, false, game); charging = false
         end
         task.wait(0.1)
     end
     VIM:SendKeyEvent(false, Enum.KeyCode.C, false, game)
 end)
 
--- TAB DUNGEON - 3 NÚT
+-- TAB DUNGEON - THÊM AUTO MODE GIỐNG ẢNH
+local selectedAutoMode = "Strength"
+DungeonSection:NewDropdown("Chọn Auto Mode", "Chọn chỉ số để farm", {"Strength", "Energy", "Defense"}, function(currentOption)
+    selectedAutoMode = currentOption
+end)
+
 local selectedSkill = "Energy Spear"
 DungeonSection:NewDropdown("Chọn Kiểu Farm", "Chọn skill để farm", {"Energy Spear", "Energy Blast"}, function(currentOption)
     selectedSkill = currentOption
 end)
 
-DungeonSection:NewToggle("Auto Farm", "Farm quái theo skill đã chọn", function(s)
+DungeonSection:NewToggle("Auto Farm", "Farm theo Auto Mode + Kiểu Farm đã chọn", function(s)
     _G.AutoFarm = s
     local attackRemote = findRemote("attack") or findRemote("punch") or findRemote("melee")
     local skillRemote = findRemote("skill") or findRemote("blast") or findRemote("energy")
@@ -273,30 +270,29 @@ DungeonSection:NewToggle("Auto Farm", "Farm quái theo skill đã chọn", funct
             local mob = getMonster()
             local hrp = Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart")
             local hum = Plr.Character and Plr.Character:FindFirstChild("Humanoid")
-
             if mob and hrp and hum then
                 hrp.CFrame = mob.HumanoidRootPart.CFrame * CFrame.new(0, 2, -2)
                 hrp.Velocity = Vector3.new(0,0,0)
                 hum.PlatformStand = true
 
-                if selectedSkill == "Energy Spear" then
-                    -- SPAM CHÉM SIÊU NHANH 33 CLICK/S
+                -- AUTO MODE: Đổi cách đánh theo chỉ số
+                if selectedAutoMode == "Strength" then
+                    -- Farm Strength = đấm tay
                     VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
                     VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
-                    if attackRemote then
-                        for i = 1, 3 do
-                            attackRemote:FireServer(mob)
-                        end
-                    end
+                    if attackRemote then for i = 1, 3 do attackRemote:FireServer(mob) end end
                     task.wait(0.03)
-
-                elseif selectedSkill == "Energy Blast" then
+                elseif selectedAutoMode == "Energy" then
+                    -- Farm Energy = spam E
                     VIM:SendKeyEvent(true, Enum.KeyCode.E, false, game)
                     VIM:SendKeyEvent(false, Enum.KeyCode.E, false, game)
-                    if skillRemote then
-                        skillRemote:FireServer(mob.HumanoidRootPart.Position)
-                    end
+                    if skillRemote then skillRemote:FireServer(mob.HumanoidRootPart.Position) end
                     task.wait(0.1)
+                elseif selectedAutoMode == "Defense" then
+                    -- Farm Defense = đứng tank + đấm
+                    VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+                    VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+                    task.wait(0.2)
                 end
             end
         end)
@@ -310,15 +306,12 @@ end)
 DungeonSection:NewToggle("Auto (Next Area)", "Tự bấm Play Again", function(s)
     _G.AutoNextArea = s
     local playRemote = findRemote("play") or findRemote("replay") or findRemote("next")
-
     while _G.AutoNextArea do
         pcall(function()
             if isDungeonClear() then
                 task.wait(2)
                 clickPlayAgain()
-                if playRemote then
-                    playRemote:FireServer()
-                end
+                if playRemote then playRemote:FireServer() end
                 task.wait(5)
             end
         end)
@@ -337,7 +330,6 @@ DungeonSection:NewToggle("Godmode", "Bất tử", function(s)
     end
 end)
 
--- Anti AFK
 Plr.Idled:Connect(function()
     VU:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
     task.wait(1)
