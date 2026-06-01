@@ -1,4 +1,4 @@
--- DRAGON BLOX V2 - FULL FEATURES V4.0 - UNLOCK ALL
+-- DRAGON BLOX V2 - FULL FEATURES V5.0 - UNLOCK ALL + AUTO RAID
 local Kavo = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
 local Win = Kavo.CreateLib("Dragon Blox V2 - BYPASS", "BloodTheme")
 
@@ -104,7 +104,7 @@ end
 local function clickPlayAgain()
     local gui = Plr:FindFirstChild("PlayerGui")
     if not gui then return false end
-    local keywords = {"Play Again", "Replay", "Continue", "Next", "Retry", "Again", "Again!"}
+    local keywords = {"Play Again", "Replay", "Continue", "Next", "Retry", "Again", "Again!", "Exit", "Leave", "Claim", "Reward"}
     for _, v in pairs(gui:GetDescendants()) do
         if v:IsA("TextButton") or v:IsA("ImageButton") then
             if v.Visible and v.Active then
@@ -466,6 +466,127 @@ DungeonSection:NewToggle("Auto (Next Area)", "Tự bấm Play Again", function(s
     end
 end)
 
+DungeonSection:NewToggle("Auto Raid FULL", "Tự tìm + vào Raid + Farm - 0 cần làm gì", function(s)
+    _G.AutoRaidFull = s
+
+    local raidRemotes = {
+        findRemote("raid"), findRemote("enter"), findRemote("join"),
+        findRemote("portal"), findRemote("teleport"), findRemote("dungeon"),
+        findRemote("start"), findRemote("instance")
+    }
+
+    while _G.AutoRaidFull do
+        pcall(function()
+            local char = Plr.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if not hrp then return end
+
+            local inRaid = false
+            for _, v in ipairs(workspace:GetDescendants()) do
+                if v.Name == "RaidMap" or v.Name == "DungeonMap" or v.Name == "InstanceMap" then
+                    if (v.Position - hrp.Position).Magnitude < 1000 then
+                        inRaid = true
+                        break
+                    end
+                end
+            end
+
+            if not inRaid then
+                local portalFound = false
+                for _, v in ipairs(workspace:GetDescendants()) do
+                    if v:IsA("Part") or v:IsA("MeshPart") or v:IsA("Model") then
+                        local name = string.lower(v.Name)
+                        if string.find(name, "raid") or string.find(name, "portal") or
+                           string.find(name, "dungeon") or string.find(name, "gate") or
+                           string.find(name, "enter") or string.find(name, "zone") then
+
+                            portalFound = true
+                            local targetCFrame = nil
+                            if v:IsA("Model") then
+                                local portalPart = v:FindFirstChild("HumanoidRootPart") or v:FindFirstChildWhichIsA("BasePart")
+                                if portalPart then targetCFrame = portalPart.CFrame end
+                            else
+                                targetCFrame = v.CFrame
+                            end
+
+                            if targetCFrame then
+                                hrp.CFrame = targetCFrame * CFrame.new(0, 5, 0)
+                                task.wait(0.5)
+
+                                for _, remote in ipairs(raidRemotes) do
+                                    if remote then
+                                        pcall(function() remote:FireServer() end)
+                                        pcall(function() remote:FireServer(v) end)
+                                        pcall(function() remote:FireServer(v.Name) end)
+                                        pcall(function() remote:FireServer("Raid") end)
+                                        pcall(function() remote:FireServer("Enter") end)
+                                        pcall(function() remote:FireServer(1) end)
+                                        pcall(function() remote:FireServer(true) end)
+                                    end
+                                end
+
+                                for _, prompt in ipairs(workspace:GetDescendants()) do
+                                for _, prompt in ipairs(workspace:GetDescendants()) do
+                                    if prompt:IsA("ProximityPrompt") and (prompt.Parent.Position - hrp.Position).Magnitude < 20 then
+                                        pcall(function() fireproximityprompt(prompt) end)
+                                    end
+                                end
+                                
+                                task.wait(3) -- Đợi tele
+                                break
+                            end
+                        end
+                    end
+                end
+                
+                -- Nếu không thấy portal thì spam remote tạo raid
+                if not portalFound then
+                    for _, remote in ipairs(raidRemotes) do
+                        if remote then
+                            pcall(function() remote:FireServer("Create") end)
+                            pcall(function() remote:FireServer("Start") end)
+                            pcall(function() remote:FireServer("Solo") end)
+                        end
+                    end
+                    task.wait(2)
+                end
+
+            -- 2. Ở TRONG RAID RỒI -> FARM
+            else
+                local boss = getMonster()
+                if boss then
+                    hrp.CFrame = boss.HumanoidRootPart.CFrame * CFrame.new(0, 6, 0)
+                    hrp.Velocity = Vector3.new(0,0,0)
+                    
+                    local tool = getEquippedTool()
+                    if not tool then tool = equipWeapon(1) end
+                    
+                    -- Spam Spear 100%
+                    if tool then
+                        for i = 1, 8 do
+                            tool:Activate()
+                            task.wait(0.03)
+                        end
+                    end
+                    
+                    -- Spam remote damage
+                    local dmgRemote = findRemote("damage") or findRemote("attack") or findRemote("skill")
+                    if dmgRemote then
+                        for i = 1, 5 do
+                            pcall(function() dmgRemote:FireServer(boss) end)
+                            pcall(function() dmgRemote:FireServer(boss.HumanoidRootPart) end)
+                        end
+                    end
+                else
+                    clickPlayAgain()
+                    task.wait(2)
+                end
+            end
+        end)
+        task.wait(0.3)
+    end
+end)
+
 DungeonSection:NewToggle("Godmode V2", "Bất tử - BYPASS", function(s)
     _G.Godmode = s
     while _G.Godmode do
@@ -543,7 +664,7 @@ VisualSection:NewToggle("Fullbright", "Sáng toàn map", function(s)
         lighting.Brightness = 2
         lighting.ClockTime = 14
         lighting.FogEnd = 100000
-                lighting.GlobalShadows = false
+        lighting.GlobalShadows = false
         lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
         for _,v in pairs(lighting:GetChildren()) do
             if v:IsA("BlurEffect") or v:IsA("SunRaysEffect") or v:IsA("BloomEffect") then
@@ -631,7 +752,7 @@ Plr.Idled:Connect(function()
 end)
 
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Dragon Blox V4.0 BYPASS";
-    Text = "Đã phá hết anti-cheat! Chơi tẹt ga";
+    Title = "Dragon Blox V5.0 BYPASS";
+    Text = "Đã phá hết anti-cheat! Auto Raid FULL hoạt động";
     Duration = 5;
 })
