@@ -29,16 +29,26 @@ Btn.Parent = ScreenGui
 Instance.new("UICorner", Btn).CornerRadius = UDim.new(0,25)
 Btn.MouseButton1Click:Connect(function() Kavo:ToggleUI() end)
 
--- FIX: CHO MENU RA GIỮA MÀN HÌNH + KÉO THẢ
+-- FIX TRIỆT ĐỂ: ÉP MENU RA GIỮA MÀN HÌNH
 task.spawn(function()
-    repeat task.wait() until CoreGui:FindFirstChild("Kavo")
-    local KavoUI = CoreGui:FindFirstChild("Kavo")
-    if KavoUI and KavoUI:FindFirstChild("MainFrame") then
-        local main = KavoUI.MainFrame
-        main.Active = true
-        main.Draggable = true
-        main.AnchorPoint = Vector2.new(0.5, 0.5) -- Thêm dòng này
-        main.Position = UDim2.new(0.5, 0, 0.5, 0) -- Thêm dòng này: Ra giữa màn hình
+    local main = nil
+    repeat
+        task.wait(0.1)
+        local KavoUI = CoreGui:FindFirstChild("Kavo")
+        if KavoUI then main = KavoUI:FindFirstChild("MainFrame") end
+    until main
+
+    task.wait(1) -- Đợi Kavo load xong hẳn
+    main.Active = true
+    main.Draggable = true
+    main.AnchorPoint = Vector2.new(0.5, 0.5)
+    main.Position = UDim2.new(0.5, 0, 0.5, 0)
+
+    -- Khóa vị trí mỗi 2s để không bị lệch
+    while task.wait(2) do
+        if main and main.Parent then
+            main.Position = UDim2.new(0.5, 0, 0.5, 0)
+        end
     end
 end)
 
@@ -59,6 +69,29 @@ local function isDungeonClear()
         for _, v in pairs(gui:GetDescendants()) do
             if v:IsA("TextLabel") and (string.find(v.Text, "0 Mob Left") or string.find(v.Text, "Dungeon Cleared") or string.find(v.Text, "Wave")) then
                 if string.find(v.Text, "0") then return true end
+            end
+            if v:IsA("TextButton") and (v.Text == "Play Again" or v.Text == "Return to World") then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+-- CLICK NÚT PLAY AGAIN
+local function clickPlayAgain()
+    local gui = Plr:FindFirstChild("PlayerGui")
+    if gui then
+        for _, v in pairs(gui:GetDescendants()) do
+            if v:IsA("TextButton") and v.Text == "Play Again" and v.Visible then
+                -- Giả lập click
+                local events = {"MouseButton1Click", "Activated", "MouseButton1Down"}
+                for _, evt in pairs(events) do
+                    if v[evt] then
+                        pcall(function() firesignal(v[evt]) end)
+                    end
+                end
+                return true
             end
         end
     end
@@ -174,36 +207,6 @@ local function isHoldingWeapon()
         end
     end
     return false, nil
-end
-
-local function getRaids()
-    local raids = {}
-
-    for _, folderName in pairs({"Raids", "Raid", "Dungeons", "Dungeon", "Portals", "Portal", "Stages", "Rooms"}) do
-        local folder = workspace:FindFirstChild(folderName)
-        if folder then
-            for _, v in pairs(folder:GetChildren()) do
-                if v:IsA("Model") or v:IsA("Part") then
-                    table.insert(raids, v)
-                end
-            end
-        end
-    end
-
-    if #raids == 0 then
-        for _, v in pairs(workspace:GetDescendants()) do
-            if v:IsA("Part") or v:IsA("MeshPart") then
-                local name = string.lower(v.Name)
-                if string.find(name, "portal") or string.find(name, "enter") or string.find(name, "raid") or string.find(name, "door") then
-                    if v:FindFirstChild("TouchInterest") or v:FindFirstChild("ProximityPrompt") then
-                        table.insert(raids, v)
-                    end
-                end
-            end
-        end
-    end
-
-    return raids
 end
 
 -- 1. Spam Energy Blast [E]
@@ -404,39 +407,30 @@ Section:NewToggle("Auto Form [Y]", "KHÓA FORM - Không mất", function(s)
     end
 end)
 
--- 9. Auto Next Raid - Fix 100% - Tự vào raid
-Section:NewToggle("Auto Next Raid", "Fix 100% - Tự vào raid", function(s)
+-- 9. FIX TRIỆT ĐỂ: Auto Next Raid - Tự bấm Play Again
+Section:NewToggle("Auto Next Raid", "Tự bấm Play Again", function(s)
     _G.AutoNextRaid = s
-    local raidIndex = 1
-    local enterRemote = findRemote("enter") or findRemote("join") or findRemote("teleport") or findRemote("raid")
+    local playRemote = findRemote("play") or findRemote("replay") or findRemote("next") or findRemote("again")
 
     while _G.AutoNextRaid do
         pcall(function()
+            -- Chỉ chạy khi màn hình Dungeon Cleared hiện ra
             if isDungeonClear() then
-                local raids = getRaids()
-                if #raids > 0 then
-                    local raid = raids[raidIndex]
-                    local hrp = Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart")
+                task.wait(2) -- Đợi UI load
 
-                    if raid and hrp then
-                        if enterRemote then
-                            enterRemote:FireServer(raidIndex)
-                        end
+                -- Cách 1: Bấm nút Play Again
+                if clickPlayAgain() then
+                    task.wait(5) -- Đợi vào map mới
+                end
 
-                        if raid:IsA("Part") or raid:IsA("MeshPart") then
-                            hrp.CFrame = raid.CFrame + Vector3.new(0, 3, 0)
-                        elseif raid:FindFirstChild("HumanoidRootPart") then
-                            hrp.CFrame = raid.HumanoidRootPart.CFrame + Vector3.new(0, 5, 0)
-                        end
-
-                        task.wait(5)
-                        raidIndex = raidIndex + 1
-                        if raidIndex > #raids then raidIndex = 1 end
-                    end
+                -- Cách 2: Dùng RemoteEvent nếu có
+                if playRemote then
+                    playRemote:FireServer()
+                    task.wait(5)
                 end
             end
         end)
-        task.wait(2)
+        task.wait(1)
     end
 end)
 
