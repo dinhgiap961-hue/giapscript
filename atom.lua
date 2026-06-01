@@ -8,6 +8,7 @@ local VU = game:GetService("VirtualUser")
 local VIM = game:GetService("VirtualInputManager")
 local CoreGui = game:GetService("CoreGui")
 local RS = game:GetService("ReplicatedStorage")
+local Lighting = game:GetService("Lighting")
 
 -- Nút Atom CỐ ĐỊNH
 local ScreenGui = Instance.new("ScreenGui")
@@ -80,33 +81,43 @@ local function getMonster()
     return target
 end
 
+-- CHECK FORM CHUẨN 100% - 5 LỚP
 local function isInForm()
     local char = Plr.Character
     if not char then return false end
 
+    -- Lớp 1: Check Values trong Character - ƯU TIÊN CAO NHẤT
     local stats = char:FindFirstChild("Stats") or char:FindFirstChild("stats") or char:FindFirstChild("Data")
     if stats then
         local formVal = stats:FindFirstChild("Form") or stats:FindFirstChild("Transformation") or stats:FindFirstChild("Mode")
         if formVal and formVal.Value > 0 then return true end
     end
 
+    -- Lớp 2: Check leaderstats Power > 50M = chắc chắn form
     local leaderstats = Plr:FindFirstChild("leaderstats")
     if leaderstats then
         local form = leaderstats:FindFirstChild("Form") or leaderstats:FindFirstChild("Transformation")
         if form and form.Value > 0 then return true end
         local power = leaderstats:FindFirstChild("Power") or leaderstats:FindFirstChild("power")
-        if power and power.Value > 10000000 then return true end
+        if power and power.Value > 50000000 then return true end
     end
 
-    if string.find(char.Name, "SSJ") or string.find(char.Name, "Form") or string.find(char.Name, "Mystic") then return true end
+    -- Lớp 3: Check tên nhân vật
+    if string.find(char.Name, "SSJ") or string.find(char.Name, "Form") or string.find(char.Name, "Mystic") or string.find(char.Name, "Ultra") then return true end
 
+    -- Lớp 4: Check Aura/Effect đang bật
     for _,v in pairs(char:GetDescendants()) do
         if v.Name == "Aura" or v.Name == "SSJ" or v.Name == "Transform" or v.Name == "Glow" then return true end
-        if v:IsA("ParticleEmitter") and (v.Parent.Name == "HumanoidRootPart" or v.Parent.Name == "Torso") then
+        if v:IsA("ParticleEmitter") and (v.Parent.Name == "HumanoidRootPart" or v.Parent.Name == "Torso" or v.Parent.Name == "UpperTorso") then
             if v.Enabled then return true end
         end
         if v:IsA("PointLight") and v.Parent.Name == "HumanoidRootPart" then return true end
     end
+
+    -- Lớp 5: Check Attribute
+    if char:GetAttribute("Form") and char:GetAttribute("Form") > 0 then return true end
+    if char:GetAttribute("Transformation") then return true end
+
     return false
 end
 
@@ -143,18 +154,23 @@ local function getKiPercent()
     return 100
 end
 
-local function isHoldingSword()
+-- CHECK ĐANG CẦM VŨ KHÍ GÌ
+local function getCurrentTool()
     local char = Plr.Character
-    if not char then return false end
+    if not char then return nil end
     for _, tool in pairs(char:GetChildren()) do
         if tool:IsA("Tool") then
-            local name = string.lower(tool.Name)
-            if string.find(name, "sword") or string.find(name, "blade") or string.find(name, "katana") then
-                return true
-            end
+            return tool
         end
     end
-    return false
+    return nil
+end
+
+local function isHoldingWeapon()
+    local tool = getCurrentTool()
+    if not tool then return false end
+    local name = string.lower(tool.Name)
+    return string.find(name, "sword") or string.find(name, "blade") or string.find(name, "katana") or string.find(name, "weapon")
 end
 
 local function getRaids()
@@ -247,23 +263,29 @@ Section:NewToggle("Auto Lock Skill", "Tự ghim skill vào boss", function(s)
     end
 end)
 
--- 6. Auto Boss [1] - Fix 100% - Tự rút kiếm
-Section:NewToggle("Auto Boss [1]", "Fix 100% - Tự rút kiếm", function(s)
+-- 6. FIX TRIỆT ĐỂ: Auto Boss [1] - Chỉ bấm khi chưa cầm vũ khí
+Section:NewToggle("Auto Boss [1]", "Thông minh - Chỉ bấm khi cần", function(s)
     _G.AutoBoss = s
     local attackRemote = findRemote("attack") or findRemote("punch") or findRemote("hit")
     local lastSwitch = 0
+    local wasHoldingWeapon = false
 
     while _G.AutoBoss do
         pcall(function()
             local boss = getMonster()
             local hrp = Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart")
             if boss and hrp then
-                if not isHoldingSword() and (tick() - lastSwitch) > 2 then
+                local holding = isHoldingWeapon()
+
+                -- Chỉ bấm 1 khi: chưa cầm vũ khí + cooldown 3s + trước đó cũng chưa cầm
+                if not holding and not wasHoldingWeapon and (tick() - lastSwitch) > 3 then
                     VIM:SendKeyEvent(true, Enum.KeyCode.One, false, game)
                     VIM:SendKeyEvent(false, Enum.KeyCode.One, false, game)
                     lastSwitch = tick()
-                    task.wait(0.3)
+                    task.wait(0.5) -- Đợi equip xong
                 end
+
+                wasHoldingWeapon = holding
 
                 local distance = (hrp.Position - boss.HumanoidRootPart.Position).Magnitude
                 if distance < 10 then
@@ -272,6 +294,8 @@ Section:NewToggle("Auto Boss [1]", "Fix 100% - Tự rút kiếm", function(s)
                 if attackRemote then
                     attackRemote:FireServer()
                 end
+            else
+                wasHoldingWeapon = false
             end
         end)
         task.wait(0.1)
@@ -297,34 +321,40 @@ Section:NewToggle("Auto Charge [C]", "Tự giữ C khi ki < 90%", function(s)
     VIM:SendKeyEvent(false, Enum.KeyCode.C, false, game)
 end)
 
--- 8. Auto Form [Y] - Cooldown 5s + Reset khi chết
-Section:NewToggle("Auto Form [Y]", "Fix 100% - Cooldown 5s", function(s)
+-- 8. FIX TRIỆT ĐỂ: Auto Form [Y] - Check 5 lớp + Cooldown 8s
+Section:NewToggle("Auto Form [Y]", "Siêu thông minh - Cooldown 8s", function(s)
     _G.AutoForm = s
     local lastPress = 0
     local lastDeath = false
+    local formState = false
 
     Plr.CharacterAdded:Connect(function()
         lastDeath = true
-        task.wait(5)
+        formState = false
+        task.wait(8) -- Đợi 8s sau hồi sinh
         lastDeath = false
     end)
 
     while _G.AutoForm do
-        local canPress = (tick() - lastPress) > 5
+        local currentForm = isInForm()
+        local canPress = (tick() - lastPress) > 8 -- Cooldown 8s
 
-        if not isInForm() and canPress and not lastDeath then
-            task.wait(0.5)
+        -- Chỉ bấm Y khi: chưa form + trước đó cũng chưa form + cooldown đủ + không vừa chết
+        if not currentForm and not formState and canPress and not lastDeath then
+            task.wait(1) -- Check lại sau 1s
             if not isInForm() then
-                task.wait(0.5)
+                task.wait(1) -- Check lần 3 cho chắc
                 if not isInForm() then
                     VIM:SendKeyEvent(true, Enum.KeyCode.Y, false, game)
                     task.wait(0.1)
                     VIM:SendKeyEvent(false, Enum.KeyCode.Y, false, game)
                     lastPress = tick()
-                    task.wait(3)
+                    task.wait(5) -- Đợi biến hình xong
                 end
             end
         end
+
+        formState = currentForm
         task.wait(0.5)
     end
 end)
@@ -350,18 +380,16 @@ Section:NewToggle("Auto Next Raid", "Tự chuyển raid tiếp theo", function(s
     end
 end)
 
--- 10. MỚI: Hide Nametags
+-- 10. Hide Nametags
 Section:NewToggle("Hide Nametags", "Ẩn tên Player_01 + boss", function(s)
     _G.HideName = s
     while _G.HideName do
         pcall(function()
-            -- Ẩn tên người chơi
             for _, plr in pairs(game:GetService("Players"):GetPlayers()) do
                 if plr.Character and plr.Character:FindFirstChild("Humanoid") then
                     plr.Character.Humanoid.DisplayDistanceType = s and Enum.HumanoidDisplayDistanceType.None or Enum.HumanoidDisplayDistanceType.Viewer
                 end
             end
-            -- Ẩn tên quái/boss
             for _, v in ipairs(workspace:GetDescendants()) do
                 if v:IsA("Model") and v:FindFirstChild("Humanoid") and v:FindFirstChild("Head") then
                     for _, gui in pairs(v.Head:GetChildren()) do
@@ -374,7 +402,6 @@ Section:NewToggle("Hide Nametags", "Ẩn tên Player_01 + boss", function(s)
         end)
         task.wait(1)
     end
-    -- Bật lại tên khi tắt toggle
     for _, plr in pairs(game:GetService("Players"):GetPlayers()) do
         if plr.Character and plr.Character:FindFirstChild("Humanoid") then
             plr.Character.Humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Viewer
@@ -382,7 +409,42 @@ Section:NewToggle("Hide Nametags", "Ẩn tên Player_01 + boss", function(s)
     end
 end)
 
--- 11. Auto Play Raid
+-- 11. Fix Lag
+Section:NewToggle("Fix Lag", "Giảm lag khi đánh boss", function(s)
+    _G.FixLag = s
+    if s then
+        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+        Lighting.GlobalShadows = false
+        Lighting.FogEnd = 9e9
+        Lighting.Brightness = 0
+        settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level04
+
+        for _, v in pairs(workspace:GetDescendants()) do
+            if v:IsA("ParticleEmitter") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") then
+                v.Enabled = false
+            end
+            if v:IsA("Explosion") then
+                v:Destroy()
+            end
+            if v:IsA("Decal") or v:IsA("Texture") then
+                v.Transparency = 1
+            end
+        end
+
+        for _, v in pairs(workspace:GetDescendants()) do
+            if v:IsA("BasePart") then
+                v.CastShadow = false
+            end
+        end
+    else
+        settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
+        Lighting.GlobalShadows = true
+        Lighting.FogEnd = 100000
+        Lighting.Brightness = 2
+    end
+end)
+
+-- 12. Auto Play Raid
 Section:NewToggle("Auto Play Raid", "Bật full auto", function(s)
     _G.AutoPlay = s
     _G.EB = s
@@ -395,6 +457,7 @@ Section:NewToggle("Auto Play Raid", "Bật full auto", function(s)
     _G.AutoClick = s
     _G.AutoBeat = s
     _G.HideName = s
+    _G.FixLag = s
 end)
 
 Section:NewButton("Ẩn Menu", "Thu nhỏ", function()
