@@ -143,7 +143,6 @@ local function getKiPercent()
     return 100
 end
 
--- KIỂM TRA ĐANG CẦM KIẾM CHƯA
 local function isHoldingSword()
     local char = Plr.Character
     if not char then return false end
@@ -248,7 +247,7 @@ Section:NewToggle("Auto Lock Skill", "Tự ghim skill vào boss", function(s)
     end
 end)
 
--- 6. ĐÃ FIX: Auto Boss [1] - Check tool + Cooldown
+-- 6. Auto Boss [1] - Fix 100% - Tự rút kiếm
 Section:NewToggle("Auto Boss [1]", "Fix 100% - Tự rút kiếm", function(s)
     _G.AutoBoss = s
     local attackRemote = findRemote("attack") or findRemote("punch") or findRemote("hit")
@@ -259,7 +258,6 @@ Section:NewToggle("Auto Boss [1]", "Fix 100% - Tự rút kiếm", function(s)
             local boss = getMonster()
             local hrp = Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart")
             if boss and hrp then
-                -- Check đang cầm kiếm chưa, chưa thì bấm 1
                 if not isHoldingSword() and (tick() - lastSwitch) > 2 then
                     VIM:SendKeyEvent(true, Enum.KeyCode.One, false, game)
                     VIM:SendKeyEvent(false, Enum.KeyCode.One, false, game)
@@ -352,7 +350,39 @@ Section:NewToggle("Auto Next Raid", "Tự chuyển raid tiếp theo", function(s
     end
 end)
 
--- 10. Auto Play Raid
+-- 10. MỚI: Hide Nametags
+Section:NewToggle("Hide Nametags", "Ẩn tên Player_01 + boss", function(s)
+    _G.HideName = s
+    while _G.HideName do
+        pcall(function()
+            -- Ẩn tên người chơi
+            for _, plr in pairs(game:GetService("Players"):GetPlayers()) do
+                if plr.Character and plr.Character:FindFirstChild("Humanoid") then
+                    plr.Character.Humanoid.DisplayDistanceType = s and Enum.HumanoidDisplayDistanceType.None or Enum.HumanoidDisplayDistanceType.Viewer
+                end
+            end
+            -- Ẩn tên quái/boss
+            for _, v in ipairs(workspace:GetDescendants()) do
+                if v:IsA("Model") and v:FindFirstChild("Humanoid") and v:FindFirstChild("Head") then
+                    for _, gui in pairs(v.Head:GetChildren()) do
+                        if gui:IsA("BillboardGui") then
+                            gui.Enabled = not s
+                        end
+                    end
+                end
+            end
+        end)
+        task.wait(1)
+    end
+    -- Bật lại tên khi tắt toggle
+    for _, plr in pairs(game:GetService("Players"):GetPlayers()) do
+        if plr.Character and plr.Character:FindFirstChild("Humanoid") then
+            plr.Character.Humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Viewer
+        end
+    end
+end)
+
+-- 11. Auto Play Raid
 Section:NewToggle("Auto Play Raid", "Bật full auto", function(s)
     _G.AutoPlay = s
     _G.EB = s
@@ -364,6 +394,7 @@ Section:NewToggle("Auto Play Raid", "Bật full auto", function(s)
     _G.AutoNextRaid = s
     _G.AutoClick = s
     _G.AutoBeat = s
+    _G.HideName = s
 end)
 
 Section:NewButton("Ẩn Menu", "Thu nhỏ", function()
