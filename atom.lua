@@ -524,8 +524,7 @@ DungeonSection:NewToggle("Auto Raid FULL", "Tự tìm + vào Raid + Farm - 0 c�
                                         pcall(function() remote:FireServer(true) end)
                                     end
                                 end
-
-                                for _, prompt in ipairs(workspace:GetDescendants()) do
+                                        
                                 for _, prompt in ipairs(workspace:GetDescendants()) do
                                     if prompt:IsA("ProximityPrompt") and (prompt.Parent.Position - hrp.Position).Magnitude < 20 then
                                         pcall(function() fireproximityprompt(prompt) end)
