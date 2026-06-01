@@ -16,8 +16,8 @@ Gui.Name = "DragonBloxV2"
 Gui.ResetOnSpawn = false
 
 local Main = Instance.new("Frame", Gui)
-Main.Size = UDim2.new(0, 480, 0, 500)
-Main.Position = UDim2.new(0.5, -240, 0.5, -250)
+Main.Size = UDim2.new(0, 480, 0, 530)
+Main.Position = UDim2.new(0.5, -240, 0.5, -265)
 Main.BackgroundColor3 = Color3.fromRGB(90, 45, 130)
 Main.BorderSizePixel = 0
 Main.Active = true
@@ -25,7 +25,7 @@ Main.Draggable = true
 
 local Title = Instance.new("TextLabel", Main)
 Title.Size = UDim2.new(1, 0, 0, 35)
-Title.Text = "Dragon Blox V2 - ALL IN ONE"
+Title.Text = "Dragon Blox V2 - FINAL"
 Title.TextColor3 = Color3.new(1,1,1)
 Title.TextSize = 18
 Title.Font = Enum.Font.SourceSansBold
@@ -64,15 +64,6 @@ local function getKiPercent()
     return 100
 end
 
--- Hàm check đã lên form chưa
-local function isTransformed()
-    local stats = Char:FindFirstChild("Stats")
-    if stats and stats:FindFirstChild("Form") then
-        return stats.Form.Value ~= "Base" -- Nếu form khác Base = đã transform
-    end
-    return false
-end
-
 -- 1. AUTO LOCK ALL + DÍ THEO QUÁI
 local bodyGyro, bodyPos
 createBtn("Auto Lock ALL - Dí theo", function(on)
@@ -84,7 +75,7 @@ createBtn("Auto Lock ALL - Dí theo", function(on)
         
         bodyPos = Instance.new("BodyPosition")
         bodyPos.P = 10000
-        bodyPos.MaxForce = Vector3.new(400000, 400000) -- Sửa thành 3 số
+        bodyPos.MaxForce = Vector3.new(400000, 400000, 400000)
         bodyPos.Parent = HRP
         
         return RS.Heartbeat:Connect(function()
@@ -110,11 +101,6 @@ createBtn("Auto Lock ALL - Dí theo", function(on)
             end)
         end)
     else
-        if bodyGyro then bodyGyro:Destroy() end
-        if bodyPos then bodyPos:Destroy() end
-    end
-end)
-        -- Tắt thì xóa BodyGyro/BodyPosition
         if bodyGyro then bodyGyro:Destroy() end
         if bodyPos then bodyPos:Destroy() end
     end
@@ -186,47 +172,56 @@ createBtn("Godmode", function(on)
     end
 end)
 
--- 6. AUTO PHÊ PHA THÔNG MINH - PHÍM C
+-- 6. AUTO PHÊ PHA GIỮ C - FIX CHUẨN
+local dangSacKi = false
 createBtn("Auto Phê Pha <20% >90%", function(on)
     if on then
         return RS.Heartbeat:Connect(function()
             pcall(function()
                 local kiPercent = getKiPercent()
-                if kiPercent < 20 then
+                if kiPercent < 20 and not dangSacKi then
                     VIM:SendKeyEvent(true, Enum.KeyCode.C, false, game)
-                    task.wait(0.1)
+                    dangSacKi = true
+                    print("Ki < 20% -> Giữ C")
+                elseif kiPercent >= 90 and dangSacKi then
                     VIM:SendKeyEvent(false, Enum.KeyCode.C, false, game)
-                elseif kiPercent >= 90 then
-                    VIM:SendKeyEvent(false, Enum.KeyCode.C, false, game)
-                end
-            end)
-        end)
-    end
-end)
-
--- 7. AUTO FORM THÔNG MINH - PHÍM Y
-local formUsed = false -- Biến check đã bật form chưa
-createBtn("Auto Form - Check Form", function(on)
-    if on then
-        return RS.Heartbeat:Connect(function()
-            pcall(function()
-                if isTransformed() then
-                    if not formUsed then
-                        print("[FORM] Đã lên form rồi, không spam Y nữa")
-                        formUsed = true
-                    end
-                else
-                    formUsed = false -- Reset khi rớt form
-                    VIM:SendKeyEvent(true, Enum.KeyCode.Y, false, game)
-                    task.wait(0.2)
-                    VIM:SendKeyEvent(false, Enum.KeyCode.Y, false, game)
-                    print("[FORM] Chưa có form, đang bật Y")
-                    task.wait(1) -- Delay 1s tránh spam
+                    dangSacKi = false
+                    print("Ki > 90% -> Nhả C")
                 end
             end)
         end)
     else
-        formUsed = false
+        if dangSacKi then
+            VIM:SendKeyEvent(false, Enum.KeyCode.C, false, game)
+            dangSacKi = false
+        end
+    end
+end)
+
+-- 7. AUTO FORM THÔNG MINH - CHỐNG SPAM
+local formCooldown = false
+createBtn("Auto Form - Check Form", function(on)
+    if on then
+        return RS.Heartbeat:Connect(function()
+            pcall(function()
+                local stats = Char:FindFirstChild("Stats")
+                if not stats or not stats:FindFirstChild("Form") then return end
+                
+                local dangForm = stats.Form.Value ~= "Base"
+                
+                if not dangForm and not formCooldown then
+                    formCooldown = true
+                    print("Chưa có form -> Bấm Y")
+                    VIM:SendKeyEvent(true, Enum.KeyCode.Y, false, game)
+                    task.wait(0.2)
+                    VIM:SendKeyEvent(false, Enum.KeyCode.Y, false, game)
+                    task.wait(3) -- Delay 3s chống spam
+                    formCooldown = false
+                elseif dangForm then
+                    print("Đã có form:", stats.Form.Value)
+                end
+            end)
+        end)
     end
 end)
 
@@ -270,4 +265,4 @@ Toggle.MouseButton1Click:Connect(function()
     Main.Visible = not Main.Visible
 end)
 
-print("Dragon Blox V2 - Auto Form thông minh đã load")
+print("Dragon Blox V2 - FULL FIXED ĐÃ LOAD")
