@@ -1,4 +1,4 @@
--- DRAGON BLOX V2 - FULL FEATURES V3.0
+-- DRAGON BLOX V2 - FULL FEATURES V3.0 - FIX DI CHUYỂN
 local Kavo = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
 local Win = Kavo.CreateLib("Dragon Blox V2 - FULL", "BloodTheme")
 
@@ -236,23 +236,20 @@ MainSection:NewToggle("Auto Lock Skill", "Chỉ ghim skill vào boss", function(
     end
 end)
 
-MainSection:NewToggle("Auto Bay Cổ Boss", "Bay trên đỉnh đầu boss", function(s)
+-- FIX: BỎ PLATFORMSTAND = TRUE
+MainSection:NewToggle("Auto Bay Cổ Boss", "Bay trên đỉnh đầu boss - DI CHUYỂN ĐƯỢC", function(s)
     _G.AutoBayCo = s
     while _G.AutoBayCo do
         pcall(function()
             local boss = getMonster()
             local hrp = Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart")
-            local hum = Plr.Character and Plr.Character:FindFirstChild("Humanoid")
-            if boss and hrp and hum then
+            if boss and hrp then
                 hrp.CFrame = boss.HumanoidRootPart.CFrame * CFrame.new(0, 6, 0)
                 hrp.Velocity = Vector3.new(0,0,0)
-                hum.PlatformStand = true
+                -- ĐÃ XÓA: hum.PlatformStand = true
             end
         end)
         task.wait(0.1)
-    end
-    if Plr.Character and Plr.Character:FindFirstChild("Humanoid") then
-        Plr.Character.Humanoid.PlatformStand = false
     end
 end)
 
@@ -310,17 +307,17 @@ DungeonSection:NewDropdown("Chọn Kiểu Farm", "Chọn skill để farm", {"En
     selectedSkill = currentOption
 end)
 
-DungeonSection:NewToggle("Auto Farm", "Farm theo Auto Mode + Kiểu Farm", function(s)
+-- FIX: BỎ PLATFORMSTAND = TRUE
+DungeonSection:NewToggle("Auto Farm", "Farm theo Auto Mode + Kiểu Farm - DI CHUYỂN ĐƯỢC", function(s)
     _G.AutoFarm = s
     while _G.AutoFarm do
         pcall(function()
             local mob = getMonster()
             local hrp = Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart")
-            local hum = Plr.Character and Plr.Character:FindFirstChild("Humanoid")
-            if mob and hrp and hum then
+            if mob and hrp then
                 hrp.CFrame = mob.HumanoidRootPart.CFrame * CFrame.new(0, 6, 0)
                 hrp.Velocity = Vector3.new(0,0,0)
-                hum.PlatformStand = true
+                -- ĐÃ XÓA: hum.PlatformStand = true
 
                 if selectedAutoMode == "Strength" or selectedSkill == "Energy Spear" then
                     for i = 1, 3 do
@@ -341,9 +338,6 @@ DungeonSection:NewToggle("Auto Farm", "Farm theo Auto Mode + Kiểu Farm", funct
             end
         end)
         task.wait()
-    end
-    if Plr.Character and Plr.Character:FindFirstChild("Humanoid") then
-        Plr.Character.Humanoid.PlatformStand = false
     end
 end)
 
