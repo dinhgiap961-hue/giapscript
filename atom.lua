@@ -1,6 +1,4 @@
--- DRAGON BLOX V2 - AUTO DÒ NÚT START + SKILL SỐ - CHỈ CHẠY KHI BẬT NÚT
--- Loadstring: loadstring(game:HttpGet("https://raw.githubusercontent.com/dinhgiap961-hue/giapscript/main/atom.lua"))()
-
+-- DRAGON BLOX V2 - DÒ NÚT START GÓC PHẢI + LOCK ATOM DÍNH ĐẦU BOSS
 local Plr = game:GetService("Players").LocalPlayer
 local RS = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -10,16 +8,19 @@ local Settings = {
     AutoPlayAgain = false,
     Godmode = false,
     AutoLockAtom = false,
-    FlyHeight = 45,
-    RaidMode = "Hard"
+    FlyHeight = 45
 }
 
 local allRemotes = {}
-local bv, currentBoss = nil, nil
-local startButtonID = 0
-local skillIDs = {1, 2, 3, 4, 5}
+local startButtonID = 0 -- NÚT START DƯỚI GÓC PHẢI
+local skillIDs = {1,2,3,4,5,6,7,8}
 local inRaid = false
 local isScanningStart = false
+
+-- LOCK ATOM VARS
+local currentBoss = nil
+local lockConnection = nil
+local alignPos, alignOri = nil, nil
 
 for _, v in pairs(RS:GetDescendants()) do
     if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then
@@ -27,6 +28,7 @@ for _, v in pairs(RS:GetDescendants()) do
     end
 end
 
+-- GUI
 local Gui = Instance.new("ScreenGui", game:GetService("CoreGui"))
 Gui.Name = "DragonBloxV2"
 Gui.ResetOnSpawn = false
@@ -49,7 +51,7 @@ Title.BackgroundTransparency = 1
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.Size = UDim2.new(1, -20, 1, 0)
 Title.Font = Enum.Font.GothamBold
-Title.Text = "Dragon Blox V2 - Auto Dò Nút Start"
+Title.Text = "Dragon Blox V2 - Start Góc Phải + Lock Atom"
 Title.TextColor3 = Color3.fromRGB(255,255,255)
 Title.TextSize = 14
 Title.TextXAlignment = Enum.TextXAlignment.Left
@@ -85,8 +87,8 @@ local function createLabel(text)
 end
 
 local StatusLabel = createLabel("Status: Chờ bật Auto Play Again")
-local StartLabel = createLabel("Nút Start ID: Chưa dò")
-local SkillLabel = createLabel("Skill ID: 1,2,3,4,5")
+local StartLabel = createLabel("Nút Start Góc Phải: Chưa dò")
+local BossLabel = createLabel("Boss: Chưa lock")
 
 local function createToggle(name, callback)
     local Btn = Instance.new("TextButton", Content)
@@ -118,94 +120,14 @@ local function checkInRaid()
     return workspace:FindFirstChild("UnstableGrounds") or workspace:FindFirstChild("Raid") or workspace:FindFirstChild("Dungeon")
 end
 
-local function scanStartButton()
-    if startButtonID ~= 0 or isScanningStart then return startButtonID end
-    isScanningStart = true
-    StatusLabel.Text = "Status: Đang dò số nút START 1-100..."
-    StartLabel.Text = "Nút Start ID: Đang dò..."
-
-    for i = 1, 100 do
-        if checkInRaid() or not Settings.AutoPlayAgain then
-            if checkInRaid() then
-                startButtonID = i - 1
-                StartLabel.Text = "Nút Start ID: "..startButtonID.." ✓"
-                StatusLabel.Text = "Status: Vào raid thành công"
-            end
-            isScanningStart = false
-            return startButtonID
-        end
-
-        for _, remote in pairs(allRemotes) do
-            pcall(function() remote:FireServer(i) end)
-            pcall(function() remote:FireServer(i, Settings.RaidMode) end)
-            pcall(function() remote:FireServer(i, "UnstableGrounds") end)
-            pcall(function() remote:FireServer("Start", i) end)
-        end
-        task.wait(0.15)
-    end
-
-    startButtonID = 47
-    StartLabel.Text = "Nút Start ID: 47 (Default)"
-    isScanningStart = false
-    return 47
-end
-
-local function scanSkillNumbers()
-    StatusLabel.Text = "Status: Đang dò số skill 1-100..."
-    local found = {}
-    
-    for i = 1, 100 do
-        if not Settings.AutoEnergyBall then break end
-        for _, remote in pairs(allRemotes) do
-            local success = pcall(function() remote:FireServer(i) end)
-            if success and not table.find(found, i) then
-                table.insert(found, i)
-                SkillLabel.Text = "Skill ID: "..table.concat(found, ", ")
-            end
-        end
-        task.wait(0.05)
-    end
-    
-    if #found > 0 then skillIDs = found end
-end
-
-local function clickStartButton()
-    if startButtonID == 0 then return end
-    for _, remote in pairs(allRemotes) do
-        pcall(function() remote:FireServer(startButtonID, Settings.RaidMode) end)
-        pcall(function() remote:FireServer(startButtonID) end)
-    end
-end
-
-local function spamSkills()
-    for _, skillID in pairs(skillIDs) do
-        for _, remote in pairs(allRemotes) do
-            pcall(function() remote:FireServer(skillID) end)
-        end
-    end
-end
-
-local function enableFloat()
-    local char = Plr.Character
-    if not char then return end
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp or bv then return end
-    bv = Instance.new("BodyVelocity")
-    bv.Velocity = Vector3.new(0, 0, 0)
-    bv.MaxForce = Vector3.new(0, 9e9, 0)
-    bv.Parent = hrp
-end
-
-local function disableFloat()
-    if bv then bv:Destroy() bv = nil end
-end
-
-local function lockBoss()
+-- TÌM BOSS MÁU TO NHẤT
+local function findBoss()
     local maxHP, boss = 0, nil
     for _, v in pairs(workspace:GetChildren()) do
         if v:IsA("Model") and v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") and v.Name ~= Plr.Name then
-            if v.Humanoid.MaxHealth > maxHP then
-                maxHP = v.Humanoid.MaxHealth
+            local hum = v.Humanoid
+            if hum.Health > 0 and hum.MaxHealth > maxHP and hum.MaxHealth > 1000 then
+                maxHP = hum.MaxHealth
                 boss = v
             end
         end
@@ -213,41 +135,158 @@ local function lockBoss()
     return boss
 end
 
-createToggle("Auto Energy Ball [DÒ SỐ SKILL]", function(v) 
+-- LOCK ATOM: DÍNH CỨNG LÊN ĐẦU BOSS
+local function startLockAtom()
+    local char = Plr.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    local hrp = char.HumanoidRootPart
+    
+    if alignPos then alignPos:Destroy() end
+    if alignOri then alignOri:Destroy() end
+    if lockConnection then lockConnection:Disconnect() end
+    
+    local att0 = Instance.new("Attachment", hrp)
+    local att1 = Instance.new("Attachment", workspace.Terrain)
+    
+    alignPos = Instance.new("AlignPosition", hrp)
+    alignPos.Attachment0 = att0
+    alignPos.Attachment1 = att1
+    alignPos.RigidityEnabled = true
+    alignPos.MaxForce = 9e9
+    
+    alignOri = Instance.new("AlignOrientation", hrp)
+    alignOri.Attachment0 = att0
+    alignOri.RigidityEnabled = true
+    alignOri.MaxTorque = 9e9
+    
+    lockConnection = RunService.RenderStepped:Connect(function()
+        if not Settings.AutoLockAtom then
+            stopLockAtom()
+            return
+        end
+        
+        if not currentBoss or not currentBoss.Parent or not currentBoss:FindFirstChild("Humanoid") or currentBoss.Humanoid.Health <= 0 then
+            currentBoss = findBoss()
+        end
+        
+        if currentBoss and currentBoss:FindFirstChild("HumanoidRootPart") then
+            local bossHRP = currentBoss.HumanoidRootPart
+            att1.WorldPosition = bossHRP.Position + Vector3.new(0, Settings.FlyHeight, 0)
+            alignOri.CFrame = CFrame.lookAt(hrp.Position, bossHRP.Position)
+            BossLabel.Text = "Boss: "..currentBoss.Name.." - LOCKED"
+        else
+            BossLabel.Text = "Boss: Đang tìm..."
+        end
+    end)
+end
+
+local function stopLockAtom()
+    if lockConnection then lockConnection:Disconnect() lockConnection = nil end
+    if alignPos then alignPos:Destroy() alignPos = nil end
+    if alignOri then alignOri:Destroy() alignOri = nil end
+    currentBoss = nil
+    BossLabel.Text = "Boss: Tắt lock"
+end
+
+-- DÒ SỐ NÚT START DƯỚI GÓC PHẢI
+local function scanStartButton()
+    if startButtonID ~= 0 or isScanningStart then return startButtonID end
+    isScanningStart = true
+    StatusLabel.Text = "Status: Đang dò NÚT START GÓC PHẢI 1-100..."
+    StartLabel.Text = "Nút Start Góc Phải: Đang dò..."
+
+    for i = 1, 100 do
+        if checkInRaid() or not Settings.AutoPlayAgain then
+            if checkInRaid() then
+                startButtonID = i - 1
+                StartLabel.Text = "Nút Start Góc Phải: "..startButtonID.." ✓"
+                StatusLabel.Text = "Status: Vào raid thành công"
+            end
+            isScanningStart = false
+            return startButtonID
+        end
+
+        -- ƯU TIÊN REMOTE CÓ CHỮ START/UNSTABLE
+        for _, remote in pairs(allRemotes) do
+            local rn = remote.Name:lower()
+            if string.find(rn, "start") or string.find(rn, "unstable") or string.find(rn, "raid") or string.find(rn, "join") then
+                pcall(function() remote:FireServer(i) end)
+                pcall(function() remote:FireServer(i, "Hard") end)
+                pcall(function() remote:FireServer("Start", i) end)
+            end
+        end
+        
+        for _, remote in pairs(allRemotes) do
+            pcall(function() remote:FireServer(i) end)
+        end
+        task.wait(0.15)
+    end
+
+    startButtonID = 6 -- DEFAULT UNSTABLE GROUNDS THƯỜNG LÀ 6
+    StartLabel.Text = "Nút Start Góc Phải: 6 (Default)"
+    isScanningStart = false
+    return 6
+end
+
+local function clickStartButton()
+    if startButtonID == 0 then return end
+    for _, remote in pairs(allRemotes) do
+        pcall(function() remote:FireServer(startButtonID) end)
+        pcall(function() remote:FireServer(startButtonID, "Hard") end)
+        pcall(function() remote:FireServer("Start", startButtonID) end)
+    end
+end
+
+local function spamSkillsRight()
+    for _, skillID in pairs(skillIDs) do
+        for _, remote in pairs(allRemotes) do
+            pcall(function() remote:FireServer(skillID) end)
+        end
+    end
+end
+
+createToggle("Auto Energy Ball [SPAM SKILL PHẢI]", function(v) 
     Settings.AutoEnergyBall = v
-    if v then scanSkillNumbers() end
 end)
 
-createToggle("Auto Play Again [DÒ NÚT START]", function(v) 
+createToggle("Auto Play Again [DÒ NÚT START GÓC PHẢI]", function(v) 
     Settings.AutoPlayAgain = v
     if v and not inRaid and not isScanningStart and startButtonID == 0 then
         scanStartButton()
     end
 end)
 
-createToggle("Godmode", function(v) Settings.Godmode = v end)
-createToggle("auto lock Atom", function(v) Settings.AutoLockAtom = v end)
+createToggle("Godmode", function(v) 
+    Settings.Godmode = v 
+    if v and Plr.Character and Plr.Character:FindFirstChild("Humanoid") then
+        Plr.Character.Humanoid.MaxHealth = 9e9
+        Plr.Character.Humanoid.Health = 9e9
+    end
+end)
 
-CloseBtn.MouseButton1Click:Connect(function() Gui:Destroy() end)
+createToggle("auto lock Atom [DÍNH ĐẦU BOSS]", function(v) 
+    Settings.AutoLockAtom = v 
+    if v then
+        startLockAtom()
+    else
+        stopLockAtom()
+    end
+end)
+
+CloseBtn.MouseButton1Click:Connect(function() 
+    stopLockAtom()
+    Gui:Destroy() 
+end)
 
 RunService.Heartbeat:Connect(function()
     local char = Plr.Character
     if not char then return end
-    local hrp = char:FindFirstChild("HumanoidRootPart")
     local hum = char:FindFirstChild("Humanoid")
 
     local nowInRaid = checkInRaid()
-    local hasBoss = false
     
-    if nowInRaid then
-        currentBoss = lockBoss()
-        hasBoss = currentBoss ~= nil and currentBoss:FindFirstChild("Humanoid") and currentBoss.Humanoid.Health > 0
-    end
-
-    -- HẾT RAID + BẬT AUTO + CÓ ID NÚT START -> BẤM LẠI
     if Settings.AutoPlayAgain and not nowInRaid and not isScanningStart and startButtonID ~= 0 then
         inRaid = false
-        disableFloat()
         clickStartButton()
         task.wait(2)
         return
@@ -255,21 +294,18 @@ RunService.Heartbeat:Connect(function()
 
     if nowInRaid and not inRaid then
         inRaid = true
-        task.wait(1)
-        enableFloat()
-        if hrp then hrp.CFrame = hrp.CFrame + Vector3.new(0, Settings.FlyHeight, 0) end
         StatusLabel.Text = "Status: Đang farm raid"
     end
 
     if not nowInRaid and inRaid then
         inRaid = false
-        disableFloat()
-        currentBoss = nil
+        stopLockAtom()
         StatusLabel.Text = "Status: Hết raid"
     end
 
-    if inRaid and bv then bv.Velocity = Vector3.new(0, 0, 0) end
-    if hum and Settings.Godmode then hum.Health = hum.MaxHealth hum.MaxHealth = 9e9 end
+    if hum and Settings.Godmode then 
+        hum.Health = hum.MaxHealth 
+    end
 
     if Settings.AutoEnergyBall then
         for _, v in pairs(char:GetDescendants()) do
@@ -280,14 +316,12 @@ RunService.Heartbeat:Connect(function()
                 v.Value = 999999
             end
         end
-    end
-
-    if Settings.AutoEnergyBall and hasBoss then
-        spamSkills()
+        spamSkillsRight()
     end
 end)
 
 Plr.CharacterAdded:Connect(function()
     task.wait(3)
     if Settings.AutoPlayAgain and startButtonID ~= 0 then clickStartButton() end
+    if Settings.AutoLockAtom then startLockAtom() end
 end)
