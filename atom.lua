@@ -1,138 +1,97 @@
--- FREEZE CAST V6.6 - ĐỨNG IM SPAM DAMAGE
+-- FREEZE STATE V6.7 - ĐỨNG IM + NO CD + NO ANIMATION
 local Plr = game:GetService("Players").LocalPlayer
 local RS = game:GetService("ReplicatedStorage")
 
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Window = Library.CreateLib("Dragon Blox V6.6 - Freeze Cast", "DarkTheme")
+local Window = Library.CreateLib("V6.7 - Freeze State", "DarkTheme")
 local MainTab = Window:NewTab("Main")
-local MainSection = MainTab:NewSection("Freeze Cast")
+local MainSection = MainTab:NewSection("Freeze State")
 
-local frozenPos = nil
-local targetBoss = nil
+local anchored = false
+local anchorPos = nil
 
--- HÀM TÌM BOSS GẦN NHẤT
-local function getNearestBoss()
-    local char = Plr.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return nil end
-    
-    local nearest = nil
-    local minDist = 100
-    for _, v in pairs(workspace:GetDescendants()) do
-        if v:IsA("Model") and v:FindFirstChild("HumanoidRootPart") and v:FindFirstChild("Humanoid") then
-            if v.Name ~= Plr.Name and v.Humanoid.Health > 0 then
-                local dist = (v.HumanoidRootPart.Position - hrp.Position).Magnitude
-                if dist < minDist then
-                    nearest = v
-                    minDist = dist
-                end
-            end
-        end
-    end
-    return nearest
-end
-
--- HÀM TÌM REMOTE DAMAGE
-local function getDamageRemote()
-    for _, v in pairs(RS:GetDescendants()) do
-        if v:IsA("RemoteEvent") then
-            local name = v.Name:lower()
-            if string.find(name, "damage") or string.find(name, "attack") or 
-               string.find(name, "hit") or string.find(name, "punch") then
-                return v
-            end
-        end
-    end
-    return nil
-end
-
-MainSection:NewToggle("Freeze Cast", "Đứng im + Spam damage không animation", function(s)
-    _G.FreezeCast = s
+MainSection:NewToggle("Freeze State", "Đứng im + No CD + Dame liên tục", function(s)
+    _G.FreezeState = s
+    anchored = s
     
     if s then
         local char = Plr.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        if hrp then 
-            frozenPos = hrp.CFrame -- Lưu vị trí để đóng băng
-            targetBoss = getNearestBoss() -- Lock boss gần nhất
-        end
+        if hrp then anchorPos = hrp.CFrame end
     else
-        frozenPos = nil
-        targetBoss = nil
+        anchorPos = nil
     end
     
-    local dmgRemote = getDamageRemote()
+    -- Vòng lặp giữ nhân vật đứng im
+    spawn(function()
+        while anchored and _G.FreezeState do
+            pcall(function()
+                local char = Plr.Character
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                if hrp and anchorPos then
+                    hrp.CFrame = anchorPos
+                    hrp.Velocity = Vector3.new(0, 0, 0)
+                end
+            end)
+            task.wait()
+        end
+    end)
     
-    while _G.FreezeCast do
+    -- Vòng lặp spam damage + xóa CD
+    while _G.FreezeState do
         pcall(function()
             local char = Plr.Character
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
             local hum = char and char:FindFirstChild("Humanoid")
             
-            -- 1. ĐÓNG BĂNG NHÂN VẬT TẠI CHỖ
-            if hrp and frozenPos then
-                hrp.CFrame = frozenPos
-                hrp.Velocity = Vector3.new(0, 0, 0)
-                hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-            end
-            
-            -- 2. ANTI KNOCKBACK + BẤT TỬ
-            if hum then
-                hum.Health = hum.MaxHealth
-                hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
-                hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
-                hum.PlatformStand = false
-            end
-            
-            -- 3. XÓA COOLDOWN SKILL
+            -- 1. XÓA COOLDOWN + ĐÓNG BĂNG TRẠNG THÁI SKILL
             if char then
                 for _, v in pairs(char:GetDescendants()) do
-                    if v:IsA("NumberValue") and string.find(v.Name:lower(), "cool") then
+                    -- Xóa CD
+                    if v:IsA("NumberValue") and (string.find(v.Name:lower(), "cool") or string.find(v.Name:lower(), "cd")) then
                         v.Value = 0
                     end
-                    if v:IsA("BoolValue") and string.find(v.Name:lower(), "attack") then
+                    -- Đóng băng trạng thái đang đánh
+                    if v:IsA("BoolValue") and (v.Name == "Attacking" or v.Name == "UsingSkill" or v.Name == "CanAttack") then
+                        v.Value = true
+                    end
+                    -- Đóng băng form/biến hình
+                    if v:IsA("BoolValue") and (string.find(v.Name:lower(), "form") or string.find(v.Name:lower(), "transform")) then
                         v.Value = true
                     end
                 end
             end
             
-            -- 4. SPAM DAMAGE - KHÔNG CẦN ANIMATION
-            if dmgRemote then
-                -- Nếu boss cũ chết thì tìm boss mới
-                if not targetBoss or not targetBoss:FindFirstChild("Humanoid") or targetBoss.Humanoid.Health <= 0 then
-                    targetBoss = getNearestBoss()
-                end
-                
-                -- Spam damage lên boss
-                if targetBoss and targetBoss:FindFirstChild("HumanoidRootPart") then
-                    for i = 1, 20 do -- 20 hit/lần
-                        pcall(function() dmgRemote:FireServer(targetBoss) end)
-                        pcall(function() dmgRemote:FireServer(targetBoss.HumanoidRootPart) end)
-                        pcall(function() dmgRemote:FireServer(targetBoss.Humanoid) end)
+            -- 2. BẤT TỬ + ANTI KNOCKBACK
+            if hum then
+                hum.Health = hum.MaxHealth
+                hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+                hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+            end
+            
+            -- 3. SPAM DAMAGE THẲNG VÀO BOSS - KHÔNG CẦN ANIMATION
+            for _, remote in pairs(RS:GetDescendants()) do
+                if remote:IsA("RemoteEvent") then
+                    for _, mob in pairs(workspace:GetDescendants()) do
+                        if mob:IsA("Model") and mob:FindFirstChild("Humanoid") and mob:FindFirstChild("HumanoidRootPart") then
+                            if mob.Name ~= Plr.Name and mob.Humanoid.Health > 0 then
+                                -- Spam 10 damage mỗi 0.05s = 200 dps
+                                for i = 1, 10 do
+                                    pcall(function() remote:FireServer(mob) end)
+                                    pcall(function() remote:FireServer(mob.HumanoidRootPart.Position) end)
+                                    pcall(function() remote:FireServer(mob.Humanoid) end)
+                                end
+                            end
+                        end
                     end
                 end
             end
         end)
-        task.wait(0.05) -- 20 lần/giây = 400 damage/s, không lag
+        task.wait(0.05) -- 20 lần/giây, không lag màn hình
     end
 end)
 
-MainSection:NewButton("Unfreeze", "Bỏ đóng băng", function()
-    frozenPos = nil
-    targetBoss = nil
-end)
-
-MainSection:NewButton("Lock Boss Mới", "Chọn lại boss gần nhất", function()
-    targetBoss = getNearestBoss()
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "Locked";
-        Text = targetBoss and "Đã lock: " .. targetBoss.Name or "Không thấy boss";
-        Duration = 2;
-    })
-end)
-
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "V6.6 LOADED";
-    Text = "Bật Freeze Cast để đứng im one shot boss";
+    Title = "V6.7";
+    Text = "Đứng im + No CD + Dame không cần vung tay";
     Duration = 3;
 })
