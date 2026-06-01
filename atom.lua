@@ -6,13 +6,14 @@ local VIM = game:GetService("VirtualInputManager")
 local Plr = Players.LocalPlayer
 local Char = Plr.Character or Plr.CharacterAdded:Wait()
 local HRP = Char:WaitForChild("HumanoidRootPart")
+local Hum = Char:WaitForChild("Humanoid")
 
-if Plr.PlayerGui:FindFirstChild("DragonBloxV2") then
-    Plr.PlayerGui.DragonBloxV2:Destroy()
+if Plr.PlayerGui:FindFirstChild("DragonBloxV3") then
+    Plr.PlayerGui.DragonBloxV3:Destroy()
 end
 
 local Gui = Instance.new("ScreenGui", Plr.PlayerGui)
-Gui.Name = "DragonBloxV2"
+Gui.Name = "DragonBloxV3"
 Gui.ResetOnSpawn = false
 
 local Main = Instance.new("Frame", Gui)
@@ -25,7 +26,7 @@ Main.Draggable = true
 
 local Title = Instance.new("TextLabel", Main)
 Title.Size = UDim2.new(1, 0, 0, 35)
-Title.Text = "Dragon Blox V2 - FINAL"
+Title.Text = "Dragon Blox V3 - ANTI CRASH"
 Title.TextColor3 = Color3.new(1,1,1)
 Title.TextSize = 18
 Title.Font = Enum.Font.SourceSansBold
@@ -55,7 +56,6 @@ local function createBtn(name, callback)
     YPos = YPos + 35
 end
 
--- Hàm lấy % Ki
 local function getKiPercent()
     local stats = Char:FindFirstChild("Stats")
     if stats and stats:FindFirstChild("Ki") and stats:FindFirstChild("MaxKi") then
@@ -64,45 +64,35 @@ local function getKiPercent()
     return 100
 end
 
--- 1. AUTO LOCK ALL + DÍ THEO QUÁI
-local bodyGyro, bodyPos
-createBtn("Auto Lock ALL - Dí theo", function(on)
+local isAttacking = false -- Check đang dùng skill
+
+-- 1. AUTO LOCK ALL - CHỈ XOAY, KHÔNG TELE
+createBtn("Auto Lock ALL - Chỉ Xoay", function(on)
     if on then
-        bodyGyro = Instance.new("BodyGyro")
-        bodyGyro.P = 5000
-        bodyGyro.MaxTorque = Vector3.new(400000, 400000, 400000)
-        bodyGyro.Parent = HRP
-        
-        bodyPos = Instance.new("BodyPosition")
-        bodyPos.P = 10000
-        bodyPos.MaxForce = Vector3.new(400000, 400000, 400000)
-        bodyPos.Parent = HRP
-        
         return RS.Heartbeat:Connect(function()
             pcall(function()
+                if not Char or not HRP or Hum.Health <= 0 or isAttacking then return end
+                
                 local closest, dist = nil, 9999
                 for _, v in pairs(workspace:GetChildren()) do
-                    if v:FindFirstChild("HumanoidRootPart") and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 and v.Name ~= Plr.Name then
-                        local mag = (HRP.Position - v.HumanoidRootPart.Position).Magnitude
+                    local hum = v:FindFirstChild("Humanoid")
+                    local hrp = v:FindFirstChild("HumanoidRootPart")
+                    if hrp and hum and hum.Health > 0 and v.Name ~= Plr.Name and not hrp.Anchored then
+                        local mag = (HRP.Position - hrp.Position).Magnitude
                         if mag < dist and mag < 200 then
                             dist = mag
-                            closest = v
+                            closest = hrp
                         end
                     end
                 end
                 
                 if closest then
-                    local targetPos = closest.HumanoidRootPart.CFrame * CFrame.new(0, 0, 5)
-                    bodyGyro.CFrame = CFrame.lookAt(HRP.Position, closest.HumanoidRootPart.Position)
-                    bodyPos.Position = targetPos.Position
-                else
-                    bodyPos.Position = HRP.Position
+                    -- Chỉ xoay mặt, không tele để tránh gãy animation
+                    local lookAt = CFrame.lookAt(HRP.Position, Vector3.new(closest.Position.X, HRP.Position.Y, closest.Position.Z))
+                    HRP.CFrame = HRP.CFrame:Lerp(lookAt, 0.2)
                 end
             end)
         end)
-    else
-        if bodyGyro then bodyGyro:Destroy() end
-        if bodyPos then bodyPos:Destroy() end
     end
 end)
 
@@ -112,12 +102,12 @@ createBtn("Hitbox 50x50 - Farm xa", function(on)
         return RS.Heartbeat:Connect(function()
             pcall(function()
                 for _, v in pairs(workspace:GetChildren()) do
-                    if v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") and v.Humanoid.Health > 0 then
-                        if v.Name ~= Plr.Name then
-                            v.HumanoidRootPart.Size = Vector3.new(50, 50, 50)
-                            v.HumanoidRootPart.Transparency = 0.8
-                            v.HumanoidRootPart.CanCollide = false
-                        end
+                    local hum = v:FindFirstChild("Humanoid")
+                    local hrp = v:FindFirstChild("HumanoidRootPart")
+                    if hum and hrp and hum.Health > 0 and v.Name ~= Plr.Name then
+                        hrp.Size = Vector3.new(50, 50, 50)
+                        hrp.Transparency = 0.8
+                        hrp.CanCollide = false
                     end
                 end
             end)
@@ -131,15 +121,21 @@ createBtn("Hitbox 50x50 - Farm xa", function(on)
     end
 end)
 
--- 3. AUTO SKILL E + GODMODE
+-- 3. AUTO SKILL E - CÓ KHÓA CHỐNG CRASH
 createBtn("Auto Skill E + Godmode", function(on)
     if on then
-        return RS.Heartbeat:Connect(function()
-            pcall(function()
-                Char.Humanoid.Health = Char.Humanoid.MaxHealth
-                VIM:SendKeyEvent(true, Enum.KeyCode.E, false, game)
-                task.wait(0.1)
-                VIM:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+        return task.spawn(function()
+            while on and task.wait(0.5) do -- Delay 0.5s cho chắc
+                pcall(function()
+                    if not Char or Hum.Health <= 0 or isAttacking then return end
+                    isAttacking = true
+                    Hum.Health = Hum.MaxHealth
+                    VIM:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+                    task.wait(0.2)
+                    VIM:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+                    task.wait(0.5) -- Đợi skill ra hết
+                    isAttacking = false
+                end)
             end)
         end)
     end
@@ -150,11 +146,13 @@ createBtn("Auto Kill Boss - Đứng xa", function(on)
     if on then
         return RS.RenderStepped:Connect(function()
             pcall(function()
+                if isAttacking then return end
                 for _, boss in pairs(workspace:GetChildren()) do
-                    if boss:IsA("Model") and boss:FindFirstChild("Humanoid") then
-                        if boss.Humanoid.MaxHealth > 50000 and boss.Humanoid.Health > 0 then
-                            HRP.CFrame = CFrame.lookAt(HRP.Position, boss.HumanoidRootPart.Position)
-                            VIM:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+                    local hum = boss:FindFirstChild("Humanoid")
+                    local hrp = boss:FindFirstChild("HumanoidRootPart")
+                    if boss:IsA("Model") and hum and hrp then
+                        if hum.MaxHealth > 50000 and hum.Health > 0 then
+                            HRP.CFrame = CFrame.lookAt(HRP.Position, hrp.Position)
                         end
                     end
                 end
@@ -167,26 +165,25 @@ end)
 createBtn("Godmode", function(on)
     if on then
         return RS.Heartbeat:Connect(function()
-            pcall(function() Char.Humanoid.Health = Char.Humanoid.MaxHealth end)
+            pcall(function() if Hum then Hum.Health = Hum.MaxHealth end end)
         end)
     end
 end)
 
--- 6. AUTO PHÊ PHA GIỮ C - FIX CHUẨN
+-- 6. AUTO PHÊ PHA GIỮ C
 local dangSacKi = false
 createBtn("Auto Phê Pha <20% >90%", function(on)
     if on then
         return RS.Heartbeat:Connect(function()
             pcall(function()
+                if not Char or isAttacking then return end
                 local kiPercent = getKiPercent()
                 if kiPercent < 20 and not dangSacKi then
                     VIM:SendKeyEvent(true, Enum.KeyCode.C, false, game)
                     dangSacKi = true
-                    print("Ki < 20% -> Giữ C")
                 elseif kiPercent >= 90 and dangSacKi then
                     VIM:SendKeyEvent(false, Enum.KeyCode.C, false, game)
                     dangSacKi = false
-                    print("Ki > 90% -> Nhả C")
                 end
             end)
         end)
@@ -198,28 +195,30 @@ createBtn("Auto Phê Pha <20% >90%", function(on)
     end
 end)
 
--- 7. AUTO FORM THÔNG MINH - CHỐNG SPAM
+-- 7. AUTO FORM CHỐNG SPAM
 local formCooldown = false
 createBtn("Auto Form - Check Form", function(on)
     if on then
-        return RS.Heartbeat:Connect(function()
-            pcall(function()
-                local stats = Char:FindFirstChild("Stats")
-                if not stats or not stats:FindFirstChild("Form") then return end
-                
-                local dangForm = stats.Form.Value ~= "Base"
-                
-                if not dangForm and not formCooldown then
-                    formCooldown = true
-                    print("Chưa có form -> Bấm Y")
-                    VIM:SendKeyEvent(true, Enum.KeyCode.Y, false, game)
-                    task.wait(0.2)
-                    VIM:SendKeyEvent(false, Enum.KeyCode.Y, false, game)
-                    task.wait(3) -- Delay 3s chống spam
-                    formCooldown = false
-                elseif dangForm then
-                    print("Đã có form:", stats.Form.Value)
-                end
+        return task.spawn(function()
+            while on and task.wait(0.5) do
+                pcall(function()
+                    if not Char or isAttacking then return end
+                    local stats = Char:FindFirstChild("Stats")
+                    if not stats or not stats:FindFirstChild("Form") then return end
+                    
+                    local dangForm = stats.Form.Value ~= "Base"
+                    
+                    if not dangForm and not formCooldown then
+                        formCooldown = true
+                        isAttacking = true
+                        VIM:SendKeyEvent(true, Enum.KeyCode.Y, false, game)
+                        task.wait(0.2)
+                        VIM:SendKeyEvent(false, Enum.KeyCode.Y, false, game)
+                        task.wait(3)
+                        isAttacking = false
+                        formCooldown = false
+                    end
+                end)
             end)
         end)
     end
@@ -265,4 +264,10 @@ Toggle.MouseButton1Click:Connect(function()
     Main.Visible = not Main.Visible
 end)
 
-print("Dragon Blox V2 - FULL FIXED ĐÃ LOAD")
+Plr.CharacterAdded:Connect(function(newChar)
+    Char = newChar
+    HRP = newChar:WaitForChild("HumanoidRootPart")
+    Hum = newChar:WaitForChild("Humanoid")
+end)
+
+print("Dragon Blox V3 - ANTI CRASH LOADED")
