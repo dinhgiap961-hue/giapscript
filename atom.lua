@@ -84,28 +84,33 @@ local function isInForm()
     local char = Plr.Character
     if not char then return false end
 
-    local stats = char:FindFirstChild("Stats") or char:FindFirstChild("stats")
+    local stats = char:FindFirstChild("Stats") or char:FindFirstChild("stats") or char:FindFirstChild("Data")
     if stats then
-        local formVal = stats:FindFirstChild("Form") or stats:FindFirstChild("Transformation")
+        local formVal = stats:FindFirstChild("Form") or stats:FindFirstChild("Transformation") or stats:FindFirstChild("Mode")
         if formVal and formVal.Value > 0 then return true end
     end
 
     local leaderstats = Plr:FindFirstChild("leaderstats")
     if leaderstats then
-        local form = leaderstats:FindFirstChild("Form")
+        local form = leaderstats:FindFirstChild("Form") or leaderstats:FindFirstChild("Transformation")
         if form and form.Value > 0 then return true end
+        local power = leaderstats:FindFirstChild("Power") or leaderstats:FindFirstChild("power")
+        if power and power.Value > 10000000 then return true end
     end
 
+    if string.find(char.Name, "SSJ") or string.find(char.Name, "Form") or string.find(char.Name, "Mystic") then return true end
+
     for _,v in pairs(char:GetDescendants()) do
-        if v.Name == "Aura" or v.Name == "SSJ" or v.Name == "Transform" then return true end
-        if v:IsA("ParticleEmitter") and v.Parent.Name == "HumanoidRootPart" then return true end
+        if v.Name == "Aura" or v.Name == "SSJ" or v.Name == "Transform" or v.Name == "Glow" then return true end
+        if v:IsA("ParticleEmitter") and (v.Parent.Name == "HumanoidRootPart" or v.Parent.Name == "Torso") then
+            if v.Enabled then return true end
+        end
+        if v:IsA("PointLight") and v.Parent.Name == "HumanoidRootPart" then return true end
     end
     return false
 end
 
--- HÀM LẤY % KI HIỆN TẠI
 local function getKiPercent()
-    -- Cách 1: Check leaderstats
     local leaderstats = Plr:FindFirstChild("leaderstats")
     if leaderstats then
         local ki = leaderstats:FindFirstChild("Ki") or leaderstats:FindFirstChild("ki") or leaderstats:FindFirstChild("Energy")
@@ -115,7 +120,6 @@ local function getKiPercent()
         end
     end
 
-    -- Cách 2: Check trong Character
     local char = Plr.Character
     if char then
         local stats = char:FindFirstChild("Stats") or char:FindFirstChild("stats")
@@ -128,7 +132,6 @@ local function getKiPercent()
         end
     end
 
-    -- Cách 3: Check GUI thanh ki
     local gui = Plr:FindFirstChild("PlayerGui")
     if gui then
         for _,v in pairs(gui:GetDescendants()) do
@@ -137,7 +140,22 @@ local function getKiPercent()
             end
         end
     end
-    return 100 -- Mặc định 100% nếu không tìm thấy
+    return 100
+end
+
+-- KIỂM TRA ĐANG CẦM KIẾM CHƯA
+local function isHoldingSword()
+    local char = Plr.Character
+    if not char then return false end
+    for _, tool in pairs(char:GetChildren()) do
+        if tool:IsA("Tool") then
+            local name = string.lower(tool.Name)
+            if string.find(name, "sword") or string.find(name, "blade") or string.find(name, "katana") then
+                return true
+            end
+        end
+    end
+    return false
 end
 
 local function getRaids()
@@ -230,21 +248,23 @@ Section:NewToggle("Auto Lock Skill", "Tự ghim skill vào boss", function(s)
     end
 end)
 
--- 6. Auto Boss [1] - Tự rút kiếm
-Section:NewToggle("Auto Boss [1]", "Tự rút kiếm + đánh boss", function(s)
+-- 6. ĐÃ FIX: Auto Boss [1] - Check tool + Cooldown
+Section:NewToggle("Auto Boss [1]", "Fix 100% - Tự rút kiếm", function(s)
     _G.AutoBoss = s
     local attackRemote = findRemote("attack") or findRemote("punch") or findRemote("hit")
-    local switched = false
+    local lastSwitch = 0
+
     while _G.AutoBoss do
         pcall(function()
             local boss = getMonster()
             local hrp = Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart")
             if boss and hrp then
-                if not switched then
+                -- Check đang cầm kiếm chưa, chưa thì bấm 1
+                if not isHoldingSword() and (tick() - lastSwitch) > 2 then
                     VIM:SendKeyEvent(true, Enum.KeyCode.One, false, game)
                     VIM:SendKeyEvent(false, Enum.KeyCode.One, false, game)
-                    switched = true
-                    task.wait(0.2)
+                    lastSwitch = tick()
+                    task.wait(0.3)
                 end
 
                 local distance = (hrp.Position - boss.HumanoidRootPart.Position).Magnitude
@@ -254,15 +274,13 @@ Section:NewToggle("Auto Boss [1]", "Tự rút kiếm + đánh boss", function(s)
                 if attackRemote then
                     attackRemote:FireServer()
                 end
-            else
-                switched = false
             end
         end)
         task.wait(0.1)
     end
 end)
 
--- 7. ĐÃ FIX: Auto Charge [C] - Thông minh
+-- 7. Auto Charge [C] - Thông minh
 Section:NewToggle("Auto Charge [C]", "Tự giữ C khi ki < 90%", function(s)
     _G.AutoFushi = s
     local charging = false
@@ -270,34 +288,46 @@ Section:NewToggle("Auto Charge [C]", "Tự giữ C khi ki < 90%", function(s)
         local ki = getKiPercent()
 
         if ki < 90 and not charging then
-            -- Hết ki -> bắt đầu giữ C
             VIM:SendKeyEvent(true, Enum.KeyCode.C, false, game)
             charging = true
         elseif ki >= 95 and charging then
-            -- Đầy ki -> nhả C
             VIM:SendKeyEvent(false, Enum.KeyCode.C, false, game)
             charging = false
         end
         task.wait(0.1)
     end
-    -- Tắt toggle thì nhả C luôn
     VIM:SendKeyEvent(false, Enum.KeyCode.C, false, game)
 end)
 
--- 8. Auto Form [Y] - Thông minh
-Section:NewToggle("Auto Form [Y]", "Thông minh - hết form mới bấm", function(s)
+-- 8. Auto Form [Y] - Cooldown 5s + Reset khi chết
+Section:NewToggle("Auto Form [Y]", "Fix 100% - Cooldown 5s", function(s)
     _G.AutoForm = s
+    local lastPress = 0
+    local lastDeath = false
+
+    Plr.CharacterAdded:Connect(function()
+        lastDeath = true
+        task.wait(5)
+        lastDeath = false
+    end)
+
     while _G.AutoForm do
-        if not isInForm() then
-            task.wait(1)
+        local canPress = (tick() - lastPress) > 5
+
+        if not isInForm() and canPress and not lastDeath then
+            task.wait(0.5)
             if not isInForm() then
-                VIM:SendKeyEvent(true, Enum.KeyCode.Y, false, game)
-                task.wait(0.1)
-                VIM:SendKeyEvent(false, Enum.KeyCode.Y, false, game)
-                task.wait(3)
+                task.wait(0.5)
+                if not isInForm() then
+                    VIM:SendKeyEvent(true, Enum.KeyCode.Y, false, game)
+                    task.wait(0.1)
+                    VIM:SendKeyEvent(false, Enum.KeyCode.Y, false, game)
+                    lastPress = tick()
+                    task.wait(3)
+                end
             end
         end
-        task.wait(1)
+        task.wait(0.5)
     end
 end)
 
