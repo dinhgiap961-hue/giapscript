@@ -1,4 +1,4 @@
--- DRAGON BLOX V2 - SKILL NGOÀI MAP + NÚT ẨN HIỆN MENU
+-- DRAGON BLOX V2 - DEBUG + REMOTE SPY + SKILL NGOÀI MAP
 local Plr = game:GetService("Players").LocalPlayer
 local RS = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -9,31 +9,33 @@ getgenv().DBV2 = getgenv().DBV2 or {
     Godmode = false,
     LockBoss = false,
     Running = true,
-    MenuVisible = true
+    MenuVisible = true,
+    Debug = true -- BẬT DEBUG
 }
 
--- TÌM REMOTE SKILL
-local SkillRemote = nil
+-- IN TẤT CẢ REMOTE RA ĐỂ MÀY CHỌN
+print("=== TẤT CẢ REMOTE TRONG GAME ===")
 for _, v in pairs(RS:GetDescendants()) do
-    if v:IsA("RemoteEvent") and (v.Name:lower():find("skill") or v.Name:lower():find("attack") or v.Name:lower():find("combat") or v.Name:lower():find("blast")) then
-        SkillRemote = v
-        break
+    if v:IsA("RemoteEvent") then
+        print("Remote: "..v.Name.." | Path: "..v:GetFullName())
     end
 end
+print("=== COPY TÊN REMOTE SKILL VÀO DƯỚI ===")
+
+-- MÀY TỰ ĐIỀN TÊN REMOTE VÀO ĐÂY SAU KHI XEM LOG
+local SkillRemote = RS:FindFirstChild("SkillEvent") or RS:FindFirstChild("CombatRemote") or RS:FindFirstChild("Attack") -- SỬA TÊN REMOTE Ở ĐÂY
+
 if not SkillRemote then
-    for _, v in pairs(RS:GetDescendants()) do
-        if v:IsA("RemoteEvent") then SkillRemote = v break end
-    end
+    warn("ĐÉO TÌM THẤY REMOTE SKILL - CHECK LOG Ở TRÊN RỒI SỬA TÊN")
 end
 
 -- XÓA GUI CŨ
 if game.CoreGui:FindFirstChild("DBV2_GUI") then game.CoreGui.DBV2_GUI:Destroy() end
 if game.CoreGui:FindFirstChild("DBV2_Toggle") then game.CoreGui.DBV2_Toggle:Destroy() end
 
--- NÚT BẬT/TẮT MENU - GÓC TRÁI TRÊN
+-- NÚT BẬT/TẮT MENU
 local ToggleGui = Instance.new("ScreenGui", game.CoreGui)
 ToggleGui.Name = "DBV2_Toggle"
-ToggleGui.ResetOnSpawn = false
 
 local ToggleBtn = Instance.new("TextButton", ToggleGui)
 ToggleBtn.Size = UDim2.new(0, 50, 0, 50)
@@ -50,10 +52,9 @@ Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(1, 0)
 -- GUI CHÍNH
 local Gui = Instance.new("ScreenGui", game.CoreGui)
 Gui.Name = "DBV2_GUI"
-Gui.ResetOnSpawn = false
 
 local Main = Instance.new("Frame", Gui)
-Main.Size = UDim2.new(0, 300, 0, 250)
+Main.Size = UDim2.new(0, 350, 0, 300)
 Main.Position = UDim2.new(0, 50, 0, 70)
 Main.BackgroundColor3 = Color3.fromRGB(20,20,20)
 Main.Active = true
@@ -62,11 +63,23 @@ Instance.new("UICorner", Main)
 
 local Title = Instance.new("TextLabel", Main)
 Title.Size = UDim2.new(1, 0, 0, 30)
-Title.Text = "DBV2 | Remote: "..(SkillRemote and SkillRemote.Name or "NONE")
+Title.Text = "DBV2 | Remote: "..(SkillRemote and SkillRemote.Name or "CHƯA CÓ")
 Title.TextColor3 = Color3.new(1,1,1)
 Title.BackgroundColor3 = Color3.fromRGB(138,43,226)
 Title.Font = Enum.Font.GothamBold
 Instance.new("UICorner", Title)
+
+local DebugLabel = Instance.new("TextLabel", Main)
+DebugLabel.Position = UDim2.new(0, 10, 0, 35)
+DebugLabel.Size = UDim2.new(1, -20, 0, 60)
+DebugLabel.Text = "DEBUG: Chờ bật skill..."
+DebugLabel.TextColor3 = Color3.fromRGB(255,255,0)
+DebugLabel.BackgroundTransparency = 1
+DebugLabel.Font = Enum.Font.Code
+DebugLabel.TextSize = 11
+DebugLabel.TextWrapped = true
+DebugLabel.TextXAlignment = Enum.TextXAlignment.Left
+DebugLabel.TextYAlignment = Enum.TextYAlignment.Top
 
 local function mkBtn(y, txt, cb)
     local b = Instance.new("TextButton", Main)
@@ -88,7 +101,6 @@ local function mkBtn(y, txt, cb)
     end)
 end
 
--- BẤM NÚT DB ĐỂ ẨN/HIỆN MENU
 ToggleBtn.MouseButton1Click:Connect(function()
     getgenv().DBV2.MenuVisible = not getgenv().DBV2.MenuVisible
     Main.Visible = getgenv().DBV2.MenuVisible
@@ -142,28 +154,25 @@ local function lockBoss(on)
     end)
 end
 
--- CLICK PLAY AGAIN
-local function clickReplay()
-    for _, v in pairs(Plr.PlayerGui:GetDescendants()) do
-        if v:IsA("TextButton") and v.Visible then
-            local t = v.Text:lower()
-            if t:find("play again") or t:find("replay") or t:find("restart") then
-                firesignal(v.MouseButton1Click)
-                return true
-            end
-        end
-    end
-    return false
-end
-
--- SPAM SKILL TỪ NGOÀI MAP
+-- SPAM SKILL NGOÀI MAP - CÓ DEBUG
 local function spamSkill()
-    if not SkillRemote then return end
+    if not SkillRemote then 
+        DebugLabel.Text = "DEBUG: CHƯA CÓ REMOTE SKILL!\nCheck console F9 để xem tên remote"
+        return 
+    end
+    
     local boss = getBoss()
-    if not boss or not boss:FindFirstChild("HumanoidRootPart") then return end
+    if not boss or not boss:FindFirstChild("HumanoidRootPart") then 
+        DebugLabel.Text = "DEBUG: KHÔNG TÌM THẤY BOSS"
+        return 
+    end
+    
     local bpos = boss.HumanoidRootPart.Position
-
-    -- 4 GÓC NGOÀI MAP
+    local char = Plr.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    
+    -- SPAWN TỪ 4 GÓC
+    local successCount = 0
     for i = 1, 4 do
         local ang = (i/4) * math.pi * 2
         local x = math.cos(ang) * 600
@@ -171,21 +180,24 @@ local function spamSkill()
         local spawnPos = bpos + Vector3.new(x, 150, z)
         local spawnCF = CFrame.new(spawnPos, bpos)
 
-        pcall(function() SkillRemote:FireServer("EnergyBlast", spawnCF, bpos) end)
-        pcall(function() SkillRemote:FireServer("Blast", spawnCF, bpos) end)
-        pcall(function() SkillRemote:FireServer("Skill1", spawnCF, bpos) end)
-        pcall(function() SkillRemote:FireServer("Skill2", spawnCF, bpos) end)
-        pcall(function() SkillRemote:FireServer("Skill3", spawnCF, bpos) end)
-        pcall(function() SkillRemote:FireServer("Skill4", spawnCF, bpos) end)
-        pcall(function() SkillRemote:FireServer(spawnCF, bpos) end)
+        -- THỬ TỪNG KIỂU FIRE
+        local s1 = pcall(function() SkillRemote:FireServer("EnergyBlast", spawnCF, bpos) end)
+        local s2 = pcall(function() SkillRemote:FireServer("Blast", spawnCF, bpos) end)
+        local s3 = pcall(function() SkillRemote:FireServer(spawnCF, bpos) end)
+        local s4 = pcall(function() SkillRemote:FireServer(boss, "EnergyBlast") end)
+        local s5 = pcall(function() SkillRemote:FireServer(boss) end)
+        
+        if s1 or s2 or s3 or s4 or s5 then successCount = successCount + 1 end
     end
+    
+    DebugLabel.Text = "DEBUG: Đã fire "..successCount.."/4 hướng\nRemote: "..SkillRemote.Name.."\nBoss: "..boss.Name.."\nPos: "..math.floor(bpos.X)..","..math.floor(bpos.Z)
 end
 
 -- NÚT
-mkBtn(40, "Skill Ngoài Map", function(v) getgenv().DBV2.AutoSkill = v end)
-mkBtn(75, "Auto Play Again", function(v) getgenv().DBV2.AutoReplay = v end)
-mkBtn(110, "Godmode", function(v) getgenv().DBV2.Godmode = v end)
-mkBtn(145, "Lock Boss", function(v) getgenv().DBV2.LockBoss = v lockBoss(v) end)
+mkBtn(100, "Skill Ngoài Map", function(v) getgenv().DBV2.AutoSkill = v end)
+mkBtn(135, "Auto Play Again", function(v) getgenv().DBV2.AutoReplay = v end)
+mkBtn(170, "Godmode", function(v) getgenv().DBV2.Godmode = v end)
+mkBtn(205, "Lock Boss", function(v) getgenv().DBV2.LockBoss = v lockBoss(v) end)
 
 local Close = Instance.new("TextButton", Main)
 Close.Position = UDim2.new(1, -25, 0, 5)
@@ -200,11 +212,6 @@ spawn(function()
     while getgenv().DBV2.Running and task.wait(0.1) do
         if not Plr.Character then continue end
         local hum = Plr.Character:FindFirstChild("Humanoid")
-
-        if getgenv().DBV2.AutoReplay and not workspace:FindFirstChild("UnstableGrounds") then
-            clickReplay()
-            task.wait(3)
-        end
 
         if getgenv().DBV2.Godmode and hum then
             hum.MaxHealth = 9e9
@@ -222,4 +229,8 @@ spawn(function()
     end
 end)
 
-print(" Done! Bấm nút DB góc trái để ẩn/hiện menu")
+print("=== DBV2 LOADED ===")
+print("1. Bấm F9 xem console")
+print("2. Copy tên Remote Skill từ log")
+print("3. Sửa dòng 25: local SkillRemote = RS:FindFirstChild('TÊN_REMOTE')")
+print("4. Execute lại script")
