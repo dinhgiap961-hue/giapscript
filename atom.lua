@@ -9,7 +9,7 @@ local VIM = game:GetService("VirtualInputManager")
 local CoreGui = game:GetService("CoreGui")
 local RS = game:GetService("ReplicatedStorage")
 
--- Nút Atom CỐ ĐỊNH để mở lại menu
+-- Nút Atom CỐ ĐỊNH
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "AtomToggle"
 ScreenGui.ResetOnSpawn = false
@@ -28,7 +28,7 @@ Btn.Parent = ScreenGui
 Instance.new("UICorner", Btn).CornerRadius = UDim.new(0,25)
 Btn.MouseButton1Click:Connect(function() Kavo:ToggleUI() end)
 
--- CHO MENU KAVO KÉO THẢ ĐƯỢC
+-- CHO MENU KÉO THẢ
 task.spawn(function()
     repeat task.wait() until CoreGui:FindFirstChild("Kavo")
     local KavoUI = CoreGui:FindFirstChild("Kavo")
@@ -50,7 +50,20 @@ local function findRemote(keyword)
     return nil
 end
 
+local function isDungeonClear()
+    local gui = Plr:FindFirstChild("PlayerGui")
+    if gui then
+        for _, v in pairs(gui:GetDescendants()) do
+            if v:IsA("TextLabel") and (string.find(v.Text, "0 Mob Left") or string.find(v.Text, "Dungeon Cleared")) then
+                return true
+            end
+        end
+    end
+    return false
+end
+
 local function getMonster()
+    if isDungeonClear() then return nil end
     local target, dist = nil, math.huge
     for _, v in ipairs(workspace:GetDescendants()) do
         if v:IsA("Model") and v:FindFirstChild("HumanoidRootPart") and v:FindFirstChild("Humanoid") and v.Name ~= Plr.Name then
@@ -61,6 +74,22 @@ local function getMonster()
         end
     end
     return target
+end
+
+local function isInForm()
+    local char = Plr.Character
+    if not char then return false end
+    if string.find(char.Name, "Form") or string.find(char.Name, "SSJ") then return true end
+    for _,v in pairs(char:GetChildren()) do
+        if v.Name == "Aura" or v.Name == "FormAura" then return true end
+    end
+    local head = char:FindFirstChild("Head")
+    if head then
+        for _,v in pairs(head:GetChildren()) do
+            if v:IsA("ParticleEmitter") or v.Name == "Hair" then return true end
+        end
+    end
+    return false
 end
 
 local function getRaids()
@@ -79,8 +108,18 @@ Section:NewToggle("Spam Energy Blast [E]", "Tự spam phím E", function(s)
     end
 end)
 
--- 2. Treo Cổ Boss - 8 studs + tự đáp đất
-Section:NewToggle("Treo Cổ Boss", "Treo 8 stud, hết boss đáp đất", function(s)
+-- 2. Auto Click - ĐẤM LIÊN TỤC
+Section:NewToggle("Auto Click", "Vừa spam skill vừa đấm", function(s)
+    _G.AutoClick = s
+    while _G.AutoClick do
+        VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+        VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+        task.wait(0.1)
+    end
+end)
+
+-- 3. Treo Cổ Boss
+Section:NewToggle("Treo Cổ Boss", "Clear là đáp đất ngay", function(s)
     _G.Tp = s
     local lastPos = nil
     while _G.Tp do
@@ -90,14 +129,14 @@ Section:NewToggle("Treo Cổ Boss", "Treo 8 stud, hết boss đáp đất", func
             local hrp = char and char:FindFirstChild("HumanoidRootPart")
             local hum = char and char:FindFirstChild("Humanoid")
 
-            if t and hrp and hum then
+            if t and hrp and hum and not isDungeonClear() then
                 if not lastPos then lastPos = hrp.CFrame end
                 hrp.CFrame = t.HumanoidRootPart.CFrame * CFrame.new(0, 8, 0)
                 hrp.Velocity = Vector3.new(0,0,0)
                 hum.PlatformStand = true
             else
-                if lastPos and hrp and hum then
-                    hum.PlatformStand = false
+                if hum then hum.PlatformStand = false end
+                if lastPos and hrp then
                     hrp.CFrame = lastPos + Vector3.new(0, 3, 0)
                     lastPos = nil
                 end
@@ -109,7 +148,7 @@ Section:NewToggle("Treo Cổ Boss", "Treo 8 stud, hết boss đáp đất", func
     if hum then hum.PlatformStand = false end
 end)
 
--- 3. Auto Lock Skill
+-- 4. Auto Lock Skill
 Section:NewToggle("Auto Lock Skill", "Tự ghim skill vào boss", function(s)
     _G.AutoLock = s
     local lockRemote = findRemote("lock") or findRemote("target")
@@ -124,7 +163,7 @@ Section:NewToggle("Auto Lock Skill", "Tự ghim skill vào boss", function(s)
     end
 end)
 
--- 4. Auto Boss
+-- 5. Auto Boss
 Section:NewToggle("Auto Boss", "Tự đánh boss + né", function(s)
     _G.AutoBoss = s
     local attackRemote = findRemote("attack") or findRemote("punch") or findRemote("hit")
@@ -146,10 +185,11 @@ Section:NewToggle("Auto Boss", "Tự đánh boss + né", function(s)
     end
 end)
 
--- 5. Auto Charge [F]
-Section:NewToggle("Auto Charge [F]", "Tự giữ F charge ki", function(s)
+-- 6. Auto Charge - CHỜ BẠN CHO NÚT ĐÚNG
+Section:NewToggle("Auto Charge [SAI NÚT]", "Đợi bạn cho phím đúng", function(s)
     _G.AutoFushi = s
     while _G.AutoFushi do
+        -- TẠM THỜI VẪN LÀ F, BẠN CHO NÚT MÌNH SỬA
         VIM:SendKeyEvent(true, Enum.KeyCode.F, false, game)
         task.wait(0.1)
         VIM:SendKeyEvent(false, Enum.KeyCode.F, false, game)
@@ -157,18 +197,21 @@ Section:NewToggle("Auto Charge [F]", "Tự giữ F charge ki", function(s)
     end
 end)
 
--- 6. Auto Form [Y]
-Section:NewToggle("Auto Form [Y]", "Tự bấm Y biến hình", function(s)
+-- 7. Auto Form [Y] - Chỉ bấm khi chưa form
+Section:NewToggle("Auto Form [Y]", "Hết form mới bấm Y", function(s)
     _G.AutoForm = s
     while _G.AutoForm do
-        VIM:SendKeyEvent(true, Enum.KeyCode.Y, false, game)
-        task.wait(0.1)
-        VIM:SendKeyEvent(false, Enum.KeyCode.Y, false, game)
-        task.wait(4)
+        if not isInForm() then
+            VIM:SendKeyEvent(true, Enum.KeyCode.Y, false, game)
+            task.wait(0.1)
+            VIM:SendKeyEvent(false, Enum.KeyCode.Y, false, game)
+            task.wait(1)
+        end
+        task.wait(3)
     end
 end)
 
--- 7. Auto Next Raid
+-- 8. Auto Next Raid
 local raidIndex = 1
 Section:NewToggle("Auto Next Raid", "Tự chuyển raid tiếp theo", function(s)
     _G.AutoNextRaid = s
@@ -186,16 +229,6 @@ Section:NewToggle("Auto Next Raid", "Tự chuyển raid tiếp theo", function(s
             end
         end)
         task.wait(3)
-    end
-end)
-
--- 8. Auto Click
-Section:NewToggle("Auto Click", "Tự đánh thường", function(s)
-    _G.AutoClick = s
-    while _G.AutoClick do
-        VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
-        VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
-        task.wait(0.1)
     end
 end)
 
