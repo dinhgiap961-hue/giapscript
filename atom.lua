@@ -142,7 +142,9 @@ MainSection:NewToggle("Auto Click", "Tự động click chuột", function(s)
     while _G.AutoClick do
         VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
         VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+        VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
         task.wait(0.1)
+        end
     end
 end)
 
@@ -214,7 +216,8 @@ MainSection:NewToggle("Auto Lock Skill", "Chỉ ghim skill vào boss", function(
     end
 end)
 
-MainSection:NewToggle("Auto Bay Cổ Boss", "Chỉ bay sau cổ boss", function(s)
+-- FIX: BAY TRÊN ĐỈU ĐẦU BOSS - Y=6
+MainSection:NewToggle("Auto Bay Cổ Boss", "Bay trên đỉnh đầu boss", function(s)
     _G.AutoBayCo = s
     while _G.AutoBayCo do
         pcall(function()
@@ -222,7 +225,8 @@ MainSection:NewToggle("Auto Bay Cổ Boss", "Chỉ bay sau cổ boss", function(
             local hrp = Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart")
             local hum = Plr.Character and Plr.Character:FindFirstChild("Humanoid")
             if boss and hrp and hum then
-                hrp.CFrame = boss.HumanoidRootPart.CFrame * CFrame.new(0, 2, -2)
+                -- FIX: Y=6 để bay cao trên đầu, không bị đấm
+                hrp.CFrame = boss.HumanoidRootPart.CFrame * CFrame.new(0, 6, 0)
                 hrp.Velocity = Vector3.new(0,0,0)
                 hum.PlatformStand = true
             end
@@ -249,7 +253,7 @@ MainSection:NewToggle("Auto Phê Pha V2", "Tự giữ C khi ki < 90%", function(
     VIM:SendKeyEvent(false, Enum.KeyCode.C, false, game)
 end)
 
--- TAB DUNGEON - THÊM AUTO MODE GIỐNG ẢNH
+-- TAB DUNGEON
 local selectedAutoMode = "Strength"
 DungeonSection:NewDropdown("Chọn Auto Mode", "Chọn chỉ số để farm", {"Strength", "Energy", "Defense"}, function(currentOption)
     selectedAutoMode = currentOption
@@ -260,7 +264,8 @@ DungeonSection:NewDropdown("Chọn Kiểu Farm", "Chọn skill để farm", {"En
     selectedSkill = currentOption
 end)
 
-DungeonSection:NewToggle("Auto Farm", "Farm theo Auto Mode + Kiểu Farm đã chọn", function(s)
+-- FIX: AUTO FARM HOẠT ĐỘNG THEO AUTO MODE
+DungeonSection:NewToggle("Auto Farm", "Farm theo Auto Mode + Kiểu Farm", function(s)
     _G.AutoFarm = s
     local attackRemote = findRemote("attack") or findRemote("punch") or findRemote("melee")
     local skillRemote = findRemote("skill") or findRemote("blast") or findRemote("energy")
@@ -271,25 +276,26 @@ DungeonSection:NewToggle("Auto Farm", "Farm theo Auto Mode + Kiểu Farm đã ch
             local hrp = Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart")
             local hum = Plr.Character and Plr.Character:FindFirstChild("Humanoid")
             if mob and hrp and hum then
-                hrp.CFrame = mob.HumanoidRootPart.CFrame * CFrame.new(0, 2, -2)
+                -- FIX: BAY TRÊN ĐỈU ĐẦU Y=6
+                hrp.CFrame = mob.HumanoidRootPart.CFrame * CFrame.new(0, 6, 0)
                 hrp.Velocity = Vector3.new(0,0,0)
                 hum.PlatformStand = true
 
-                -- AUTO MODE: Đổi cách đánh theo chỉ số
-                if selectedAutoMode == "Strength" then
-                    -- Farm Strength = đấm tay
+                -- ƯU TIÊN AUTO MODE, NẾU KHÔNG CÓ THÌ DÙNG KIỂU FARM
+                if selectedAutoMode == "Strength" or selectedSkill == "Energy Spear" then
+                    -- Strength = Spam đấm siêu nhanh 33 hit/s
                     VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
                     VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
                     if attackRemote then for i = 1, 3 do attackRemote:FireServer(mob) end end
                     task.wait(0.03)
-                elseif selectedAutoMode == "Energy" then
-                    -- Farm Energy = spam E
+                elseif selectedAutoMode == "Energy" or selectedSkill == "Energy Blast" then
+                    -- Energy = Spam E
                     VIM:SendKeyEvent(true, Enum.KeyCode.E, false, game)
                     VIM:SendKeyEvent(false, Enum.KeyCode.E, false, game)
                     if skillRemote then skillRemote:FireServer(mob.HumanoidRootPart.Position) end
                     task.wait(0.1)
                 elseif selectedAutoMode == "Defense" then
-                    -- Farm Defense = đứng tank + đấm
+                    -- Defense = Đứng tank + đấm chậm
                     VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
                     VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
                     task.wait(0.2)
