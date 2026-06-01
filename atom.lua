@@ -76,17 +76,24 @@ local function getMonster()
     return target
 end
 
+-- FIX CHUẨN: CHECK FORM BẰNG LEADERSTATS
 local function isInForm()
-    local char = Plr.Character
-    if not char then return false end
-    if string.find(char.Name, "Form") or string.find(char.Name, "SSJ") then return true end
-    for _,v in pairs(char:GetChildren()) do
-        if v.Name == "Aura" or v.Name == "FormAura" then return true end
+    local leaderstats = Plr:FindFirstChild("leaderstats")
+    if leaderstats then
+        -- Check Form stat
+        local form = leaderstats:FindFirstChild("Form") or leaderstats:FindFirstChild("form")
+        if form and form.Value > 0 then return true end
+
+        -- Check Power stat > 1 triệu = đang form
+        local power = leaderstats:FindFirstChild("Power") or leaderstats:FindFirstChild("power")
+        if power and power.Value > 1000000 then return true end
     end
-    local head = char:FindFirstChild("Head")
-    if head then
-        for _,v in pairs(head:GetChildren()) do
-            if v:IsA("ParticleEmitter") or v.Name == "Hair" then return true end
+
+    -- Backup: Check có Aura không
+    local char = Plr.Character
+    if char then
+        for _,v in pairs(char:GetDescendants()) do
+            if v.Name == "Aura" or v.Name == "FormAura" or v.Name == "SSJ" then return true end
         end
     end
     return false
@@ -108,7 +115,7 @@ Section:NewToggle("Spam Energy Blast [E]", "Tự spam phím E", function(s)
     end
 end)
 
--- 2. Auto Click - ĐẤM LIÊN TỤC
+-- 2. Auto Click
 Section:NewToggle("Auto Click", "Vừa spam skill vừa đấm", function(s)
     _G.AutoClick = s
     while _G.AutoClick do
@@ -118,7 +125,17 @@ Section:NewToggle("Auto Click", "Vừa spam skill vừa đấm", function(s)
     end
 end)
 
--- 3. Treo Cổ Boss
+-- 3. Auto Beat [M]
+Section:NewToggle("Auto Beat [M]", "Tự spam phím M", function(s)
+    _G.AutoBeat = s
+    while _G.AutoBeat do
+        VIM:SendKeyEvent(true, Enum.KeyCode.M, false, game)
+        VIM:SendKeyEvent(false, Enum.KeyCode.M, false, game)
+        task.wait(0.1)
+    end
+end)
+
+-- 4. Treo Cổ Boss
 Section:NewToggle("Treo Cổ Boss", "Clear là đáp đất ngay", function(s)
     _G.Tp = s
     local lastPos = nil
@@ -148,7 +165,7 @@ Section:NewToggle("Treo Cổ Boss", "Clear là đáp đất ngay", function(s)
     if hum then hum.PlatformStand = false end
 end)
 
--- 4. Auto Lock Skill
+-- 5. Auto Lock Skill
 Section:NewToggle("Auto Lock Skill", "Tự ghim skill vào boss", function(s)
     _G.AutoLock = s
     local lockRemote = findRemote("lock") or findRemote("target")
@@ -163,15 +180,23 @@ Section:NewToggle("Auto Lock Skill", "Tự ghim skill vào boss", function(s)
     end
 end)
 
--- 5. Auto Boss
-Section:NewToggle("Auto Boss", "Tự đánh boss + né", function(s)
+-- 6. Auto Boss [1] - Tự rút kiếm
+Section:NewToggle("Auto Boss [1]", "Tự rút kiếm + đánh boss", function(s)
     _G.AutoBoss = s
     local attackRemote = findRemote("attack") or findRemote("punch") or findRemote("hit")
+    local switched = false
     while _G.AutoBoss do
         pcall(function()
             local boss = getMonster()
             local hrp = Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart")
             if boss and hrp then
+                if not switched then
+                    VIM:SendKeyEvent(true, Enum.KeyCode.One, false, game)
+                    VIM:SendKeyEvent(false, Enum.KeyCode.One, false, game)
+                    switched = true
+                    task.wait(0.2)
+                end
+
                 local distance = (hrp.Position - boss.HumanoidRootPart.Position).Magnitude
                 if distance < 10 then
                     hrp.CFrame = hrp.CFrame * CFrame.new(0, 15, 0)
@@ -179,39 +204,46 @@ Section:NewToggle("Auto Boss", "Tự đánh boss + né", function(s)
                 if attackRemote then
                     attackRemote:FireServer()
                 end
+            else
+                switched = false
             end
         end)
         task.wait(0.1)
     end
 end)
 
--- 6. Auto Charge - CHỜ BẠN CHO NÚT ĐÚNG
-Section:NewToggle("Auto Charge [SAI NÚT]", "Đợi bạn cho phím đúng", function(s)
+-- 7. Auto Charge [C]
+Section:NewToggle("Auto Charge [C]", "Tự giữ C charge ki", function(s)
     _G.AutoFushi = s
     while _G.AutoFushi do
-        -- TẠM THỜI VẪN LÀ F, BẠN CHO NÚT MÌNH SỬA
-        VIM:SendKeyEvent(true, Enum.KeyCode.F, false, game)
+        VIM:SendKeyEvent(true, Enum.KeyCode.C, false, game)
         task.wait(0.1)
-        VIM:SendKeyEvent(false, Enum.KeyCode.F, false, game)
+        VIM:SendKeyEvent(false, Enum.KeyCode.C, false, game)
         task.wait(2)
     end
 end)
 
--- 7. Auto Form [Y] - Chỉ bấm khi chưa form
-Section:NewToggle("Auto Form [Y]", "Hết form mới bấm Y", function(s)
+-- 8. ĐÃ FIX TRIỆT ĐỂ: Auto Form [Y]
+Section:NewToggle("Auto Form [Y]", "Thông minh - hết form mới bấm", function(s)
     _G.AutoForm = s
+    local lastFormCheck = false
     while _G.AutoForm do
-        if not isInForm() then
+        local currentForm = isInForm()
+
+        -- Chỉ bấm Y khi: chưa form + trước đó cũng chưa form
+        if not currentForm and not lastFormCheck then
             VIM:SendKeyEvent(true, Enum.KeyCode.Y, false, game)
             task.wait(0.1)
             VIM:SendKeyEvent(false, Enum.KeyCode.Y, false, game)
-            task.wait(1)
+            task.wait(2) -- Đợi biến hình xong
         end
-        task.wait(3)
+
+        lastFormCheck = currentForm
+        task.wait(1) -- Check mỗi 1s
     end
 end)
 
--- 8. Auto Next Raid
+-- 9. Auto Next Raid
 local raidIndex = 1
 Section:NewToggle("Auto Next Raid", "Tự chuyển raid tiếp theo", function(s)
     _G.AutoNextRaid = s
@@ -232,7 +264,7 @@ Section:NewToggle("Auto Next Raid", "Tự chuyển raid tiếp theo", function(s
     end
 end)
 
--- 9. Auto Play Raid
+-- 10. Auto Play Raid
 Section:NewToggle("Auto Play Raid", "Bật full auto", function(s)
     _G.AutoPlay = s
     _G.EB = s
@@ -243,6 +275,7 @@ Section:NewToggle("Auto Play Raid", "Bật full auto", function(s)
     _G.AutoForm = s
     _G.AutoNextRaid = s
     _G.AutoClick = s
+    _G.AutoBeat = s
 end)
 
 Section:NewButton("Ẩn Menu", "Thu nhỏ", function()
