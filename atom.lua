@@ -1,4 +1,4 @@
--- DRAGON BLOX V2 - FULL FEATURES V3.0 - FIX DI CHUYỂN
+-- DRAGON BLOX V2 - FULL FEATURES V3.0 - FIX NEXT AREA
 local Kavo = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
 local Win = Kavo.CreateLib("Dragon Blox V2 - FULL", "BloodTheme")
 
@@ -78,13 +78,34 @@ local function isDungeonClear()
     return false
 end
 
+-- FIX: CLICK PLAY AGAIN TỐI ƯU
 local function clickPlayAgain()
     local gui = Plr:FindFirstChild("PlayerGui")
-    if gui then
-        for _, v in pairs(gui:GetDescendants()) do
-            if v:IsA("TextButton") and v.Text == "Play Again" and v.Visible then
-                pcall(function() firesignal(v.MouseButton1Click) end)
-                return true
+    if not gui then return false end
+
+    local keywords = {"Play Again", "Replay", "Continue", "Next", "Retry", "Again", "Again!"}
+
+    for _, v in pairs(gui:GetDescendants()) do
+        if v:IsA("TextButton") or v:IsA("ImageButton") then
+            if v.Visible and v.Active then
+                if v:IsA("TextButton") then
+                    for _, key in ipairs(keywords) do
+                        if string.find(string.lower(v.Text), string.lower(key)) then
+                            pcall(function() firesignal(v.MouseButton1Click) end)
+                            pcall(function() firesignal(v.Activated) end)
+                            pcall(function() v:Activate() end)
+                            return true
+                        end
+                    end
+                end
+                for _, key in ipairs(keywords) do
+                    if string.find(string.lower(v.Name), string.lower(key)) then
+                        pcall(function() firesignal(v.MouseButton1Click) end)
+                        pcall(function() firesignal(v.Activated) end)
+                        pcall(function() v:Activate() end)
+                        return true
+                    end
+                end
             end
         end
     end
@@ -236,7 +257,6 @@ MainSection:NewToggle("Auto Lock Skill", "Chỉ ghim skill vào boss", function(
     end
 end)
 
--- FIX: BỎ PLATFORMSTAND = TRUE
 MainSection:NewToggle("Auto Bay Cổ Boss", "Bay trên đỉnh đầu boss - DI CHUYỂN ĐƯỢC", function(s)
     _G.AutoBayCo = s
     while _G.AutoBayCo do
@@ -246,7 +266,6 @@ MainSection:NewToggle("Auto Bay Cổ Boss", "Bay trên đỉnh đầu boss - DI 
             if boss and hrp then
                 hrp.CFrame = boss.HumanoidRootPart.CFrame * CFrame.new(0, 6, 0)
                 hrp.Velocity = Vector3.new(0,0,0)
-                -- ĐÃ XÓA: hum.PlatformStand = true
             end
         end)
         task.wait(0.1)
@@ -307,7 +326,6 @@ DungeonSection:NewDropdown("Chọn Kiểu Farm", "Chọn skill để farm", {"En
     selectedSkill = currentOption
 end)
 
--- FIX: BỎ PLATFORMSTAND = TRUE
 DungeonSection:NewToggle("Auto Farm", "Farm theo Auto Mode + Kiểu Farm - DI CHUYỂN ĐƯỢC", function(s)
     _G.AutoFarm = s
     while _G.AutoFarm do
@@ -317,7 +335,6 @@ DungeonSection:NewToggle("Auto Farm", "Farm theo Auto Mode + Kiểu Farm - DI CH
             if mob and hrp then
                 hrp.CFrame = mob.HumanoidRootPart.CFrame * CFrame.new(0, 6, 0)
                 hrp.Velocity = Vector3.new(0,0,0)
-                -- ĐÃ XÓA: hum.PlatformStand = true
 
                 if selectedAutoMode == "Strength" or selectedSkill == "Energy Spear" then
                     for i = 1, 3 do
@@ -341,15 +358,36 @@ DungeonSection:NewToggle("Auto Farm", "Farm theo Auto Mode + Kiểu Farm - DI CH
     end
 end)
 
-DungeonSection:NewToggle("Auto (Next Area)", "Tự bấm Play Again", function(s)
+-- FIX: AUTO NEXT AREA TỐI ƯU
+DungeonSection:NewToggle("Auto (Next Area)", "Tự bấm Play Again - FIXED", function(s)
     _G.AutoNextArea = s
-    local playRemote = findRemote("play") or findRemote("replay") or findRemote("next")
+    local playRemotes = {
+        findRemote("play"), findRemote("replay"), findRemote("next"),
+        findRemote("continue"), findRemote("retry"), findRemote("restart"),
+        findRemote("dungeon"), findRemote("start"), findRemote("again")
+    }
+
     while _G.AutoNextArea do
         pcall(function()
             if isDungeonClear() then
-                task.wait(2)
+                task.wait(1.5)
+
+                -- Cách 1: Click button
                 clickPlayAgain()
-                if playRemote then playRemote:FireServer() end
+
+                -- Cách 2: Spam remote
+                task.wait(0.5)
+                for _, remote in ipairs(playRemotes) do
+                    if remote then
+                        pcall(function() remote:FireServer() end)
+                        pcall(function() remote:FireServer("Next") end)
+                        pcall(function() remote:FireServer("Play") end)
+                        pcall(function() remote:FireServer("Replay") end)
+                        pcall(function() remote:FireServer(true) end)
+                        pcall(function() remote:FireServer(1) end)
+                    end
+                end
+
                 task.wait(5)
             end
         end)
