@@ -278,5 +278,3 @@ spawn(function()
         end
     end
 end)
-
-print("=== DBV2 FIX CHUI ĐẤT LOADED ===")
