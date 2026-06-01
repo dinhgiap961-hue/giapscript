@@ -1,132 +1,100 @@
--- DRAGON BLOX V2 FINAL - AUTO PLAY AGAIN DÒ SỐ 1-20
+-- DRAGON BLOX V2 - DÒ SỐ 1-100 TỰ BẤM NÚT RAID
 local Plr = game:GetService("Players").LocalPlayer
 local RS = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local Settings = {
-    AutoEnergyBall = false,
-    AutoPlayAgain = false,
-    Godmode = false,
-    AutoLockAtom = false,
-}
+-- TỰ ĐỘNG HẾT - KHÔNG PHÍM
+local AUTO_ENERGY = true
+local AUTO_PLAY_AGAIN = true
+local GODMODE = true
+local AUTO_LOCK = true
+local FLY_HEIGHT = 45
+local SCAN_MAX = 100 -- DÒ TỪ 1-100
 
-local raidRemote, blastRemote, bv, currentBoss = nil, nil, nil, nil
-local currentRaidID = 0 -- 0 = chưa dò
+local raidRemote, bv, currentBoss = nil, nil, nil
+local currentRaidID = 0 -- 0 = chưa tìm thấy
 local inRaid = false
+local foundNumbers = {} -- Lưu các số vào được raid
 
--- TÌM REMOTE
+-- TÌM TẤT CẢ REMOTE CÓ THỂ LÀ NÚT RAID
+local raidRemotes = {}
 for _, v in pairs(RS:GetDescendants()) do
     if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then
-        local n = v.Name:lower()
-        if string.find(n, "raid") or string.find(n, "teleport") or string.find(n, "join") then raidRemote = v end
-        if string.find(n, "blast") or string.find(n, "energy") or string.find(n, "beam") then blastRemote = v end
+        table.insert(raidRemotes, v)
     end
 end
 
--- GUI
-local Gui = Instance.new("ScreenGui", game:GetService("CoreGui"))
-Gui.ResetOnSpawn = false
+game:GetService("StarterGui"):SetCore("SendNotification",{
+    Title = "AUTO DÒ NÚT RAID",
+    Text = "Brute force 1-100...",
+    Duration = 5
+})
 
-local Main = Instance.new("Frame", Gui)
-Main.BackgroundColor3 = Color3.fromRGB(20,20,20)
-Main.Position = UDim2.new(0.05, 0, 0.2, 0)
-Main.Size = UDim2.new(0, 450, 0, 300)
-Main.Active = true
-Main.Draggable = true
-Instance.new("UICorner", Main)
-
-local Title = Instance.new("TextLabel", Main)
-Title.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
-Title.Size = UDim2.new(1, 0, 0, 30)
-Title.Text = "Dragon Blox V2 - Auto Dò Số Raid"
-Title.TextColor3 = Color3.fromRGB(255,255,255)
-Title.Font = Enum.Font.GothamBold
-
-local Content = Instance.new("Frame", Main)
-Content.BackgroundColor3 = Color3.fromRGB(25,25,25)
-Content.Position = UDim2.new(0, 130, 0, 30)
-Content.Size = UDim2.new(1, -130, 1, -30)
-
-local function createToggle(name, pos, callback)
-    local Btn = Instance.new("TextButton", Content)
-    Btn.BackgroundColor3 = Color3.fromRGB(30,30,30)
-    Btn.Position = UDim2.new(0, 10, 0, pos)
-    Btn.Size = UDim2.new(1, -20, 0, 30)
-    Btn.Text = "   " .. name
-    Btn.TextColor3 = Color3.fromRGB(255,255,255)
-    Btn.Font = Enum.Font.Gotham
-    Btn.TextXAlignment = Enum.TextXAlignment.Left
-    Instance.new("UICorner", Btn)
-    
-    local Check = Instance.new("Frame", Btn)
-    Check.BackgroundColor3 = Color3.fromRGB(60,60,60)
-    Check.Position = UDim2.new(1, -35, 0.5, -10)
-    Check.Size = UDim2.new(0, 20, 0, 20)
-    Instance.new("UICorner", Check)
-    
-    local state = false
-    Btn.MouseButton1Click:Connect(function()
-        state = not state
-        Check.BackgroundColor3 = state and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(60,60,60)
-        callback(state)
-    end)
-end
-
-createToggle("Auto Energy Ball", 10, function(v) Settings.AutoEnergyBall = v end)
-createToggle("Auto Play Again [DÒ SỐ 1-20]", 50, function(v) 
-    Settings.AutoPlayAgain = v
-    if v and currentRaidID == 0 then
-        game:GetService("StarterGui"):SetCore("SendNotification",{Title="BẮT ĐẦU DÒ",Text="Dò số raid 1-20...",Duration=3})
-    end
-end)
-createToggle("Godmode", 90, function(v) Settings.Godmode = v end)
-createToggle("auto lock Atom", 130, function(v) Settings.AutoLockAtom = v end)
-
--- CHECK ĐÃ VÀO RAID CHƯA
 local function checkInRaid()
-    return workspace:FindFirstChild("UnstableGrounds") or workspace:FindFirstChild("Raid") or workspace:FindFirstChild("Dungeon")
+    return workspace:FindFirstChild("UnstableGrounds")
+        or workspace:FindFirstChild("Raid")
+        or workspace:FindFirstChild("Dungeon")
+        or workspace:FindFirstChild("RaidMap")
 end
 
--- DÒ SỐ RAID 1-20
-local function scanRaidID()
-    if not raidRemote or currentRaidID ~= 0 then return currentRaidID end
-    
-    for i = 1, 20 do
-        if checkInRaid() then 
+-- DÒ SỐ 1-100 ĐỂ TÌM NÚT JOIN RAID
+local function scanRaidNumber()
+    if currentRaidID ~= 0 then return currentRaidID end
+
+    print("Bắt đầu dò số 1-100...")
+    for i = 1, SCAN_MAX do -- DÒ 1-100
+        if checkInRaid() then
             currentRaidID = i - 1
-            game:GetService("StarterGui"):SetCore("SendNotification",{Title="TÌM THẤY RAID",Text="ID: "..currentRaidID,Duration=3})
-            return currentRaidID 
+            table.insert(foundNumbers, currentRaidID)
+            print("TÌM THẤY NÚT RAID:", currentRaidID)
+            game:GetService("StarterGui"):SetCore("SendNotification",{
+                Title="TÌM THẤY NÚT",Text="Số: "..currentRaidID,Duration=3
+            })
+            return currentRaidID
         end
-        
-        pcall(function() raidRemote:FireServer(i, "Hard") end)
-        pcall(function() raidRemote:FireServer(i) end)
-        pcall(function() raidRemote:InvokeServer(i, "Hard") end)
-        pcall(function() raidRemote:InvokeServer(i) end)
-        task.wait(1)
+
+        -- THỬ TẤT CẢ REMOTE + TẤT CẢ SỐ
+        for _, remote in pairs(raidRemotes) do
+            pcall(function() remote:FireServer(i) end)
+            pcall(function() remote:FireServer(i, "Hard") end)
+            pcall(function() remote:FireServer(i, "Easy") end)
+            pcall(function() remote:FireServer(i, "Nightmare") end)
+            pcall(function() remote:FireServer("Raid", i) end)
+            pcall(function() remote:FireServer("Join", i) end)
+            pcall(function() remote:InvokeServer(i) end)
+            pcall(function() remote:InvokeServer(i, "Hard") end)
+        end
+        task.wait(0.2) -- 0.2s mỗi số để nhanh
     end
-    
-    currentRaidID = 6 -- Default nếu dò không ra
-    return 6
+
+    -- NẾU DÒ KHÔNG RA THÌ DÙNG SỐ CŨ
+    if #foundNumbers > 0 then
+        currentRaidID = foundNumbers[1]
+    else
+        currentRaidID = 6 -- Default
+    end
+    return currentRaidID
 end
 
 local function joinRaid()
-    if raidRemote then
-        local id = currentRaidID == 0 and scanRaidID() or currentRaidID
-        pcall(function() raidRemote:FireServer(id, "Hard") end)
-        pcall(function() raidRemote:FireServer(id) end)
+    local id = currentRaidID == 0 and scanRaidNumber() or currentRaidID
+    -- THỬ LẠI VỚI ID ĐÃ TÌM ĐƯỢC
+    for _, remote in pairs(raidRemotes) do
+        pcall(function() remote:FireServer(id, "Hard") end)
+        pcall(function() remote:FireServer(id) end)
+        pcall(function() remote:InvokeServer(id) end)
     end
 end
 
--- BAY LƠ LỬNG KHÔNG MẤT NÚT DI CHUYỂN
+-- BAY LƠ LỬNG KHÔNG MẤT NÚT
 local function enableFloat()
     local char = Plr.Character
     if not char then return end
     local hrp = char:FindFirstChild("HumanoidRootPart")
     if not hrp or bv then return end
-    
     bv = Instance.new("BodyVelocity")
     bv.Velocity = Vector3.new(0, 0, 0)
-    bv.MaxForce = Vector3.new(0, 9e9, 0) -- CHỈ KHÓA TRỤC Y
+    bv.MaxForce = Vector3.new(0, 9e9, 0) -- CHỈ KHÓA Y
     bv.Parent = hrp
 end
 
@@ -137,7 +105,7 @@ end
 local function lockBoss()
     local maxHP, boss = 0, nil
     for _, v in pairs(workspace:GetChildren()) do
-        if v:IsA("Model") and v:FindFirstChild("Humanoid") and v.Name ~= Plr.Name then
+        if v:IsA("Model") and v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") and v.Name ~= Plr.Name then
             if v.Humanoid.MaxHealth > maxHP then
                 maxHP = v.Humanoid.MaxHealth
                 boss = v
@@ -147,53 +115,76 @@ local function lockBoss()
     return boss
 end
 
--- LOOP
+-- SPAM ENERGY BẰNG CÁCH ACTIVATE TOOL
+local function spamEnergyBlast()
+    local char = Plr.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+
+    for _, tool in pairs(char:GetChildren()) do
+        if tool:IsA("Tool") and (string.find(tool.Name:lower(), "blast") or string.find(tool.Name:lower(), "energy") or string.find(tool.Name:lower(), "ki")) then
+            pcall(function() tool:Activate() end)
+            return
+        end
+    end
+
+    local backpack = Plr:FindFirstChild("Backpack")
+    if backpack and hum then
+        for _, tool in pairs(backpack:GetChildren()) do
+            if tool:IsA("Tool") and (string.find(tool.Name:lower(), "blast") or string.find(tool.Name:lower(), "energy")) then
+                hum:EquipTool(tool)
+                task.wait()
+                pcall(function() tool:Activate() end)
+                return
+            end
+        end
+    end
+end
+
+-- CHẠY NGAY - KHÔNG PHÍM
+spawn(function()
+    scanRaidNumber() -- DÒ SỐ TRƯỚC
+    joinRaid()
+end)
+
 RunService.Heartbeat:Connect(function()
     local char = Plr.Character
     if not char then return end
     local hrp = char:FindFirstChild("HumanoidRootPart")
     local hum = char:FindFirstChild("Humanoid")
-    
-    -- 1. AUTO PLAY AGAIN DÒ SỐ
-    if Settings.AutoPlayAgain and not checkInRaid() then
+
+    -- AUTO PLAY AGAIN DÒ SỐ 1-100
+    if AUTO_PLAY_AGAIN and not checkInRaid() then
         inRaid = false
         disableFloat()
-        joinRaid() -- TỰ DÒ SỐ 1-20 NẾU CHƯA CÓ ID
-        task.wait(3)
+        joinRaid()
+        task.wait(2)
         return
     end
-    
-    -- 2. VÀO RAID -> BAY LÊN
+
     if checkInRaid() and not inRaid then
         inRaid = true
         task.wait(1)
         enableFloat()
         currentBoss = lockBoss()
-        if hrp then
-            hrp.CFrame = hrp.CFrame + Vector3.new(0, 45, 0) -- Chỉ set 1 lần
-        end
+        if hrp then hrp.CFrame = hrp.CFrame + Vector3.new(0, FLY_HEIGHT, 0) end
     end
-    
-    -- 3. GIỮ BAY - KHÔNG SET CFRAME NỮA -> KHÔNG MẤT NÚT
-    if inRaid and bv then
-        bv.Velocity = Vector3.new(0, 0, 0)
-    end
-    
-    -- 4. GODMODE + NO CD
-    if hum and Settings.Godmode then hum.Health = hum.MaxHealth end
-    if Settings.AutoEnergyBall then
+
+    if inRaid and bv then bv.Velocity = Vector3.new(0, 0, 0) end
+    if hum and GODMODE then hum.Health = hum.MaxHealth hum.MaxHealth = 9e9 end
+
+    if AUTO_ENERGY then
         for _, v in pairs(char:GetDescendants()) do
             if v:IsA("NumberValue") and (string.find(v.Name:lower(), "cool") or string.find(v.Name:lower(), "cd")) then
                 v.Value = 0
             end
             if v:IsA("NumberValue") and string.find(v.Name:lower(), "ki") then
-                v.Value = 99999
+                v.Value = 999999
             end
         end
     end
-    
-    -- 5. AUTO LOCK + SPAM
-    if Settings.AutoLockAtom then
+
+    if AUTO_LOCK then
         if not currentBoss or not currentBoss:FindFirstChild("Humanoid") or currentBoss.Humanoid.Health <= 0 then
             currentBoss = lockBoss()
             if not currentBoss then
@@ -202,13 +193,13 @@ RunService.Heartbeat:Connect(function()
             end
         end
     end
-    
-    if Settings.AutoEnergyBall and blastRemote and currentBoss and currentBoss:FindFirstChild("HumanoidRootPart") then
-        blastRemote:FireServer(currentBoss.HumanoidRootPart.Position)
+
+    if AUTO_ENERGY and currentBoss then
+        spamEnergyBlast()
     end
 end)
 
 Plr.CharacterAdded:Connect(function()
     task.wait(3)
-    if Settings.AutoPlayAgain then joinRaid() end
+    if AUTO_PLAY_AGAIN then joinRaid() end
 end)
