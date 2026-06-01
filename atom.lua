@@ -1,10 +1,9 @@
--- DRAGON BLOX V6.1 - AUTO UNSTABLE GROUNDS HARD BYPASS
+-- ULTRA PUNCH V6.4 - NO CD + FREEZE + ANTI KNOCKBACK
 local Plr = game:GetService("Players").LocalPlayer
-local VIM = game:GetService("VirtualInputManager")
 local RS = game:GetService("ReplicatedStorage")
-local CoreGui = game:GetService("CoreGui")
+local RunService = game:GetService("RunService")
 
--- BYPASS ANTICHEAT
+-- BYPASS
 pcall(function()
     local mt = getrawmetatable(game)
     local oldNamecall = mt.__namecall
@@ -15,204 +14,124 @@ pcall(function()
     end)
 end)
 
--- LOAD KAVO UI
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Window = Library.CreateLib("Dragon Blox V6.1 - UG HARD", "DarkTheme")
-
--- TABS
+local Window = Library.CreateLib("Dragon Blox V6.4 - God Punch", "DarkTheme")
 local MainTab = Window:NewTab("Main")
-local RaidTab = Window:NewTab("Raid")
-local StatsTab = Window:NewTab("Stats")
+local MainSection = MainTab:NewSection("God Mode Punch")
 
-local MainSection = MainTab:NewSection("Auto Farm")
-local RaidSection = RaidTab:NewSection("Auto Raid")
-local StatsSection = StatsTab:NewSection("Auto Stats")
+local frozenPos = nil
 
--- FUNCTIONS
-local function getMonster()
-    for _, v in ipairs(workspace:GetDescendants()) do
-        if v:IsA("Model") and v:FindFirstChild("HumanoidRootPart") and v:FindFirstChild("Humanoid") and v.Name ~= Plr.Name then
-            if v.Humanoid.Health > 0 then return v end
-        end
+-- 1. GOD PUNCH - NO CD + ĐÓNG BĂNG SKILL
+MainSection:NewToggle("God Punch", "Đấm vô hạn + đóng băng skill", function(s)
+    _G.GodPunch = s
+    
+    -- Đóng băng vị trí khi bật
+    if s then
+        local char = Plr.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if hrp then frozenPos = hrp.CFrame end
+    else
+        frozenPos = nil
     end
-end
-
-local function getEquippedTool()
-    local char = Plr.Character
-    if char then return char:FindFirstChildOfClass("Tool") end
-end
-
-local function equipWeapon(slot)
-    slot = slot or 1
-    local char = Plr.Character
-    local backpack = Plr:FindFirstChild("Backpack")
-    if char and backpack then
-        local tool = backpack:GetChildren()[slot]
-        if tool and tool:IsA("Tool") then
-            char.Humanoid:EquipTool(tool)
-            return tool
-        end
-    end
-end
-
-local function findRemote(name)
-    for _, v in pairs(RS:GetDescendants()) do
-        if v:IsA("RemoteEvent") and string.find(string.lower(v.Name), string.lower(name)) then
-            return v
-        end
-    end
-end
-
--- 1. GODMODE V2
-MainSection:NewToggle("Godmode V2", "Bất tử 100%", function(s)
-    _G.GodV2 = s
-    while _G.GodV2 do
-        pcall(function()
-            local char = Plr.Character
-            if char and char:FindFirstChild("Humanoid") then
-                char.Humanoid.Health = char.Humanoid.MaxHealth
-            end
-        end)
-        task.wait()
-    end
-end)
-
--- 2. AUTO FORM
-MainSection:NewToggle("Auto Form", "Tự biến hình C", function(s)
-    _G.AutoForm = s
-    while _G.AutoForm do
-        pcall(function()
-            VIM:SendKeyEvent(true, Enum.KeyCode.C, false, game)
-            task.wait(0.1)
-            VIM:SendKeyEvent(false, Enum.KeyCode.C, false, game)
-        end)
-        task.wait(2)
-    end
-end)
-
--- 3. AUTO ATTACK SPEAR
-MainSection:NewToggle("Auto Attack Spear", "Spam Spear nhanh", function(s)
-    _G.AutoSpear = s
-    while _G.AutoSpear do
-        pcall(function()
-            local tool = getEquippedTool()
-            if tool then
-                for i = 1, 10 do tool:Activate() task.wait(0.02) end
-            end
-        end)
-        task.wait()
-    end
-end)
-
--- 4. AUTO UNSTABLE GROUNDS HARD
-RaidSection:NewToggle("Auto UG Hard", "Farm Unstable Grounds Hard vô hạn", function(s)
-    _G.AutoUGH = s
-    local difficulty = "Hard"
-
-    while _G.AutoUGH do
+    
+    while _G.GodPunch do
         pcall(function()
             local char = Plr.Character
             local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            local gui = Plr:FindFirstChild("PlayerGui")
-            if not hrp or not gui then return end
-
-            local dungeonUI = nil
-            for _, v in pairs(gui:GetDescendants()) do
-                if v.Name == "Dungeons" or v.Name == "DungeonGui" then
-                    dungeonUI = v
-                    break
+            local hum = char and char:FindFirstChild("Humanoid")
+            local tool = char and char:FindFirstChildOfClass("Tool")
+            
+            -- ĐÓNG BĂNG NHÂN VẬT TẠI CHỖ
+            if hrp and frozenPos then
+                hrp.CFrame = frozenPos
+                hrp.Velocity = Vector3.new(0, 0, 0)
+                hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+            end
+            
+            -- ANTI KNOCKBACK
+            if hum then
+                hum.PlatformStand = false
+                hum.Sit = false
+                hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+                hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+            end
+            
+            -- XÓA COOLDOWN SKILL
+            if char then
+                for _, v in pairs(char:GetDescendants()) do
+                    if v:IsA("NumberValue") and (v.Name == "Cooldown" or v.Name == "CD" or string.find(v.Name, "Cool")) then
+                        v.Value = 0
+                    end
+                    if v:IsA("BoolValue") and (v.Name == "CanAttack" or v.Name == "Attacking") then
+                        v.Value = true
+                    end
                 end
             end
-
-            -- Ở LOBBY -> CHỌN UG HARD + START
-            if dungeonUI and dungeonUI:FindFirstChild("ScrollingFrame") then
-                -- Chọn Unstable Grounds
-                for _, mapBtn in pairs(dungeonUI.ScrollingFrame:GetDescendants()) do
-                    if mapBtn:IsA("TextButton") or mapBtn:IsA("ImageButton") then
-                        local btnText = mapBtn.Text or (mapBtn:FindFirstChild("TextLabel") and mapBtn.TextLabel.Text) or mapBtn.Name
-                        if string.find(string.lower(btnText), "unstable grounds") then
-                            pcall(function() firesignal(mapBtn.MouseButton1Click) end)
-                            pcall(function() firesignal(mapBtn.Activated) end)
-                            task.wait(0.5)
-                            break
+            
+            -- ULTRA FAST PUNCH
+            if tool then
+                for i = 1, 100 do -- 100 hit mỗi frame
+                    tool:Activate()
+                end
+            end
+            
+            -- SPAM DAMAGE REMOTE - PHÁ TẤT CẢ
+            for _, remote in pairs(RS:GetDescendants()) do
+                if remote:IsA("RemoteEvent") then
+                    -- Đấm boss + quái
+                    for _, mob in pairs(workspace:GetDescendants()) do
+                        if mob:IsA("Model") and mob:FindFirstChild("Humanoid") and mob.Name ~= Plr.Name then
+                            if mob.Humanoid.Health > 0 then
+                                for i = 1, 5 do
+                                    pcall(function() remote:FireServer(mob) end)
+                                    pcall(function() remote:FireServer(mob.HumanoidRootPart) end)
+                                end
+                            end
                         end
-                    end
-                end
-
-                -- Chọn Hard
-                for _, diffBtn in pairs(dungeonUI:GetDescendants()) do
-                    if diffBtn:IsA("TextButton") and diffBtn.Text == difficulty then
-                        pcall(function() firesignal(diffBtn.MouseButton1Click) end)
-                        task.wait(0.3)
-                        break
-                    end
-                end
-
-                -- Bấm Start
-                for _, startBtn in pairs(dungeonUI:GetDescendants()) do
-                    if startBtn:IsA("TextButton") and startBtn.Text == "Start" and startBtn.Visible then
-                        pcall(function() firesignal(startBtn.MouseButton1Click) end)
-                        task.wait(5)
-                        break
-                    end
-                end
-
-            -- TRONG RAID -> FARM BOSS
-            else
-                local boss = getMonster()
-                if boss then
-                    hrp.CFrame = boss.HumanoidRootPart.CFrame * CFrame.new(0, 6, 0)
-                    hrp.Velocity = Vector3.new(0,0,0)
-
-                    local tool = getEquippedTool() or equipWeapon(1)
-                    if tool then
-                        for i = 1, 12 do tool:Activate() task.wait(0.015) end
-                    end
-
-                    local dmgRemote = findRemote("damage") or findRemote("attack") or findRemote("skill")
-                    if dmgRemote then
-                        for i = 1, 10 do
-                            pcall(function() dmgRemote:FireServer(boss) end)
-                            pcall(function() dmgRemote:FireServer(boss.HumanoidRootPart) end)
-                        end
-                    end
-                else
-                    -- XONG RAID -> LEAVE
-                    for _, v in pairs(gui:GetDescendants()) do
-                        if v:IsA("TextButton") and v.Visible then
-                            local t = string.lower(v.Text)
-                            if t == "leave" or t == "play again" or t == "claim" or t == "continue" then
-                                pcall(function() firesignal(v.MouseButton1Click) end)
-                                task.wait(3)
-                                break
+                        
+                        -- Phá vật cản
+                        if mob:IsA("Part") or mob:IsA("MeshPart") or mob:IsA("UnionOperation") then
+                            if mob.Name == "Rock" or mob.Name == "Wall" or mob.Name == "Barrier" or 
+                               mob.Name == "Obstacle" or string.find(mob.Name, "Destructible") or
+                               mob.Name == "Stone" or mob.Name == "Block" then
+                                pcall(function() remote:FireServer(mob) end)
                             end
                         end
                     end
                 end
             end
         end)
-        task.wait(0.2)
+        RunService.Heartbeat:Wait() -- Chạy mỗi frame = nhanh nhất
     end
 end)
 
--- 5. AUTO STATS
-StatsSection:NewToggle("Auto Melee", "Cộng Melee", function(s)
-    _G.AutoMelee = s
-    while _G.AutoMelee do
-        pcall(function()
-            local args = {"Melee", 1}
-            for _, v in pairs(RS:GetDescendants()) do
-                if v:IsA("RemoteEvent") and string.find(v.Name, "Stat") then
-                    v:FireServer(unpack(args))
+-- 2. UNFREEZE - BỎ ĐÓNG BĂNG
+MainSection:NewButton("Unfreeze", "Bỏ đóng băng di chuyển", function()
+    frozenPos = nil
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Unfrozen";
+        Text = "Di chuyển bình thường";
+        Duration = 2;
+    })
+end)
+
+-- 3. BREAK ALL INSTANT
+MainSection:NewButton("Break All Now", "Phá hết vật cản ngay", function()
+    pcall(function()
+        for _, remote in pairs(RS:GetDescendants()) do
+            if remote:IsA("RemoteEvent") then
+                for _, v in pairs(workspace:GetDescendants()) do
+                    if v:IsA("Part") or v:IsA("MeshPart") or v:IsA("UnionOperation") then
+                        pcall(function() remote:FireServer(v) end)
+                    end
                 end
             end
-        end)
-        task.wait(0.1)
-    end
+        end
+    end)
 end)
 
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Dragon Blox V6.1";
-    Text = "Bật: Godmode + Auto Form + Auto UG Hard";
+    Title = "V6.4 LOADED";
+    Text = "Bật God Punch để đứng im đấm nát map";
     Duration = 5;
 })
