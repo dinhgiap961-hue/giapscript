@@ -1,315 +1,537 @@
--- DRAGON BLOX V2 - V18.2 FINAL - TỰ DÒ KNIT + FIX GUI
+-- DRAGON BLOX V2 - FULL FEATURES V3.2 - FINAL
+local Kavo = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
+local Win = Kavo.CreateLib("Dragon Blox V2 - FULL", "BloodTheme")
+
+local MainTab = Win:NewTab("Main")
+local DungeonTab = Win:NewTab("Dungeon★")
+local VisualTab = Win:NewTab("Visual")
+local MiscTab = Win:NewTab("Misc")
+
+local MainSection = MainTab:NewSection("Combat Features")
+local DungeonSection = DungeonTab:NewSection("Dungeon Features")
+local VisualSection = VisualTab:NewSection("ESP & Visual")
+local MiscSection = MiscTab:NewSection("Misc Features")
+
 local Plr = game:GetService("Players").LocalPlayer
-local PG = Plr:WaitForChild("PlayerGui")
-local UIS = game:GetService("UserInputService")
+local VU = game:GetService("VirtualUser")
 local VIM = game:GetService("VirtualInputManager")
-local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
 local RS = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 
-if not game:IsLoaded() then game.Loaded:Wait() end
-task.wait(2)
+-- Nút Atom
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "AtomToggle"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = CoreGui
 
-getgenv().DBV2 = getgenv().DBV2 or {
-    AutoSkill = false,
-    AutoReplay = false,
-    Godmode = false,
-    LockBoss = false,
-    Running = true,
-    MenuVisible = true,
-    FlyHeight = 60
-}
+local Btn = Instance.new("TextButton")
+Btn.Size = UDim2.new(0,50,0,50)
+Btn.Position = UDim2.new(0,10,0,150)
+Btn.BackgroundColor3 = Color3.fromRGB(150,0,0)
+Btn.Text = "Atom"
+Btn.TextColor3 = Color3.fromRGB(255,255,255)
+Btn.Font = Enum.Font.SourceSansBold
+Btn.TextSize = 16
+Btn.ZIndex = 999
+Btn.Parent = ScreenGui
+Instance.new("UICorner", Btn).CornerRadius = UDim.new(0,25)
+Btn.MouseButton1Click:Connect(function() Kavo:ToggleUI() end)
 
--- TỰ DÒ KNIT CONTROLLER
-local Knit, SkillController, KnitName = nil, nil, "KHÔNG TÌM THẤY"
+-- ÉP MENU RA GIỮA
 task.spawn(function()
-    repeat task.wait() until RS:FindFirstChild("Packages")
-    Knit = require(RS.Packages.Knit)
-    repeat task.wait() until Knit.Controllers
-
-    local possibleNames = {"SkillController","SkillManager","CombatController","AbilityController","AttackController","Skill","Combat","Ability"}
-    for _, name in ipairs(possibleNames) do
-        if Knit.Controllers[name] then
-            SkillController = Knit.Controllers[name]
-            KnitName = name
-            print("[DBV2] TÌM THẤY KNIT:", name)
-            break
-        end
-    end
-
-    if not SkillController then
-        print("[DBV2] DANH SÁCH CONTROLLER:")
-        for name, _ in pairs(Knit.Controllers) do
-            print(" -", name)
-        end
-    end
+    local main = nil
+    repeat
+        task.wait(0.1)
+        local KavoUI = CoreGui:FindFirstChild("Kavo")
+        if KavoUI then main = KavoUI:FindFirstChild("MainFrame") end
+    until main
+    task.wait(1)
+    main.Active = true
+    main.Draggable = true
+    main.AnchorPoint = Vector2.new(0.5, 0.5)
+    main.Position = UDim2.new(0.5, 0, 0.5, 0)
 end)
 
--- XÓA GUI CŨ
-for _, v in pairs(PG:GetChildren()) do
-    if v.Name == "DBV2_GUI" or v.Name == "DBV2_Toggle" then v:Destroy() end
-end
-
--- NÚT DB
-local ToggleGui = Instance.new("ScreenGui", PG)
-ToggleGui.Name = "DBV2_Toggle"
-ToggleGui.ResetOnSpawn = false
-ToggleGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-
-local ToggleBtn = Instance.new("TextButton", ToggleGui)
-ToggleBtn.Size = UDim2.new(0, 60, 0, 60)
-ToggleBtn.Position = UDim2.new(0, 10, 0, 10)
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
-ToggleBtn.Text = "DB"
-ToggleBtn.TextColor3 = Color3.new(1,1,1)
-ToggleBtn.Font = Enum.Font.GothamBold
-ToggleBtn.TextSize = 20
-ToggleBtn.Active = true
-ToggleBtn.Draggable = true
-ToggleBtn.ZIndex = 9999
-Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(1, 0)
-
--- GUI CHÍNH
-local Gui = Instance.new("ScreenGui", PG)
-Gui.Name = "DBV2_GUI"
-Gui.ResetOnSpawn = false
-Gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-
-local Main = Instance.new("Frame", Gui)
-Main.Size = UDim2.new(0, 360, 0, 340)
-Main.Position = UDim2.new(0, 50, 0, 80)
-Main.BackgroundColor3 = Color3.fromRGB(20,20,20)
-Main.Active = true
-Main.Draggable = true
-Main.ZIndex = 9999
-Instance.new("UICorner", Main)
-
-local Title = Instance.new("TextLabel", Main)
-Title.Size = UDim2.new(1, 0, 0, 30)
-Title.Text = "DBV2 V18.2 | Đang dò Knit..."
-Title.TextColor3 = Color3.new(1,1,1)
-Title.BackgroundColor3 = Color3.fromRGB(138,43,226)
-Title.Font = Enum.Font.GothamBold
-Title.ZIndex = 10000
-Instance.new("UICorner", Title)
-
-spawn(function()
-    task.wait(4)
-    Title.Text = "DBV2 V18.2 | Knit: "..KnitName
-end)
-
-local DebugLabel = Instance.new("TextLabel", Main)
-DebugLabel.Position = UDim2.new(0, 10, 0, 35)
-DebugLabel.Size = UDim2.new(1, -20, 0, 80)
-DebugLabel.Text = "DEBUG: GUI ĐÃ LOAD\nNếu thấy chữ này = OK"
-DebugLabel.TextColor3 = Color3.fromRGB(0,255,0)
-DebugLabel.BackgroundTransparency = 1
-DebugLabel.Font = Enum.Font.Code
-DebugLabel.TextSize = 11
-DebugLabel.TextWrapped = true
-DebugLabel.TextXAlignment = Enum.TextXAlignment.Left
-DebugLabel.TextYAlignment = Enum.TextYAlignment.Top
-DebugLabel.ZIndex = 10000
-
-local function mkBtn(y, txt, cb)
-    local b = Instance.new("TextButton", Main)
-    b.Position = UDim2.new(0, 10, 0, y)
-    b.Size = UDim2.new(1, -20, 0, 30)
-    b.Text = " [OFF] "..txt
-    b.TextColor3 = Color3.new(1,1,1)
-    b.BackgroundColor3 = Color3.fromRGB(40,40,40)
-    b.Font = Enum.Font.Gotham
-    b.TextXAlignment = Enum.TextXAlignment.Left
-    b.ZIndex = 10000
-    Instance.new("UICorner", b)
-
-    local on = false
-    b.MouseButton1Click:Connect(function()
-        on = not on
-        b.Text = (on and " [ON] " or " [OFF] ")..txt
-        b.BackgroundColor3 = on and Color3.fromRGB(0,170,255) or Color3.fromRGB(40,40,40)
-        cb(on)
-    end)
-end
-
-ToggleBtn.MouseButton1Click:Connect(function()
-    getgenv().DBV2.MenuVisible = not getgenv().DBV2.MenuVisible
-    Main.Visible = getgenv().DBV2.MenuVisible
-end)
-
--- TÌM BOSS
-local function getBoss()
-    local maxHP, boss = 0, nil
-    for _, v in pairs(workspace:GetChildren()) do
-        if v:IsA("Model") and v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") and v.Name ~= Plr.Name then
-            local h = v.Humanoid
-            if h.Health > 0 and h.MaxHealth > maxHP and h.MaxHealth > 1000 then
-                maxHP = h.MaxHealth
-                boss = v
+-- FUNCTIONS
+local function findRemote(keyword)
+    for _,v in pairs(RS:GetDescendants()) do
+        if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then
+            if string.find(string.lower(v.Name), string.lower(keyword)) then
+                return v
             end
         end
     end
-    return boss
+    return nil
 end
 
--- LOCK BOSS - KHÔNG CHUI ĐẤT
-local bp, bg, conn
-local function lockBoss(on)
-    local char = Plr.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-    local hrp = char.HumanoidRootPart
-
-    if not on then
-        if bp then bp:Destroy() bp = nil end
-        if bg then bg:Destroy() bg = nil end
-        if conn then conn:Disconnect() conn = nil end
-        return
-    end
-
-    bp = Instance.new("BodyPosition", hrp)
-    bp.MaxForce = Vector3.new(9e9,9e9)
-    bp.P = 10000
-    bp.D = 1000
-
-    bg = Instance.new("BodyGyro", hrp)
-    bg.MaxTorque = Vector3.new(9e9,9e9)
-    bg.P = 10000
-    bg.D = 1000
-
-    conn = RunService.Heartbeat:Connect(function()
-        if not getgenv().DBV2.LockBoss then lockBoss(false) return end
-        local boss = getBoss()
-        if boss and boss:FindFirstChild("HumanoidRootPart") then
-            local bpos = boss.HumanoidRootPart.Position
-            local raycastParams = RaycastParams.new()
-            raycastParams.FilterDescendantsInstances = {boss, char}
-            raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-            local rayResult = workspace:Raycast(bpos, Vector3.new(0, -500, 0), raycastParams)
-            local groundY = rayResult and rayResult.Position.Y or bpos.Y
-            local targetY = math.max(bpos.Y + getgenv().DBV2.FlyHeight, groundY + getgenv().DBV2.FlyHeight)
-            bp.Position = Vector3.new(bpos.X, targetY, bpos.Z)
-            bg.CFrame = CFrame.new(hrp.Position, bpos)
-            DebugLabel.Text = "LOCK: "..boss.Name.."\nHP: "..math.floor(boss.Humanoid.Health).."\nY: "..math.floor(targetY).."\nKnit: "..KnitName
+local function isDungeonClear()
+    local gui = Plr:FindFirstChild("PlayerGui")
+    if gui then
+        for _, v in pairs(gui:GetDescendants()) do
+            if v:IsA("TextLabel") and (string.find(v.Text, "0 Mob Left") or string.find(v.Text, "Dungeon Cleared")) then
+                if string.find(v.Text, "0") then return true end
+            end
+            if v:IsA("TextButton") and v.Text == "Play Again" and v.Visible then return true end
         end
-    end)
+    end
+    return false
 end
 
--- BẤM SKILL TỪ NGOÀI MAP
-local skillKeys = {Enum.KeyCode.One,Enum.KeyCode.Two,Enum.KeyCode.Three,Enum.KeyCode.Four,Enum.KeyCode.Five,Enum.KeyCode.Six,Enum.KeyCode.Seven,Enum.KeyCode.Eight}
+local function clickPlayAgain()
+    local gui = Plr:FindFirstChild("PlayerGui")
+    if not gui then return false end
 
-local function spamSkill()
-    local boss = getBoss()
-    if not boss then
-        DebugLabel.Text = "DEBUG: Không có boss\nKnit: "..KnitName
-        return
-    end
+    local keywords = {"Play Again", "Replay", "Continue", "Next", "Retry", "Again", "Again!"}
 
-    local bpos = boss.HumanoidRootPart.Position
-    local char = Plr.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-    local hrp = char.HumanoidRootPart
-    local oldCF = hrp.CFrame
-
-    for i = 1, 8 do
-        local ang = (i/8) * math.pi * 2
-        local x = math.cos(ang) * 600
-        local z = math.sin(ang) * 600
-        local spawnPos = bpos + Vector3.new(x, 150, z)
-        hrp.CFrame = CFrame.new(spawnPos, bpos)
-        task.wait()
-        VIM:SendKeyEvent(true, skillKeys[i], false, game)
-        task.wait(0.03)
-        VIM:SendKeyEvent(false, skillKeys[i], false, game)
-    end
-
-    hrp.CFrame = oldCF
-    DebugLabel.Text = "ĐÃ BẮN 8 GÓC\nBoss: "..boss.Name.."\nKnit: "..KnitName
-end
-
--- REPLAY
-local function clickReplay()
-    for _, v in pairs(Plr.PlayerGui:GetDescendants()) do
-        if v:IsA("TextButton") and v.Visible then
-            local t = v.Text:lower()
-            if t:find("play again") or t:find("replay") or t:find("restart") then
-                firesignal(v.MouseButton1Click)
-                return true
+    for _, v in pairs(gui:GetDescendants()) do
+        if v:IsA("TextButton") or v:IsA("ImageButton") then
+            if v.Visible and v.Active then
+                if v:IsA("TextButton") then
+                    for _, key in ipairs(keywords) do
+                        if string.find(string.lower(v.Text), string.lower(key)) then
+                            pcall(function() firesignal(v.MouseButton1Click) end)
+                            pcall(function() firesignal(v.Activated) end)
+                            pcall(function() v:Activate() end)
+                            return true
+                        end
+                    end
+                end
+                for _, key in ipairs(keywords) do
+                    if string.find(string.lower(v.Name), string.lower(key)) then
+                        pcall(function() firesignal(v.MouseButton1Click) end)
+                        pcall(function() firesignal(v.Activated) end)
+                        pcall(function() v:Activate() end)
+                        return true
+                    end
+                end
             end
         end
     end
     return false
 end
 
--- NÚT
-mkBtn(120, "Skill Ngoài Map", function(v) getgenv().DBV2.AutoSkill = v end)
-mkBtn(155, "Auto Play Again", function(v) getgenv().DBV2.AutoReplay = v end)
-mkBtn(190, "Godmode", function(v) getgenv().DBV2.Godmode = v end)
-mkBtn(225, "Lock Boss", function(v) getgenv().DBV2.LockBoss = v lockBoss(v) end)
-
--- CHIỀU CAO
-local HeightLabel = Instance.new("TextLabel", Main)
-HeightLabel.Position = UDim2.new(0, 10, 0, 265)
-HeightLabel.Size = UDim2.new(1, -20, 0, 20)
-HeightLabel.Text = "Chiều cao: "..getgenv().DBV2.FlyHeight
-HeightLabel.TextColor3 = Color3.new(1,1,1)
-HeightLabel.BackgroundTransparency = 1
-HeightLabel.Font = Enum.Font.Gotham
-HeightLabel.TextSize = 12
-HeightLabel.ZIndex = 10000
-
-local HeightSlider = Instance.new("TextButton", Main)
-HeightSlider.Position = UDim2.new(0, 10, 0, 285)
-HeightSlider.Size = UDim2.new(1, -20, 0, 20)
-HeightSlider.Text = "Đổi chiều cao 60/100/150"
-HeightSlider.TextColor3 = Color3.new(1,1,1)
-HeightSlider.BackgroundColor3 = Color3.fromRGB(40,40,40)
-HeightSlider.Font = Enum.Font.Gotham
-HeightSlider.ZIndex = 10000
-Instance.new("UICorner", HeightSlider)
-
-HeightSlider.MouseButton1Click:Connect(function()
-    if getgenv().DBV2.FlyHeight == 60 then
-        getgenv().DBV2.FlyHeight = 100
-    elseif getgenv().DBV2.FlyHeight == 100 then
-        getgenv().DBV2.FlyHeight = 150
-    else
-        getgenv().DBV2.FlyHeight = 60
-    end
-    HeightLabel.Text = "Chiều cao: "..getgenv().DBV2.FlyHeight
-end)
-
-local Close = Instance.new("TextButton", Main)
-Close.Position = UDim2.new(1, -25, 0, 5)
-Close.Size = UDim2.new(0, 20, 0, 20)
-Close.Text = "X"
-Close.TextColor3 = Color3.new(1,1,1)
-Close.BackgroundColor3 = Color3.fromRGB(255,0,0)
-Close.ZIndex = 10001
-Close.MouseButton1Click:Connect(function() getgenv().DBV2.Running = false Gui:Destroy() ToggleGui:Destroy() end)
-
--- LOOP
-spawn(function()
-    while getgenv().DBV2.Running and task.wait(0.2) do
-        if not Plr.Character then continue end
-        local hum = Plr.Character:FindFirstChild("Humanoid")
-
-        if getgenv().DBV2.Godmode and hum then
-            hum.MaxHealth = 9e9
-            hum.Health = 9e9
-        end
-
-        if getgenv().DBV2.AutoReplay and not workspace:FindFirstChild("UnstableGrounds") then
-            if clickReplay() then task.wait(3) end
-        end
-
-        if getgenv().DBV2.AutoSkill then
-            for _, v in pairs(Plr.Character:GetDescendants()) do
-                if v:IsA("NumberValue") and (v.Name:lower():find("cool") or v.Name:lower():find("cd")) then
-                    v.Value = 0
+local function getMonster()
+    if isDungeonClear() then return nil end
+    local target, dist = nil, math.huge
+    for _, v in ipairs(workspace:GetDescendants()) do
+        if v:IsA("Model") and v:FindFirstChild("HumanoidRootPart") and v:FindFirstChild("Humanoid") and v.Name ~= Plr.Name then
+            if v.Humanoid.Health > 0 and v.Humanoid:GetState() ~= Enum.HumanoidStateType.Dead then
+                if Plr.Character:FindFirstChild("HumanoidRootPart") then
+                    local d = (v.HumanoidRootPart.Position - Plr.Character.HumanoidRootPart.Position).Magnitude
+                    if d < dist and d < 500 then
+                        dist = d; target = v
+                    end
                 end
             end
-            spamSkill()
+        end
+    end
+    return target
+end
+
+local function getAllMonsters(range)
+    local mobs = {}
+    if isDungeonClear() then return mobs end
+    local hrp = Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return mobs end
+
+    for _, v in ipairs(workspace:GetDescendants()) do
+        if v:IsA("Model") and v:FindFirstChild("HumanoidRootPart") and v:FindFirstChild("Humanoid") and v.Name ~= Plr.Name then
+            if v.Humanoid.Health > 0 and v.Humanoid:GetState() ~= Enum.HumanoidStateType.Dead then
+                local d = (v.HumanoidRootPart.Position - hrp.Position).Magnitude
+                if d <= range then
+                    table.insert(mobs, v)
+                end
+            end
+        end
+    end
+    return mobs
+end
+
+local function isInForm()
+    local char = Plr.Character
+    if not char then return false end
+    local stats = char:FindFirstChild("Stats") or char:FindFirstChild("stats")
+    if stats then
+        local formVal = stats:FindFirstChild("Form") or stats:FindFirstChild("Transformation")
+        if formVal and formVal.Value > 0 then return true end
+    end
+    local leaderstats = Plr:FindFirstChild("leaderstats")
+    if leaderstats then
+        local power = leaderstats:FindFirstChild("Power") or leaderstats:FindFirstChild("power")
+        if power and power.Value > 50000000 then return true end
+    end
+    for _,v in pairs(char:GetDescendants()) do
+        if v.Name == "Aura" or v.Name == "SSJ" then return true end
+        if v:IsA("ParticleEmitter") and v.Parent.Name == "HumanoidRootPart" and v.Enabled then return true end
+    end
+    return false
+end
+
+local function getKiPercent()
+    local leaderstats = Plr:FindFirstChild("leaderstats")
+    if leaderstats then
+        local ki = leaderstats:FindFirstChild("Ki") or leaderstats:FindFirstChild("ki")
+        local maxKi = leaderstats:FindFirstChild("MaxKi") or leaderstats:FindFirstChild("MaxEnergy")
+        if ki and maxKi and maxKi.Value > 0 then return (ki.Value / maxKi.Value) * 100 end
+    end
+    return 100
+end
+
+local function equipWeapon(slot)
+    slot = slot or 1
+    pcall(function()
+        VIM:SendKeyEvent(true, Enum.KeyCode["".. slot], false, game)
+        task.wait(0.1)
+        VIM:SendKeyEvent(false, Enum.KeyCode["".. slot], false, game)
+
+        task.wait(0.2)
+        local char = Plr.Character
+        local backpack = Plr:FindFirstChild("Backpack")
+        if char and backpack then
+            for _, tool in pairs(backpack:GetChildren()) do
+                if tool:IsA("Tool") and (tool.Name:find("Spear") or tool.Name:find("Energy")) then
+                    char.Humanoid:EquipTool(tool)
+                    break
+                end
+            end
+        end
+    end)
+end
+
+local function isWeaponEquipped()
+    local char = Plr.Character
+    if not char then return false end
+    for _, v in pairs(char:GetChildren()) do
+        if v:IsA("Tool") then return true end
+    end
+    return false
+end
+
+-- TAB MAIN - COMBAT
+MainSection:NewToggle("Auto Click", "Tự động click chuột", function(s)
+    _G.AutoClick = s
+    while _G.AutoClick do
+        VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+        VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+        task.wait(0.1)
+    end
+end)
+
+MainSection:NewToggle("Auto Beat [M]", "Tự spam phím M", function(s)
+    _G.AutoBeat = s
+    while _G.AutoBeat do
+        VIM:SendKeyEvent(true, Enum.KeyCode.M, false, game)
+        VIM:SendKeyEvent(false, Enum.KeyCode.M, false, game)
+        task.wait(0.15)
+    end
+end)
+
+MainSection:NewToggle("Auto Form [C]", "Tự biến hình phím C - Khóa form", function(s)
+    _G.AutoForm = s
+    local lastPress = 0
+    local lockedForm = false
+    Plr.CharacterAdded:Connect(function() lockedForm = false; task.wait(8) end)
+    while _G.AutoForm do
+        local currentForm = isInForm()
+        local canPress = (tick() - lastPress) > 8
+        if lockedForm and not currentForm and canPress then
+            task.wait(0.5)
+            if not isInForm() then
+                VIM:SendKeyEvent(true, Enum.KeyCode.C, false, game)
+                task.wait(0.1)
+                VIM:SendKeyEvent(false, Enum.KeyCode.C, false, game)
+                lastPress = tick(); task.wait(3)
+            end
+        elseif not currentForm and not lockedForm and canPress then
+            task.wait(1)
+            if not isInForm() then
+                VIM:SendKeyEvent(true, Enum.KeyCode.C, false, game)
+                task.wait(0.1)
+                VIM:SendKeyEvent(false, Enum.KeyCode.C, false, game)
+                lastPress = tick(); lockedForm = true; task.wait(3)
+            end
+        elseif currentForm then lockedForm = true end
+        task.wait(0.3)
+    end
+end)
+
+MainSection:NewToggle("Auto Equip Spear", "Tự equip Energy Spear +30", function(s)
+    _G.AutoEquipSpear = s
+    while _G.AutoEquipSpear do
+        pcall(function()
+            if not isWeaponEquipped() then
+                equipWeapon(1)
+                task.wait(0.5)
+            end
+        end)
+        task.wait(1)
+    end
+end)
+
+MainSection:NewButton("Equip Energy Spear", "Bấm tay để equip ngay", function()
+    equipWeapon(1)
+end)
+
+MainSection:NewToggle("Auto Spam Energy Blast [E]", "Chỉ spam E - FIX LỖI", function(s)
+    _G.AutoEnergyBlast = s
+    while _G.AutoEnergyBlast do
+        pcall(function()
+            VIM:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+            task.wait(0.05)
+            VIM:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+        end)
+        task.wait(0.15)
+    end
+end)
+
+MainSection:NewToggle("Auto Lock Skill", "Chỉ ghim skill vào boss", function(s)
+    _G.AutoLockSkill = s
+    local lockRemote = findRemote("lock") or findRemote("target")
+    while _G.AutoLockSkill do
+        pcall(function()
+            local boss = getMonster()
+            if boss and lockRemote then
+                lockRemote:FireServer(boss)
+            end
+        end)
+        task.wait(0.5)
+    end
+end)
+
+MainSection:NewToggle("Auto Bay Cổ Boss", "Bay trên đỉnh đầu boss - DI CHUYỂN ĐƯỢC", function(s)
+    _G.AutoBayCo = s
+    while _G.AutoBayCo do
+        pcall(function()
+            local boss = getMonster()
+            local hrp = Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart")
+            if boss and hrp then
+                hrp.CFrame = boss.HumanoidRootPart.CFrame * CFrame.new(0, 6, 0)
+                hrp.Velocity = Vector3.new(0,0,0)
+            end
+        end)
+        task.wait(0.1)
+    end
+end)
+
+MainSection:NewToggle("Auto Phê Pha V2", "Tự giữ C khi ki < 90%", function(s)
+    _G.AutoFushi = s
+    local charging = false
+    while _G.AutoFushi do
+        local ki = getKiPercent()
+        if ki < 90 and not charging then
+            VIM:SendKeyEvent(true, Enum.KeyCode.C, false, game); charging = true
+        elseif ki >= 95 and charging then
+            VIM:SendKeyEvent(false, Enum.KeyCode.C, false, game); charging = false
+        end
+        task.wait(0.1)
+    end
+    VIM:SendKeyEvent(false, Enum.KeyCode.C, false, game)
+end)
+
+local killAuraRange = 50
+MainSection:NewSlider("Kill Aura Range", "Bán kính Kill Aura", 500, 10, function(v)
+    killAuraRange = v
+end)
+
+MainSection:NewToggle("Kill Aura", "Tự đánh quái xung quanh - FIX LỖI", function(s)
+    _G.KillAura = s
+    while _G.KillAura do
+        pcall(function()
+            local mobs = getAllMonsters(killAuraRange)
+            for _, mob in ipairs(mobs) do
+                for i = 1, 3 do
+                    VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+                    VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+                end
+                VIM:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+                VIM:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+            end
+        end)
+        task.wait(0.1)
+    end
+end)
+
+-- TAB DUNGEON
+local selectedAutoMode = "Strength"
+DungeonSection:NewDropdown("Chọn Auto Mode", "Chọn chỉ số để farm", {"Strength", "Energy", "Defense"}, function(currentOption)
+    selectedAutoMode = currentOption
+end)
+
+local selectedSkill = "Energy Spear"
+DungeonSection:NewDropdown("Chọn Kiểu Farm", "Chọn skill để farm", {"Energy Spear", "Energy Blast"}, function(currentOption)
+    selectedSkill = currentOption
+end)
+
+DungeonSection:NewToggle("Auto Farm", "Farm Spear - TỰ ĐÁNH 100%", function(s)
+    _G.AutoFarm = s
+    while _G.AutoFarm do
+        pcall(function()
+            if not isWeaponEquipped() then
+                equipWeapon(1)
+                task.wait(0.5)
+            end
+
+            local mob = getMonster()
+            local hrp = Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart")
+            if mob and hrp then
+                hrp.CFrame = mob.HumanoidRootPart.CFrame * CFrame.new(0, 6, 0)
+                hrp.Velocity = Vector3.new(0,0,0)
+
+                if selectedAutoMode == "Strength" or selectedSkill == "Energy Spear" then
+                    for i = 1, 5 do
+                        VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+                        VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+                        task.wait(0.05)
+                    end
+                elseif selectedAutoMode == "Energy" or selectedSkill == "Energy Blast" then
+                    VIM:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+                    task.wait(0.05)
+                    VIM:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+                    task.wait(0.05)
+                elseif selectedAutoMode == "Defense" then
+                    VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+                    VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+                    task.wait(0.2)
+                end
+            end
+        end)
+        task.wait(0.03)
+    end
+end)
+
+DungeonSection:NewToggle("Auto (Next Area)", "Tự bấm Play Again - FIXED", function(s)
+    _G.AutoNextArea = s
+    local playRemotes = {
+        findRemote("play"), findRemote("replay"), findRemote("next"),
+        findRemote("continue"), findRemote("retry"), findRemote("restart"),
+        findRemote("dungeon"), findRemote("start"), findRemote("again")
+    }
+
+    while _G.AutoNextArea do
+        pcall(function()
+            if isDungeonClear() then
+                task.wait(1.5)
+
+                clickPlayAgain()
+
+                task.wait(0.5)
+                for _, remote in ipairs(playRemotes) do
+                    if remote then
+                        pcall(function() remote:FireServer() end)
+                        pcall(function() remote:FireServer("Next") end)
+                        pcall(function() remote:FireServer("Play") end)
+                        pcall(function() remote:FireServer("Replay") end)
+                        pcall(function() remote:FireServer(true) end)
+                        pcall(function() remote:FireServer(1) end)
+                    end
+                end
+
+                task.wait(5)
+            end
+        end)
+        task.wait(1)
+    end
+end)
+
+DungeonSection:NewToggle("Godmode", "Bất tử", function(s)
+    _G.Godmode = s
+    while _G.Godmode do
+        pcall(function()
+            local hum = Plr.Character and Plr.Character:FindFirstChild("Humanoid")
+            if hum then hum.Health = hum.MaxHealth end
+        end)
+        task.wait()
+    end
+end)
+
+-- TAB VISUAL - ESP
+VisualSection:NewToggle("ESP Boss", "Nhìn thấy boss qua tường", function(s)
+    _G.ESPBoss = s
+    while _G.ESPBoss do
+        pcall(function()
+            for _, v in ipairs(workspace:GetDescendants()) do
+                if v:IsA("Model") and v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") then
+                    if v.Humanoid.Health > 0 and v.Name ~= Plr.Name then
+                        if not v:FindFirstChild("ESP_Highlight") then
+                            local highlight = Instance.new("Highlight")
+                            highlight.Name = "ESP_Highlight"
+                            highlight.FillColor = Color3.fromRGB(255, 0, 0)
+                            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                            highlight.FillTransparency = 0.5
+                            highlight.Parent = v
+                        end
+                    end
+                end
+            end
+        end)
+        task.wait(1)
+    end
+    for _, v in ipairs(workspace:GetDescendants()) do
+        if v:FindFirstChild("ESP_Highlight") then
+            v.ESP_Highlight:Destroy()
         end
     end
 end)
 
-print("=== DBV2 V18.2 LOADED - NHÌN GÓC TRÁI CÓ NÚT DB ===")
+VisualSection:NewToggle("ESP Player", "Nhìn thấy người chơi khác", function(s)
+    _G.ESPPlayer = s
+    while _G.ESPPlayer do
+        pcall(function()
+            for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
+                if player ~= Plr and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    if not player.Character:FindFirstChild("ESP_Player") then
+                        local highlight = Instance.new("Highlight")
+                        highlight.Name = "ESP_Player"
+                        highlight.FillColor = Color3.fromRGB(0, 255, 0)
+                        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                        highlight.FillTransparency = 0.7
+                        highlight.Parent = player.Character
+                    end
+                end
+            end
+        end)
+        task.wait(1)
+    end
+    for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
+        if player.Character and player.Character:FindFirstChild("ESP_Player") then
+            player.Character.ESP_Player:Destroy()
+        end
+    end
+end)
+
+-- TAB MISC
+MiscSection:NewToggle("Anti AFK", "Chống bị kick AFK", function(s)
+    _G.AntiAFK = s
+    while _G.AntiAFK do
+        VU:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+        task.wait(1)
+        VU:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+        task.wait(30)
+    end
+end)
+
+MiscSection:NewButton("Rejoin Server", "Vào lại server", function()
+    game:GetService("TeleportService"):Teleport(game.PlaceId, Plr)
+end)
+
+MiscSection:NewButton("Server Hop", "Đổi server khác", function()
+    local servers = {}
+    local req = game:HttpGet("https://games.roblox.com/v1/games/".. game.PlaceId.. "/servers/Public?sortOrder=Desc&limit=100")
+    local data = game:GetService("HttpService"):JSONDecode(req)
+    for _, v in pairs(data.data) do
+        if v.playing < v.maxPlayers and v.id ~= game.JobId then
+            table.insert(servers, v.id)
+        end
+    end
+    if #servers > 0 then
+        game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, servers[math.random(1, #servers)], Plr)
+    end
+end)
+
+Plr.Idled:Connect(function()
+    if _G.AntiAFK then return end
+    VU:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+    task.wait(1)
+    VU:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+end)
