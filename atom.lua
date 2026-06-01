@@ -1,4 +1,4 @@
--- DRAGON BLOX V2 - FULL FEATURES V3.2 - FINAL
+-- DRAGON BLOX V2 - FULL FEATURES V3.3 - SPEAR FIX FINAL
 local Kavo = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
 local Win = Kavo.CreateLib("Dragon Blox V2 - FULL", "BloodTheme")
 
@@ -178,34 +178,37 @@ local function getKiPercent()
     return 100
 end
 
+local function getEquippedTool()
+    local char = Plr.Character
+    if not char then return nil end
+    for _, v in pairs(char:GetChildren()) do
+        if v:IsA("Tool") then return v end
+    end
+    return nil
+end
+
+local function isWeaponEquipped()
+    return getEquippedTool() ~= nil
+end
+
 local function equipWeapon(slot)
     slot = slot or 1
     pcall(function()
-        VIM:SendKeyEvent(true, Enum.KeyCode["".. slot], false, game)
-        task.wait(0.1)
-        VIM:SendKeyEvent(false, Enum.KeyCode["".. slot], false, game)
-
-        task.wait(0.2)
         local char = Plr.Character
         local backpack = Plr:FindFirstChild("Backpack")
         if char and backpack then
             for _, tool in pairs(backpack:GetChildren()) do
-                if tool:IsA("Tool") and (tool.Name:find("Spear") or tool.Name:find("Energy")) then
-                    char.Humanoid:EquipTool(tool)
-                    break
+                if tool:IsA("Tool") then
+                    if tool.Name:find("Spear") or tool.Name:find("Energy") or slot == 1 then
+                        char.Humanoid:EquipTool(tool)
+                        task.wait(0.3)
+                        return tool
+                    end
                 end
             end
         end
     end)
-end
-
-local function isWeaponEquipped()
-    local char = Plr.Character
-    if not char then return false end
-    for _, v in pairs(char:GetChildren()) do
-        if v:IsA("Tool") then return true end
-    end
-    return false
+    return nil
 end
 
 -- TAB MAIN - COMBAT
@@ -363,32 +366,57 @@ DungeonSection:NewDropdown("Chọn Kiểu Farm", "Chọn skill để farm", {"En
     selectedSkill = currentOption
 end)
 
-DungeonSection:NewToggle("Auto Farm", "Farm Spear - TỰ ĐÁNH 100%", function(s)
+DungeonSection:NewToggle("Auto Farm", "Farm Spear - CHÉM 100% - FINAL", function(s)
     _G.AutoFarm = s
+    local attackRemotes = {
+        findRemote("attack"), findRemote("punch"), findRemote("melee"),
+        findRemote("hit"), findRemote("combat"), findRemote("damage"),
+        findRemote("skill"), findRemote("ability"), findRemote("weapon")
+    }
+
     while _G.AutoFarm do
         pcall(function()
-            if not isWeaponEquipped() then
-                equipWeapon(1)
+            local tool = getEquippedTool()
+            if not tool then
+                tool = equipWeapon(1)
                 task.wait(0.5)
             end
 
             local mob = getMonster()
             local hrp = Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart")
+
             if mob and hrp then
                 hrp.CFrame = mob.HumanoidRootPart.CFrame * CFrame.new(0, 6, 0)
                 hrp.Velocity = Vector3.new(0,0,0)
 
                 if selectedAutoMode == "Strength" or selectedSkill == "Energy Spear" then
-                    for i = 1, 5 do
-                        VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
-                        VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
-                        task.wait(0.05)
+                    -- CÁCH 1: tool:Activate()
+                    if tool then
+                        for i = 1, 5 do
+                            tool:Activate()
+                            task.wait(0.05)
+                        end
                     end
+
+                    -- CÁCH 2: Fire tất cả remote attack
+                    for _, remote in ipairs(attackRemotes) do
+                        if remote then
+                            pcall(function() remote:FireServer(mob) end)
+                            pcall(function() remote:FireServer(mob.HumanoidRootPart) end)
+                            pcall(function() remote:FireServer(mob.HumanoidRootPart.Position) end)
+                            pcall(function() remote:FireServer("Punch") end)
+                            pcall(function() remote:FireServer(1) end)
+                        end
+                    end
+
+                    -- CÁCH 3: Click chuột
+                    VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+                    VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+
                 elseif selectedAutoMode == "Energy" or selectedSkill == "Energy Blast" then
                     VIM:SendKeyEvent(true, Enum.KeyCode.E, false, game)
                     task.wait(0.05)
                     VIM:SendKeyEvent(false, Enum.KeyCode.E, false, game)
-                    task.wait(0.05)
                 elseif selectedAutoMode == "Defense" then
                     VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
                     VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
@@ -396,7 +424,7 @@ DungeonSection:NewToggle("Auto Farm", "Farm Spear - TỰ ĐÁNH 100%", function(
                 end
             end
         end)
-        task.wait(0.03)
+        task.wait(0.05)
     end
 end)
 
@@ -501,6 +529,9 @@ VisualSection:NewToggle("ESP Player", "Nhìn thấy người chơi khác", funct
 end)
 
 -- TAB MISC
+local MiscTab = Win:NewTab("Misc")
+local MiscSection = MiscTab:NewSection("Misc Features")
+
 MiscSection:NewToggle("Anti AFK", "Chống bị kick AFK", function(s)
     _G.AntiAFK = s
     while _G.AntiAFK do
@@ -526,12 +557,42 @@ MiscSection:NewButton("Server Hop", "Đổi server khác", function()
     end
     if #servers > 0 then
         game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, servers[math.random(1, #servers)], Plr)
+    else
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "Server Hop";
+            Text = "Không tìm thấy server nào khác!";
+            Duration = 3;
+        })
     end
 end)
 
+MiscSection:NewButton("Copy Discord", "Copy link Discord", function()
+    setclipboard("https://discord.gg/dragonblox")
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Discord";
+        Text = "Đã copy link Discord!";
+        Duration = 3;
+    })
+end)
+
+MiscSection:NewButton("Destroy GUI", "Xóa menu", function()
+    Kavo:DestroyUI()
+    if CoreGui:FindFirstChild("AtomToggle") then
+        CoreGui.AtomToggle:Destroy()
+    end
+end)
+
+-- AUTO RECONNECT KHI BỊ KICK
 Plr.Idled:Connect(function()
     if _G.AntiAFK then return end
     VU:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
     task.wait(1)
     VU:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
 end)
+
+-- NOTIFICATION KHI LOAD XONG
+game:GetService("StarterGui"):SetCore("SendNotification", {
+    Title = "Dragon Blox V3.3";
+    Text = "Script loaded! Nhấn Atom để bật/tắt menu";
+    Duration = 5;
+})
