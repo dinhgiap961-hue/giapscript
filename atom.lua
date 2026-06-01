@@ -1,6 +1,6 @@
--- DRAGON BLOX V2 - FULL FEATURES V3.3 - SPEAR FIX FINAL
+-- DRAGON BLOX V2 - FULL FEATURES V4.0 - UNLOCK ALL
 local Kavo = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Win = Kavo.CreateLib("Dragon Blox V2 - FULL", "BloodTheme")
+local Win = Kavo.CreateLib("Dragon Blox V2 - BYPASS", "BloodTheme")
 
 local MainTab = Win:NewTab("Main")
 local DungeonTab = Win:NewTab("Dungeon★")
@@ -17,7 +17,30 @@ local VU = game:GetService("VirtualUser")
 local VIM = game:GetService("VirtualInputManager")
 local CoreGui = game:GetService("CoreGui")
 local RS = game:GetService("ReplicatedStorage")
-local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+
+-- BYPASS ANTI-CHEAT TRƯỚC
+local mt = getrawmetatable(game)
+local oldNamecall = mt.__namecall
+setreadonly(mt, false)
+
+mt.__namecall = newcclosure(function(self,...)
+    local method = getnamecallmethod()
+    if method == "Kick" then return wait(9e9) end
+    if method == "SetState" and self == Plr.Character.Humanoid then return end
+    return oldNamecall(self,...)
+end)
+
+pcall(function()
+    setfpscap(999)
+    for _,v in pairs(getgc(true)) do
+        if type(v) == "table" and rawget(v, "AC") then
+            rawset(v, "AC", function() return end)
+        end
+    end
+end)
+
+setreadonly(mt, true)
 
 -- Nút Atom
 local ScreenGui = Instance.new("ScreenGui")
@@ -81,27 +104,19 @@ end
 local function clickPlayAgain()
     local gui = Plr:FindFirstChild("PlayerGui")
     if not gui then return false end
-
     local keywords = {"Play Again", "Replay", "Continue", "Next", "Retry", "Again", "Again!"}
-
     for _, v in pairs(gui:GetDescendants()) do
         if v:IsA("TextButton") or v:IsA("ImageButton") then
             if v.Visible and v.Active then
-                if v:IsA("TextButton") then
-                    for _, key in ipairs(keywords) do
-                        if string.find(string.lower(v.Text), string.lower(key)) then
-                            pcall(function() firesignal(v.MouseButton1Click) end)
-                            pcall(function() firesignal(v.Activated) end)
-                            pcall(function() v:Activate() end)
-                            return true
-                        end
-                    end
-                end
                 for _, key in ipairs(keywords) do
+                    if v:IsA("TextButton") and string.find(string.lower(v.Text), string.lower(key)) then
+                        pcall(function() firesignal(v.MouseButton1Click) end)
+                        pcall(function() firesignal(v.Activated) end)
+                        return true
+                    end
                     if string.find(string.lower(v.Name), string.lower(key)) then
                         pcall(function() firesignal(v.MouseButton1Click) end)
                         pcall(function() firesignal(v.Activated) end)
-                        pcall(function() v:Activate() end)
                         return true
                     end
                 end
@@ -134,14 +149,11 @@ local function getAllMonsters(range)
     if isDungeonClear() then return mobs end
     local hrp = Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart")
     if not hrp then return mobs end
-
     for _, v in ipairs(workspace:GetDescendants()) do
         if v:IsA("Model") and v:FindFirstChild("HumanoidRootPart") and v:FindFirstChild("Humanoid") and v.Name ~= Plr.Name then
             if v.Humanoid.Health > 0 and v.Humanoid:GetState() ~= Enum.HumanoidStateType.Dead then
                 local d = (v.HumanoidRootPart.Position - hrp.Position).Magnitude
-                if d <= range then
-                    table.insert(mobs, v)
-                end
+                if d <= range then table.insert(mobs, v) end
             end
         end
     end
@@ -276,7 +288,7 @@ MainSection:NewButton("Equip Energy Spear", "Bấm tay để equip ngay", functi
     equipWeapon(1)
 end)
 
-MainSection:NewToggle("Auto Spam Energy Blast [E]", "Chỉ spam E - FIX LỖI", function(s)
+MainSection:NewToggle("Auto Spam Energy Blast [E]", "Chỉ spam E", function(s)
     _G.AutoEnergyBlast = s
     while _G.AutoEnergyBlast do
         pcall(function()
@@ -302,7 +314,7 @@ MainSection:NewToggle("Auto Lock Skill", "Chỉ ghim skill vào boss", function(
     end
 end)
 
-MainSection:NewToggle("Auto Bay Cổ Boss", "Bay trên đỉnh đầu boss - DI CHUYỂN ĐƯỢC", function(s)
+MainSection:NewToggle("Auto Bay Cổ Boss", "Bay trên đỉnh đầu boss", function(s)
     _G.AutoBayCo = s
     while _G.AutoBayCo do
         pcall(function()
@@ -337,7 +349,7 @@ MainSection:NewSlider("Kill Aura Range", "Bán kính Kill Aura", 500, 10, functi
     killAuraRange = v
 end)
 
-MainSection:NewToggle("Kill Aura", "Tự đánh quái xung quanh - FIX LỖI", function(s)
+MainSection:NewToggle("Kill Aura", "Tự đánh quái xung quanh", function(s)
     _G.KillAura = s
     while _G.KillAura do
         pcall(function()
@@ -366,7 +378,7 @@ DungeonSection:NewDropdown("Chọn Kiểu Farm", "Chọn skill để farm", {"En
     selectedSkill = currentOption
 end)
 
-DungeonSection:NewToggle("Auto Farm", "Farm Spear - CHÉM 100% - FINAL", function(s)
+DungeonSection:NewToggle("Auto Farm", "Farm Spear - BYPASS 100%", function(s)
     _G.AutoFarm = s
     local attackRemotes = {
         findRemote("attack"), findRemote("punch"), findRemote("melee"),
@@ -390,15 +402,12 @@ DungeonSection:NewToggle("Auto Farm", "Farm Spear - CHÉM 100% - FINAL", functio
                 hrp.Velocity = Vector3.new(0,0,0)
 
                 if selectedAutoMode == "Strength" or selectedSkill == "Energy Spear" then
-                    -- CÁCH 1: tool:Activate()
                     if tool then
                         for i = 1, 5 do
                             tool:Activate()
                             task.wait(0.05)
                         end
                     end
-
-                    -- CÁCH 2: Fire tất cả remote attack
                     for _, remote in ipairs(attackRemotes) do
                         if remote then
                             pcall(function() remote:FireServer(mob) end)
@@ -408,8 +417,6 @@ DungeonSection:NewToggle("Auto Farm", "Farm Spear - CHÉM 100% - FINAL", functio
                             pcall(function() remote:FireServer(1) end)
                         end
                     end
-
-                    -- CÁCH 3: Click chuột
                     VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
                     VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
 
@@ -428,7 +435,7 @@ DungeonSection:NewToggle("Auto Farm", "Farm Spear - CHÉM 100% - FINAL", functio
     end
 end)
 
-DungeonSection:NewToggle("Auto (Next Area)", "Tự bấm Play Again - FIXED", function(s)
+DungeonSection:NewToggle("Auto (Next Area)", "Tự bấm Play Again", function(s)
     _G.AutoNextArea = s
     local playRemotes = {
         findRemote("play"), findRemote("replay"), findRemote("next"),
@@ -440,9 +447,7 @@ DungeonSection:NewToggle("Auto (Next Area)", "Tự bấm Play Again - FIXED", fu
         pcall(function()
             if isDungeonClear() then
                 task.wait(1.5)
-
                 clickPlayAgain()
-
                 task.wait(0.5)
                 for _, remote in ipairs(playRemotes) do
                     if remote then
@@ -454,7 +459,6 @@ DungeonSection:NewToggle("Auto (Next Area)", "Tự bấm Play Again - FIXED", fu
                         pcall(function() remote:FireServer(1) end)
                     end
                 end
-
                 task.wait(5)
             end
         end)
@@ -462,12 +466,16 @@ DungeonSection:NewToggle("Auto (Next Area)", "Tự bấm Play Again - FIXED", fu
     end
 end)
 
-DungeonSection:NewToggle("Godmode", "Bất tử", function(s)
+DungeonSection:NewToggle("Godmode V2", "Bất tử - BYPASS", function(s)
     _G.Godmode = s
     while _G.Godmode do
         pcall(function()
             local hum = Plr.Character and Plr.Character:FindFirstChild("Humanoid")
-            if hum then hum.Health = hum.MaxHealth end
+            if hum then
+                hum.Health = hum.MaxHealth
+                hum:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+                hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+            end
         end)
         task.wait()
     end
@@ -528,9 +536,42 @@ VisualSection:NewToggle("ESP Player", "Nhìn thấy người chơi khác", funct
     end
 end)
 
+VisualSection:NewToggle("Fullbright", "Sáng toàn map", function(s)
+    _G.Fullbright = s
+    if s then
+        local lighting = game:GetService("Lighting")
+        lighting.Brightness = 2
+        lighting.ClockTime = 14
+        lighting.FogEnd = 100000
+                lighting.GlobalShadows = false
+        lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+        for _,v in pairs(lighting:GetChildren()) do
+            if v:IsA("BlurEffect") or v:IsA("SunRaysEffect") or v:IsA("BloomEffect") then
+                v:Destroy()
+            end
+        end
+    end
+end)
+
 -- TAB MISC
-local MiscTab = Win:NewTab("Misc")
-local MiscSection = MiscTab:NewSection("Misc Features")
+local Noclip = nil
+local function NoclipLoop()
+    if Plr.Character then
+        for _, part in pairs(Plr.Character:GetDescendants()) do
+            if part:IsA("BasePart") and part.CanCollide == true then
+                part.CanCollide = false
+            end
+        end
+    end
+end
+
+MiscSection:NewToggle("Noclip", "Xuyên tường", function(s)
+    if s then
+        Noclip = RunService.Stepped:Connect(NoclipLoop)
+    else
+        if Noclip then Noclip:Disconnect() end
+    end
+end)
 
 MiscSection:NewToggle("Anti AFK", "Chống bị kick AFK", function(s)
     _G.AntiAFK = s
@@ -582,7 +623,6 @@ MiscSection:NewButton("Destroy GUI", "Xóa menu", function()
     end
 end)
 
--- AUTO RECONNECT KHI BỊ KICK
 Plr.Idled:Connect(function()
     if _G.AntiAFK then return end
     VU:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
@@ -590,9 +630,8 @@ Plr.Idled:Connect(function()
     VU:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
 end)
 
--- NOTIFICATION KHI LOAD XONG
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Dragon Blox V3.3";
-    Text = "Script loaded! Nhấn Atom để bật/tắt menu";
+    Title = "Dragon Blox V4.0 BYPASS";
+    Text = "Đã phá hết anti-cheat! Chơi tẹt ga";
     Duration = 5;
 })
