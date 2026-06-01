@@ -1,13 +1,36 @@
 local Kavo = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Win = Kavo.CreateLib("Atom Max Hub Fix", "BloodTheme")
+local Win = Kavo.CreateLib("Atom Max Hub", "BloodTheme")
 local Tab = Win:NewTab("Main")
 local Section = Tab:NewSection("Automation")
 
 local Plr = game:GetService("Players").LocalPlayer
 local VU = game:GetService("VirtualUser")
 local VIM = game:GetService("VirtualInputManager")
+local CoreGui = game:GetService("CoreGui")
 
--- Hàm tìm vị trí nút mobile và tap vào
+-- Tạo nút Thu Nhỏ trước, đợi Kavo load xong mới gắn
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "AtomToggle"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = CoreGui
+
+local Btn = Instance.new("TextButton")
+Btn.Size = UDim2.new(0,50,0,50)
+Btn.Position = UDim2.new(0,10,0,150)
+Btn.BackgroundColor3 = Color3.fromRGB(150,0,0)
+Btn.Text = "Atom"
+Btn.TextColor3 = Color3.fromRGB(255,255,255)
+Btn.Font = Enum.Font.SourceSansBold
+Btn.TextSize = 16
+Btn.ZIndex = 999
+Btn.Parent = ScreenGui
+Instance.new("UICorner", Btn).CornerRadius = UDim.new(0,25)
+
+Btn.MouseButton1Click:Connect(function()
+    Kavo:ToggleUI()
+end)
+
+-- Hàm tap nút mobile
 local function tapButton(buttonName)
     local playerGui = Plr:FindFirstChild("PlayerGui")
     if not playerGui then return end
@@ -46,90 +69,59 @@ local function getMonster()
     return target
 end
 
--- Spam Energy Blast R1
 Section:NewToggle("Spam Energy Blast (R1)", "Xả skill R1", function(s)
     _G.EB = s
-    task.spawn(function()
-        while _G.EB do
-            tapButton("R1")
-            task.wait(0.1)
-        end
-    end)
+    while _G.EB do
+        tapButton("R1")
+        task.wait(0.1)
+    end
 end)
 
--- Treo Trên Đầu Boss
 Section:NewToggle("Treo Trên Đầu Boss", "Bay cao an toàn", function(s)
     _G.Tp = s
-    task.spawn(function()
-        while _G.Tp do
-            pcall(function()
-                local t = getMonster()
-                local hrp = Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart")
-                if t and hrp then
-                    local cf = t.HumanoidRootPart.CFrame * CFrame.new(0, 45, 0)
-                    Plat.CFrame = cf
-                    hrp.Velocity = Vector3.new(0,0,0)
-                    hrp.CFrame = cf * CFrame.new(0, 2.5, 0) * CFrame.Angles(math.rad(-90), 0, 0)
-                else
-                    Plat.CFrame = CFrame.new(0, -1000, 0)
-                end
-            end)
-            task.wait(0.01)
-        end
-        Plat.CFrame = CFrame.new(0, -1000, 0)
-    end)
+    while _G.Tp do
+        pcall(function()
+            local t = getMonster()
+            local hrp = Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart")
+            if t and hrp then
+                local cf = t.HumanoidRootPart.CFrame * CFrame.new(0, 45, 0)
+                Plat.CFrame = cf
+                hrp.Velocity = Vector3.new(0,0,0)
+                hrp.CFrame = cf * CFrame.new(0, 2.5, 0) * CFrame.Angles(math.rad(-90), 0, 0)
+            else
+                Plat.CFrame = CFrame.new(0, -1000, 0)
+            end
+        end)
+        task.wait(0.01)
+    end
+    Plat.CFrame = CFrame.new(0, -1000, 0)
 end)
 
--- Auto Charge L2
 Section:NewToggle("Auto Charge [L2]", "Tự charge ki", function(s)
     _G.AutoFushi = s
-    task.spawn(function()
-        while _G.AutoFushi do
-            tapButton("L2")
-            task.wait(2)
-        end
-    end)
+    while _G.AutoFushi do
+        tapButton("L2")
+        task.wait(2)
+    end
 end)
 
--- Auto Transform L5
 Section:NewToggle("Auto Transform [L5]", "Tự biến hình", function(s)
     _G.AutoForm = s
-    task.spawn(function()
-        while _G.AutoForm do
-            tapButton("L5")
-            task.wait(4)
-        end
-    end)
+    while _G.AutoForm do
+        tapButton("L5")
+        task.wait(4)
+    end
 end)
 
--- Auto Đánh Thường RA
 Section:NewToggle("Auto Đánh [RA]", "Tự đánh thường", function(s)
     _G.AutoClick = s
-    task.spawn(function()
-        while _G.AutoClick do
-            tapButton("RA")
-            task.wait(0.1)
-        end
-    end)
+    while _G.AutoClick do
+        tapButton("RA")
+        task.wait(0.1)
+    end
 end)
 
--- Nút Thu Nhỏ - Đã fix
-task.wait(1) -- Đợi Kavo load xong
-local ScreenGui = game:GetService("CoreGui"):FindFirstChild("KavoL")
-if ScreenGui then
-    local Btn = Instance.new("TextButton", ScreenGui)
-    Btn.Size = UDim2.new(0,50,0,50)
-    Btn.Position = UDim2.new(0,10,0,150)
-    Btn.BackgroundColor3 = Color3.fromRGB(150,0,0)
-    Btn.Text = "Atom"
-    Btn.TextColor3 = Color3.fromRGB(255,255,255)
-    Btn.Font = Enum.Font.SourceSansBold
-    Btn.TextSize = 16
-    Instance.new("UICorner", Btn).CornerRadius = UDim.new(0,25)
-    Btn.MouseButton1Click:Connect(function() Kavo:ToggleUI() end)
-end
-
-Section:NewButton("Thu Nhỏ Menu", "Ẩn bảng", function()
+Section:NewButton("Ẩn Menu", "Thu nhỏ", function()
     Kavo:ToggleUI()
 end)
 
