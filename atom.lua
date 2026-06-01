@@ -1,6 +1,7 @@
--- DRAGON BLOX V2 - DEBUG + REMOTE SPY + SKILL NGOÀI MAP
+-- DRAGON BLOX V2 - FIX LOCK KHÔNG CHUI ĐẤT
 local Plr = game:GetService("Players").LocalPlayer
-local RS = game:GetService("ReplicatedStorage")
+local UIS = game:GetService("UserInputService")
+local VIM = game:GetService("VirtualInputManager")
 local RunService = game:GetService("RunService")
 
 getgenv().DBV2 = getgenv().DBV2 or {
@@ -10,30 +11,18 @@ getgenv().DBV2 = getgenv().DBV2 or {
     LockBoss = false,
     Running = true,
     MenuVisible = true,
-    Debug = true -- BẬT DEBUG
+    FlyHeight = 50 -- CHIỀU CAO BAY
 }
 
--- IN TẤT CẢ REMOTE RA ĐỂ MÀY CHỌN
-print("=== TẤT CẢ REMOTE TRONG GAME ===")
-for _, v in pairs(RS:GetDescendants()) do
-    if v:IsA("RemoteEvent") then
-        print("Remote: "..v.Name.." | Path: "..v:GetFullName())
-    end
-end
-print("=== COPY TÊN REMOTE SKILL VÀO DƯỚI ===")
-
--- MÀY TỰ ĐIỀN TÊN REMOTE VÀO ĐÂY SAU KHI XEM LOG
-local SkillRemote = RS:FindFirstChild("SkillEvent") or RS:FindFirstChild("CombatRemote") or RS:FindFirstChild("Attack") -- SỬA TÊN REMOTE Ở ĐÂY
-
-if not SkillRemote then
-    warn("ĐÉO TÌM THẤY REMOTE SKILL - CHECK LOG Ở TRÊN RỒI SỬA TÊN")
-end
+-- KNIT
+local Knit = require(game:GetService("ReplicatedStorage").Packages.Knit)
+local SkillController = Knit.GetController("SkillController") or Knit.GetController("SkillManager") or Knit.GetController("CombatController")
 
 -- XÓA GUI CŨ
 if game.CoreGui:FindFirstChild("DBV2_GUI") then game.CoreGui.DBV2_GUI:Destroy() end
 if game.CoreGui:FindFirstChild("DBV2_Toggle") then game.CoreGui.DBV2_Toggle:Destroy() end
 
--- NÚT BẬT/TẮT MENU
+-- NÚT DB
 local ToggleGui = Instance.new("ScreenGui", game.CoreGui)
 ToggleGui.Name = "DBV2_Toggle"
 
@@ -49,12 +38,12 @@ ToggleBtn.Active = true
 ToggleBtn.Draggable = true
 Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(1, 0)
 
--- GUI CHÍNH
+-- GUI
 local Gui = Instance.new("ScreenGui", game.CoreGui)
 Gui.Name = "DBV2_GUI"
 
 local Main = Instance.new("Frame", Gui)
-Main.Size = UDim2.new(0, 350, 0, 300)
+Main.Size = UDim2.new(0, 320, 0, 300)
 Main.Position = UDim2.new(0, 50, 0, 70)
 Main.BackgroundColor3 = Color3.fromRGB(20,20,20)
 Main.Active = true
@@ -63,7 +52,7 @@ Instance.new("UICorner", Main)
 
 local Title = Instance.new("TextLabel", Main)
 Title.Size = UDim2.new(1, 0, 0, 30)
-Title.Text = "DBV2 | Remote: "..(SkillRemote and SkillRemote.Name or "CHƯA CÓ")
+Title.Text = "DBV2 KNIT | Controller: "..(SkillController and "OK" or "FAIL")
 Title.TextColor3 = Color3.new(1,1,1)
 Title.BackgroundColor3 = Color3.fromRGB(138,43,226)
 Title.Font = Enum.Font.GothamBold
@@ -71,8 +60,8 @@ Instance.new("UICorner", Title)
 
 local DebugLabel = Instance.new("TextLabel", Main)
 DebugLabel.Position = UDim2.new(0, 10, 0, 35)
-DebugLabel.Size = UDim2.new(1, -20, 0, 60)
-DebugLabel.Text = "DEBUG: Chờ bật skill..."
+DebugLabel.Size = UDim2.new(1, -20, 0, 70)
+DebugLabel.Text = "DEBUG: Đang chờ..."
 DebugLabel.TextColor3 = Color3.fromRGB(255,255,0)
 DebugLabel.BackgroundTransparency = 1
 DebugLabel.Font = Enum.Font.Code
@@ -121,7 +110,7 @@ local function getBoss()
     return boss
 end
 
--- LOCK BOSS
+-- LOCK BOSS - FIX CHUI ĐẤT
 local bp, bg, conn
 local function lockBoss(on)
     local char = Plr.Character
@@ -136,68 +125,125 @@ local function lockBoss(on)
     end
 
     bp = Instance.new("BodyPosition", hrp)
-    bp.MaxForce = Vector3.new(9e9,9e9)
+    bp.MaxForce = Vector3.new(9e9,9e9,9e9)
     bp.P = 10000
+    bp.D = 1000
 
     bg = Instance.new("BodyGyro", hrp)
     bg.MaxTorque = Vector3.new(9e9,9e9)
     bg.P = 10000
+    bg.D = 1000
 
     conn = RunService.Heartbeat:Connect(function()
         if not getgenv().DBV2.LockBoss then lockBoss(false) return end
         local boss = getBoss()
         if boss and boss:FindFirstChild("HumanoidRootPart") then
             local bpos = boss.HumanoidRootPart.Position
-            bp.Position = bpos + Vector3.new(0, 45, 0)
+
+            -- RAYCAST XUỐNG ĐẤT ĐỂ KHÔNG CHUI
+            local raycastParams = RaycastParams.new()
+            raycastParams.FilterDescendantsInstances = {boss, char}
+            raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+
+            local rayResult = workspace:Raycast(bpos, Vector3.new(0, -500, 0), raycastParams)
+            local groundY = rayResult and rayResult.Position.Y or bpos.Y
+
+            -- BAY CAO HƠN MẶT ĐẤT 50 STUD
+            local targetY = math.max(bpos.Y + getgenv().DBV2.FlyHeight, groundY + getgenv().DBV2.FlyHeight)
+            local targetPos = Vector3.new(bpos.X, targetY, bpos.Z)
+
+            bp.Position = targetPos
             bg.CFrame = CFrame.new(hrp.Position, bpos)
+
+            DebugLabel.Text = "LOCK: "..boss.Name.."\nHP: "..math.floor(boss.Humanoid.Health).."\nY: "..math.floor(targetPos.Y)
+        else
+            DebugLabel.Text = "DEBUG: Đang tìm boss..."
         end
     end)
 end
 
--- SPAM SKILL NGOÀI MAP - CÓ DEBUG
+-- BẤM NÚT SKILL THẬT
+local skillKeys = {Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three, Enum.KeyCode.Four, Enum.KeyCode.Five, Enum.KeyCode.Six, Enum.KeyCode.Seven, Enum.KeyCode.Eight}
+
 local function spamSkill()
-    if not SkillRemote then 
-        DebugLabel.Text = "DEBUG: CHƯA CÓ REMOTE SKILL!\nCheck console F9 để xem tên remote"
-        return 
-    end
-    
     local boss = getBoss()
-    if not boss or not boss:FindFirstChild("HumanoidRootPart") then 
-        DebugLabel.Text = "DEBUG: KHÔNG TÌM THẤY BOSS"
-        return 
+    if not boss then
+        DebugLabel.Text = "DEBUG: Không có boss"
+        return
     end
-    
+
     local bpos = boss.HumanoidRootPart.Position
     local char = Plr.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    
-    -- SPAWN TỪ 4 GÓC
-    local successCount = 0
-    for i = 1, 4 do
-        local ang = (i/4) * math.pi * 2
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    local hrp = char.HumanoidRootPart
+    local oldCF = hrp.CFrame
+
+    -- BẮN TỪ 8 GÓC NGOÀI MAP
+    for i = 1, 8 do
+        local ang = (i/8) * math.pi * 2
         local x = math.cos(ang) * 600
         local z = math.sin(ang) * 600
         local spawnPos = bpos + Vector3.new(x, 150, z)
-        local spawnCF = CFrame.new(spawnPos, bpos)
 
-        -- THỬ TỪNG KIỂU FIRE
-        local s1 = pcall(function() SkillRemote:FireServer("EnergyBlast", spawnCF, bpos) end)
-        local s2 = pcall(function() SkillRemote:FireServer("Blast", spawnCF, bpos) end)
-        local s3 = pcall(function() SkillRemote:FireServer(spawnCF, bpos) end)
-        local s4 = pcall(function() SkillRemote:FireServer(boss, "EnergyBlast") end)
-        local s5 = pcall(function() SkillRemote:FireServer(boss) end)
-        
-        if s1 or s2 or s3 or s4 or s5 then successCount = successCount + 1 end
+        hrp.CFrame = CFrame.new(spawnPos, bpos)
+        task.wait()
+
+        VIM:SendKeyEvent(true, skillKeys[i], false, game)
+        task.wait(0.03)
+        VIM:SendKeyEvent(false, skillKeys[i], false, game)
+
+        if SkillController and SkillController.Fire then
+            pcall(function() SkillController:Fire("EnergyBlast", spawnPos, bpos) end)
+        end
     end
-    
-    DebugLabel.Text = "DEBUG: Đã fire "..successCount.."/4 hướng\nRemote: "..SkillRemote.Name.."\nBoss: "..boss.Name.."\nPos: "..math.floor(bpos.X)..","..math.floor(bpos.Z)
+
+    hrp.CFrame = oldCF -- VỀ LẠI VỊ TRÍ CŨ
+    DebugLabel.Text = "DEBUG: Đã bắn 8 góc\nBoss: "..boss.Name
+end
+
+-- AUTO REPLAY
+local function clickReplay()
+    for _, v in pairs(Plr.PlayerGui:GetDescendants()) do
+        if v:IsA("TextButton") and v.Visible then
+            local t = v.Text:lower()
+            if t:find("play again") or t:find("replay") or t:find("restart") then
+                firesignal(v.MouseButton1Click)
+                return true
+            end
+        end
+    end
+    return false
 end
 
 -- NÚT
-mkBtn(100, "Skill Ngoài Map", function(v) getgenv().DBV2.AutoSkill = v end)
-mkBtn(135, "Auto Play Again", function(v) getgenv().DBV2.AutoReplay = v end)
-mkBtn(170, "Godmode", function(v) getgenv().DBV2.Godmode = v end)
-mkBtn(205, "Lock Boss", function(v) getgenv().DBV2.LockBoss = v lockBoss(v) end)
+mkBtn(110, "Skill Ngoài Map", function(v) getgenv().DBV2.AutoSkill = v end)
+mkBtn(145, "Auto Play Again", function(v) getgenv().DBV2.AutoReplay = v end)
+mkBtn(180, "Godmode", function(v) getgenv().DBV2.Godmode = v end)
+mkBtn(215, "Lock Boss", function(v) getgenv().DBV2.LockBoss = v lockBoss(v) end)
+
+-- SLIDER CHIỀU CAO
+local HeightLabel = Instance.new("TextLabel", Main)
+HeightLabel.Position = UDim2.new(0, 10, 0, 250)
+HeightLabel.Size = UDim2.new(1, -20, 0, 20)
+HeightLabel.Text = "Chiều cao bay: "..getgenv().DBV2.FlyHeight
+HeightLabel.TextColor3 = Color3.new(1,1,1)
+HeightLabel.BackgroundTransparency = 1
+HeightLabel.Font = Enum.Font.Gotham
+HeightLabel.TextSize = 12
+
+local HeightSlider = Instance.new("TextButton", Main)
+HeightSlider.Position = UDim2.new(0, 10, 0, 270)
+HeightSlider.Size = UDim2.new(1, -20, 0, 20)
+HeightSlider.Text = "Tăng/Giảm"
+HeightSlider.TextColor3 = Color3.new(1,1,1)
+HeightSlider.BackgroundColor3 = Color3.fromRGB(40,40,40)
+HeightSlider.Font = Enum.Font.Gotham
+Instance.new("UICorner", HeightSlider)
+
+HeightSlider.MouseButton1Click:Connect(function()
+    getgenv().DBV2.FlyHeight = getgenv().DBV2.FlyHeight == 50 and 100 or 50
+    HeightLabel.Text = "Chiều cao bay: "..getgenv().DBV2.FlyHeight
+end)
 
 local Close = Instance.new("TextButton", Main)
 Close.Position = UDim2.new(1, -25, 0, 5)
@@ -209,13 +255,17 @@ Close.MouseButton1Click:Connect(function() getgenv().DBV2.Running = false Gui:De
 
 -- LOOP
 spawn(function()
-    while getgenv().DBV2.Running and task.wait(0.1) do
+    while getgenv().DBV2.Running and task.wait(0.2) do
         if not Plr.Character then continue end
         local hum = Plr.Character:FindFirstChild("Humanoid")
 
         if getgenv().DBV2.Godmode and hum then
             hum.MaxHealth = 9e9
             hum.Health = 9e9
+        end
+
+        if getgenv().DBV2.AutoReplay and not workspace:FindFirstChild("UnstableGrounds") then
+            if clickReplay() then task.wait(3) end
         end
 
         if getgenv().DBV2.AutoSkill then
@@ -229,8 +279,4 @@ spawn(function()
     end
 end)
 
-print("=== DBV2 LOADED ===")
-print("1. Bấm F9 xem console")
-print("2. Copy tên Remote Skill từ log")
-print("3. Sửa dòng 25: local SkillRemote = RS:FindFirstChild('TÊN_REMOTE')")
-print("4. Execute lại script")
+print("=== DBV2 FIX CHUI ĐẤT LOADED ===")
