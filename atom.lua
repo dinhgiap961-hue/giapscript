@@ -54,8 +54,8 @@ local function isDungeonClear()
     local gui = Plr:FindFirstChild("PlayerGui")
     if gui then
         for _, v in pairs(gui:GetDescendants()) do
-            if v:IsA("TextLabel") and (string.find(v.Text, "0 Mob Left") or string.find(v.Text, "Dungeon Cleared")) then
-                return true
+            if v:IsA("TextLabel") and (string.find(v.Text, "0 Mob Left") or string.find(v.Text, "Dungeon Cleared") or string.find(v.Text, "Wave")) then
+                if string.find(v.Text, "0") then return true end
             end
         end
     end
@@ -67,36 +67,77 @@ local function getMonster()
     local target, dist = nil, math.huge
     for _, v in ipairs(workspace:GetDescendants()) do
         if v:IsA("Model") and v:FindFirstChild("HumanoidRootPart") and v:FindFirstChild("Humanoid") and v.Name ~= Plr.Name then
-            if v.Humanoid.Health > 0 and Plr.Character:FindFirstChild("HumanoidRootPart") then
-                local d = (v.HumanoidRootPart.Position - Plr.Character.HumanoidRootPart.Position).Magnitude
-                if d < dist then dist = d; target = v end
+            if v.Humanoid.Health > 0 and v.Humanoid:GetState() ~= Enum.HumanoidStateType.Dead then
+                if Plr.Character:FindFirstChild("HumanoidRootPart") then
+                    local d = (v.HumanoidRootPart.Position - Plr.Character.HumanoidRootPart.Position).Magnitude
+                    if d < dist and d < 500 then
+                        dist = d; target = v
+                    end
+                end
             end
         end
     end
     return target
 end
 
--- FIX CHUẨN: CHECK FORM BẰNG LEADERSTATS
 local function isInForm()
+    local char = Plr.Character
+    if not char then return false end
+
+    local stats = char:FindFirstChild("Stats") or char:FindFirstChild("stats")
+    if stats then
+        local formVal = stats:FindFirstChild("Form") or stats:FindFirstChild("Transformation")
+        if formVal and formVal.Value > 0 then return true end
+    end
+
     local leaderstats = Plr:FindFirstChild("leaderstats")
     if leaderstats then
-        -- Check Form stat
-        local form = leaderstats:FindFirstChild("Form") or leaderstats:FindFirstChild("form")
+        local form = leaderstats:FindFirstChild("Form")
         if form and form.Value > 0 then return true end
-
-        -- Check Power stat > 1 triệu = đang form
-        local power = leaderstats:FindFirstChild("Power") or leaderstats:FindFirstChild("power")
-        if power and power.Value > 1000000 then return true end
     end
 
-    -- Backup: Check có Aura không
-    local char = Plr.Character
-    if char then
-        for _,v in pairs(char:GetDescendants()) do
-            if v.Name == "Aura" or v.Name == "FormAura" or v.Name == "SSJ" then return true end
-        end
+    for _,v in pairs(char:GetDescendants()) do
+        if v.Name == "Aura" or v.Name == "SSJ" or v.Name == "Transform" then return true end
+        if v:IsA("ParticleEmitter") and v.Parent.Name == "HumanoidRootPart" then return true end
     end
     return false
+end
+
+-- HÀM LẤY % KI HIỆN TẠI
+local function getKiPercent()
+    -- Cách 1: Check leaderstats
+    local leaderstats = Plr:FindFirstChild("leaderstats")
+    if leaderstats then
+        local ki = leaderstats:FindFirstChild("Ki") or leaderstats:FindFirstChild("ki") or leaderstats:FindFirstChild("Energy")
+        local maxKi = leaderstats:FindFirstChild("MaxKi") or leaderstats:FindFirstChild("MaxEnergy")
+        if ki and maxKi and maxKi.Value > 0 then
+            return (ki.Value / maxKi.Value) * 100
+        end
+    end
+
+    -- Cách 2: Check trong Character
+    local char = Plr.Character
+    if char then
+        local stats = char:FindFirstChild("Stats") or char:FindFirstChild("stats")
+        if stats then
+            local ki = stats:FindFirstChild("Ki") or stats:FindFirstChild("Energy")
+            local maxKi = stats:FindFirstChild("MaxKi") or stats:FindFirstChild("MaxEnergy")
+            if ki and maxKi and maxKi.Value > 0 then
+                return (ki.Value / maxKi.Value) * 100
+            end
+        end
+    end
+
+    -- Cách 3: Check GUI thanh ki
+    local gui = Plr:FindFirstChild("PlayerGui")
+    if gui then
+        for _,v in pairs(gui:GetDescendants()) do
+            if v:IsA("ImageLabel") and v.Name == "Ki" and v:FindFirstChild("Bar") then
+                return v.Bar.Size.X.Scale * 100
+            end
+        end
+    end
+    return 100 -- Mặc định 100% nếu không tìm thấy
 end
 
 local function getRaids()
@@ -135,16 +176,25 @@ Section:NewToggle("Auto Beat [M]", "Tự spam phím M", function(s)
     end
 end)
 
--- 4. Treo Cổ Boss
-Section:NewToggle("Treo Cổ Boss", "Clear là đáp đất ngay", function(s)
+-- 4. Treo Cổ Boss - Reset khi sang raid
+Section:NewToggle("Treo Cổ Boss", "Clear/Sang raid là đáp đất", function(s)
     _G.Tp = s
     local lastPos = nil
+    local lastRaid = nil
     while _G.Tp do
         pcall(function()
             local t = getMonster()
             local char = Plr.Character
             local hrp = char and char:FindFirstChild("HumanoidRootPart")
             local hum = char and char:FindFirstChild("Humanoid")
+            local currentRaid = workspace:FindFirstChild("CurrentRaid")
+
+            if currentRaid ~= lastRaid then
+                lastPos = nil
+                lastRaid = currentRaid
+                if hum then hum.PlatformStand = false end
+                task.wait(3)
+            end
 
             if t and hrp and hum and not isDungeonClear() then
                 if not lastPos then lastPos = hrp.CFrame end
@@ -212,34 +262,42 @@ Section:NewToggle("Auto Boss [1]", "Tự rút kiếm + đánh boss", function(s)
     end
 end)
 
--- 7. Auto Charge [C]
-Section:NewToggle("Auto Charge [C]", "Tự giữ C charge ki", function(s)
+-- 7. ĐÃ FIX: Auto Charge [C] - Thông minh
+Section:NewToggle("Auto Charge [C]", "Tự giữ C khi ki < 90%", function(s)
     _G.AutoFushi = s
+    local charging = false
     while _G.AutoFushi do
-        VIM:SendKeyEvent(true, Enum.KeyCode.C, false, game)
+        local ki = getKiPercent()
+
+        if ki < 90 and not charging then
+            -- Hết ki -> bắt đầu giữ C
+            VIM:SendKeyEvent(true, Enum.KeyCode.C, false, game)
+            charging = true
+        elseif ki >= 95 and charging then
+            -- Đầy ki -> nhả C
+            VIM:SendKeyEvent(false, Enum.KeyCode.C, false, game)
+            charging = false
+        end
         task.wait(0.1)
-        VIM:SendKeyEvent(false, Enum.KeyCode.C, false, game)
-        task.wait(2)
     end
+    -- Tắt toggle thì nhả C luôn
+    VIM:SendKeyEvent(false, Enum.KeyCode.C, false, game)
 end)
 
--- 8. ĐÃ FIX TRIỆT ĐỂ: Auto Form [Y]
+-- 8. Auto Form [Y] - Thông minh
 Section:NewToggle("Auto Form [Y]", "Thông minh - hết form mới bấm", function(s)
     _G.AutoForm = s
-    local lastFormCheck = false
     while _G.AutoForm do
-        local currentForm = isInForm()
-
-        -- Chỉ bấm Y khi: chưa form + trước đó cũng chưa form
-        if not currentForm and not lastFormCheck then
-            VIM:SendKeyEvent(true, Enum.KeyCode.Y, false, game)
-            task.wait(0.1)
-            VIM:SendKeyEvent(false, Enum.KeyCode.Y, false, game)
-            task.wait(2) -- Đợi biến hình xong
+        if not isInForm() then
+            task.wait(1)
+            if not isInForm() then
+                VIM:SendKeyEvent(true, Enum.KeyCode.Y, false, game)
+                task.wait(0.1)
+                VIM:SendKeyEvent(false, Enum.KeyCode.Y, false, game)
+                task.wait(3)
+            end
         end
-
-        lastFormCheck = currentForm
-        task.wait(1) -- Check mỗi 1s
+        task.wait(1)
     end
 end)
 
