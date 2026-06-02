@@ -1,6 +1,7 @@
--- AUTO Q HỘI ĐỒNG -> NHẬN Q TỪ XA + TP BOSS
+-- AUTO Q + KILL AURA BOSS MAP 3
 local Plr = game.Players.LocalPlayer
 local RS = game:GetService("ReplicatedStorage")
+local VirtualUser = game:GetService("VirtualUser")
 
 local BossList = {
     ["Atom X002"] = CFrame.new(3298.8, 6.7, 3295.3),
@@ -10,31 +11,30 @@ local BossList = {
     ["Zero"] = CFrame.new(4988.5, 14.8, -4197.0),
 }
 
--- GUI CHỌN BOSS
+-- GUI
 if game.CoreGui:FindFirstChild("BossQGUI") then game.CoreGui.BossQGUI:Destroy() end
 local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
 ScreenGui.Name = "BossQGUI"
 
 local Frame = Instance.new("Frame", ScreenGui)
-Frame.Size = UDim2.new(0, 220, 0, 180)
-Frame.Position = UDim2.new(0, 10, 0.5, -90)
+Frame.Size = UDim2.new(0, 220, 0, 210)
+Frame.Position = UDim2.new(0, 10, 0.5, -105)
 Frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
-Frame.BorderSizePixel = 0
 
 local Label = Instance.new("TextLabel", Frame)
 Label.Size = UDim2.new(1,0,0,25)
-Label.Text = "BOSS MAP 3 - REMOTE Q"
-Label.TextColor3 = Color3.fromRGB(255,200,0)
+Label.Text = "AUTO Q + KILL BOSS"
+Label.TextColor3 = Color3.fromRGB(255,50,50)
 Label.BackgroundColor3 = Color3.fromRGB(40,40,40)
 Label.TextScaled = true
 Label.Font = Enum.Font.SourceSansBold
-Label.LayoutOrder = 0
 
 local ChonBoss = "Atom X002"
 getgenv().AutoQ = false
+getgenv().KillAura = false
 
 local UIList = Instance.new("UIListLayout", Frame)
-UIList.Padding = UDim.new(0,5)
+UIList.Padding = UDim.new(0,4)
 UIList.SortOrder = Enum.SortOrder.LayoutOrder
 
 for name,cf in pairs(BossList) do
@@ -44,8 +44,6 @@ for name,cf in pairs(BossList) do
     Btn.BackgroundColor3 = name == ChonBoss and Color3.fromRGB(0,200,0) or Color3.fromRGB(50,50,50)
     Btn.TextColor3 = Color3.fromRGB(255,255,255)
     Btn.TextScaled = true
-    Btn.Font = Enum.Font.SourceSansBold
-    Btn.LayoutOrder = 1
     Btn.MouseButton1Click:Connect(function()
         ChonBoss = name
         for _,b in pairs(Frame:GetChildren()) do
@@ -57,6 +55,19 @@ for name,cf in pairs(BossList) do
     end)
 end
 
+-- NÚT BẬT KILL AURA
+local KillBtn = Instance.new("TextButton", Frame)
+KillBtn.Size = UDim2.new(1,-10,0,25)
+KillBtn.Text = "KILL AURA: OFF"
+KillBtn.BackgroundColor3 = Color3.fromRGB(200,0,0)
+KillBtn.TextColor3 = Color3.fromRGB(255,255,255)
+KillBtn.TextScaled = true
+KillBtn.MouseButton1Click:Connect(function()
+    getgenv().KillAura = not getgenv().KillAura
+    KillBtn.Text = getgenv().KillAura and "KILL AURA: ON" or "KILL AURA: OFF"
+    KillBtn.BackgroundColor3 = getgenv().KillAura and Color3.fromRGB(0,200,0) or Color3.fromRGB(200,0,0)
+end)
+
 local StartBtn = Instance.new("TextButton", Frame)
 StartBtn.Size = UDim2.new(1,-10,0,28)
 StartBtn.Text = "BẮT ĐẦU AUTO"
@@ -64,59 +75,75 @@ StartBtn.BackgroundColor3 = Color3.fromRGB(200,0,0)
 StartBtn.TextColor3 = Color3.fromRGB(255,255,255)
 StartBtn.TextScaled = true
 StartBtn.Font = Enum.Font.SourceSansBold
-StartBtn.LayoutOrder = 10
 StartBtn.MouseButton1Click:Connect(function()
     getgenv().AutoQ = not getgenv().AutoQ
     StartBtn.Text = getgenv().AutoQ and "ĐANG CHẠY..." or "BẮT ĐẦU AUTO"
     StartBtn.BackgroundColor3 = getgenv().AutoQ and Color3.fromRGB(0,200,0) or Color3.fromRGB(200,0,0)
 end)
 
--- HÀM NHẬN Q TỪ XA
+-- NHẬN Q TỪ XA
 function NhanQuestTuXa(tenBoss)
     pcall(function()
-        -- Cách 1: Fire remote nhận Q nếu game có
         for _,v in pairs(RS:GetDescendants()) do
             if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then
-                if string.find(v.Name:lower(), "quest") or string.find(v.Name:lower(), "mission") or string.find(v.Name:lower(), "accept") then
-                    if v:IsA("RemoteEvent") then
-                        v:FireServer(tenBoss) -- Thử gửi tên boss
-                        v:FireServer("Strax") -- Thử gửi tên NPC
-                        v:FireServer("Map3") -- Thử gửi map
-                    else
-                        v:InvokeServer(tenBoss)
-                    end
-                end
-            end
-        end
-
-        -- Cách 2: Bấm GUI nếu nó load sẵn
-        task.wait(0.5)
-        for _,gui in pairs(Plr.PlayerGui:GetDescendants()) do
-            if gui:IsA("TextButton") and gui.Visible then
-                if string.find(gui.Text:lower(), "chấp nhận") or string.find(gui.Text:lower(), "accept") then
-                    firesignal(gui.MouseButton1Click)
+                if string.find(v.Name:lower(), "quest") or string.find(v.Name:lower(), "mission") then
+                    if v:IsA("RemoteEvent") then v:FireServer(tenBoss) else v:InvokeServer(tenBoss) end
                 end
             end
         end
     end)
 end
 
--- AUTO LOOP
+-- KILL AURA
 task.spawn(function()
-    while task.wait(1) do
-        if getgenv().AutoQ then
+    while task.wait() do
+        if getgenv().KillAura and Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart") then
             pcall(function()
-                -- 1. NHẬN Q TỪ XA, KHỎI TP TỚI STRAX
-                NhanQuestTuXa(ChonBoss)
-                task.wait(1)
+                for _,mob in pairs(workspace:GetDescendants()) do
+                    if mob:IsA("Model") and mob:FindFirstChild("Humanoid") and mob:FindFirstChild("HumanoidRootPart") then
+                        if mob.Humanoid.Health > 0 and string.find(mob.Name, string.split(ChonBoss," ")[1]) then -- Tìm boss theo tên
+                            if (Plr.Character.HumanoidRootPart.Position - mob.HumanoidRootPart.Position).Magnitude < 50 then
+                                -- 1. Dí theo boss
+                                Plr.Character.HumanoidRootPart.CFrame = mob.HumanoidRootPart.CFrame * CFrame.new(0,0,3)
 
-                -- 2. TP THẲNG TỚI BOSS
-                Plr.Character.HumanoidRootPart.CFrame = BossList[ChonBoss] * CFrame.new(0,5,0)
-                game.StarterGui:SetCore("SendNotification",{Title="Auto Q Remote",Text="Đã nhận Q + TP: "..ChonBoss,Duration=3})
-                task.wait(6)
+                                -- 2. Spam click đánh
+                                VirtualUser:ClickButton1(Vector2.new())
+
+                                -- 3. Fire remote đánh nếu có
+                                for _,v in pairs(RS:GetDescendants()) do
+                                    if v:IsA("RemoteEvent") and string.find(v.Name:lower(), "attack") or string.find(v.Name:lower(), "skill") or string.find(v.Name:lower(), "combat") then
+                                        v:FireServer(mob)
+                                        v:FireServer("M1") -- Đánh thường
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
             end)
         end
     end
 end)
 
-print("BẢN REMOTE Q: KHỎI TP TỚI STRAX")
+-- AUTO LOOP Q + TP
+task.spawn(function()
+    while task.wait(1) do
+        if getgenv().AutoQ then
+            pcall(function()
+                NhanQuestTuXa(ChonBoss)
+                task.wait(1)
+                Plr.Character.HumanoidRootPart.CFrame = BossList[ChonBoss] * CFrame.new(0,10,0) -- TP trên đầu boss
+                task.wait(8) -- Đợi kill xong
+            end)
+        end
+    end
+end)
+
+-- ANTI AFK
+Plr.Idled:Connect(function()
+    VirtualUser:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+    task.wait(1)
+    VirtualUser:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+end)
+
+print("AUTO Q + KILL AURA ON")
