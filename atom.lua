@@ -1,273 +1,122 @@
-repeat task.wait() until game:IsLoaded()
-local Players = game:GetService("Players")
-local RS = game:GetService("RunService")
-local VIM = game:GetService("VirtualInputManager")
+-- AUTO Q HỘI ĐỒNG -> NHẬN Q TỪ XA + TP BOSS
+local Plr = game.Players.LocalPlayer
+local RS = game:GetService("ReplicatedStorage")
 
-local Plr = Players.LocalPlayer
-local Char = Plr.Character or Plr.CharacterAdded:Wait()
-local HRP = Char:WaitForChild("HumanoidRootPart")
-local Hum = Char:WaitForChild("Humanoid")
+local BossList = {
+    ["Atom X002"] = CFrame.new(3298.8, 6.7, 3295.3),
+    ["Brawly X 01"] = CFrame.new(-816.6, 497.7, 1100.2),
+    ["Jigray X"] = CFrame.new(-4129.4, 21.3, -4582.5),
+    ["Puriza X003"] = CFrame.new(-50.2, 42.0, -8454.4),
+    ["Zero"] = CFrame.new(4988.5, 14.8, -4197.0),
+}
 
-if Plr.PlayerGui:FindFirstChild("DragonBloxV3") then
-    Plr.PlayerGui.DragonBloxV3:Destroy()
-end
+-- GUI CHỌN BOSS
+if game.CoreGui:FindFirstChild("BossQGUI") then game.CoreGui.BossQGUI:Destroy() end
+local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+ScreenGui.Name = "BossQGUI"
 
-local Gui = Instance.new("ScreenGui", Plr.PlayerGui)
-Gui.Name = "DragonBloxV3"
-Gui.ResetOnSpawn = false
+local Frame = Instance.new("Frame", ScreenGui)
+Frame.Size = UDim2.new(0, 220, 0, 180)
+Frame.Position = UDim2.new(0, 10, 0.5, -90)
+Frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
+Frame.BorderSizePixel = 0
 
-local Main = Instance.new("Frame", Gui)
-Main.Size = UDim2.new(0, 480, 0, 530)
-Main.Position = UDim2.new(0.5, -240, 0.5, -265)
-Main.BackgroundColor3 = Color3.fromRGB(90, 45, 130)
-Main.BorderSizePixel = 0
-Main.Active = true
-Main.Draggable = true
+local Label = Instance.new("TextLabel", Frame)
+Label.Size = UDim2.new(1,0,0,25)
+Label.Text = "BOSS MAP 3 - REMOTE Q"
+Label.TextColor3 = Color3.fromRGB(255,200,0)
+Label.BackgroundColor3 = Color3.fromRGB(40,40,40)
+Label.TextScaled = true
+Label.Font = Enum.Font.SourceSansBold
+Label.LayoutOrder = 0
 
-local Title = Instance.new("TextLabel", Main)
-Title.Size = UDim2.new(1, 0, 0, 35)
-Title.Text = "Dragon Blox V3 - ANTI CRASH"
-Title.TextColor3 = Color3.new(1,1,1)
-Title.TextSize = 18
-Title.Font = Enum.Font.SourceSansBold
-Title.BackgroundColor3 = Color3.fromRGB(70, 30, 110)
+local ChonBoss = "Atom X002"
+getgenv().AutoQ = false
 
-local YPos = 45
-local function createBtn(name, callback)
-    local Btn = Instance.new("TextButton", Main)
-    Btn.Size = UDim2.new(0.9, 0, 0, 30)
-    Btn.Position = UDim2.new(0.05, 0, 0, YPos)
-    Btn.Text = name .. ": OFF"
-    Btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    Btn.TextColor3 = Color3.new(1,1,1)
-    Btn.Font = Enum.Font.SourceSans
-    Btn.TextSize = 14
-    
-    local state = false
-    local con = nil
-    
+local UIList = Instance.new("UIListLayout", Frame)
+UIList.Padding = UDim.new(0,5)
+UIList.SortOrder = Enum.SortOrder.LayoutOrder
+
+for name,cf in pairs(BossList) do
+    local Btn = Instance.new("TextButton", Frame)
+    Btn.Size = UDim2.new(1,-10,0,22)
+    Btn.Text = name
+    Btn.BackgroundColor3 = name == ChonBoss and Color3.fromRGB(0,200,0) or Color3.fromRGB(50,50,50)
+    Btn.TextColor3 = Color3.fromRGB(255,255,255)
+    Btn.TextScaled = true
+    Btn.Font = Enum.Font.SourceSansBold
+    Btn.LayoutOrder = 1
     Btn.MouseButton1Click:Connect(function()
-        state = not state
-        Btn.Text = name .. (state and ": ON" or ": OFF")
-        Btn.BackgroundColor3 = state and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(30, 30, 30)
-        if con then con:Disconnect() con = nil end
-        con = callback(state)
-    end)
-    YPos = YPos + 35
-end
-
-local function getKiPercent()
-    local stats = Char:FindFirstChild("Stats")
-    if stats and stats:FindFirstChild("Ki") and stats:FindFirstChild("MaxKi") then
-        return (stats.Ki.Value / stats.MaxKi.Value) * 100
-    end
-    return 100
-end
-
-local isAttacking = false -- Check đang dùng skill
-
--- 1. AUTO LOCK ALL - CHỈ XOAY, KHÔNG TELE
-createBtn("Auto Lock ALL - Chỉ Xoay", function(on)
-    if on then
-        return RS.Heartbeat:Connect(function()
-            pcall(function()
-                if not Char or not HRP or Hum.Health <= 0 or isAttacking then return end
-                
-                local closest, dist = nil, 9999
-                for _, v in pairs(workspace:GetChildren()) do
-                    local hum = v:FindFirstChild("Humanoid")
-                    local hrp = v:FindFirstChild("HumanoidRootPart")
-                    if hrp and hum and hum.Health > 0 and v.Name ~= Plr.Name and not hrp.Anchored then
-                        local mag = (HRP.Position - hrp.Position).Magnitude
-                        if mag < dist and mag < 200 then
-                            dist = mag
-                            closest = hrp
-                        end
-                    end
-                end
-                
-                if closest then
-                    -- Chỉ xoay mặt, không tele để tránh gãy animation
-                    local lookAt = CFrame.lookAt(HRP.Position, Vector3.new(closest.Position.X, HRP.Position.Y, closest.Position.Z))
-                    HRP.CFrame = HRP.CFrame:Lerp(lookAt, 0.2)
-                end
-            end)
-        end)
-    end
-end)
-
--- 2. HITBOX 50X50
-createBtn("Hitbox 50x50 - Farm xa", function(on)
-    if on then
-        return RS.Heartbeat:Connect(function()
-            pcall(function()
-                for _, v in pairs(workspace:GetChildren()) do
-                    local hum = v:FindFirstChild("Humanoid")
-                    local hrp = v:FindFirstChild("HumanoidRootPart")
-                    if hum and hrp and hum.Health > 0 and v.Name ~= Plr.Name then
-                        hrp.Size = Vector3.new(50, 50, 50)
-                        hrp.Transparency = 0.8
-                        hrp.CanCollide = false
-                    end
-                end
-            end)
-        end)
-    else
-        for _, v in pairs(workspace:GetChildren()) do
-            if v:FindFirstChild("HumanoidRootPart") then
-                pcall(function() v.HumanoidRootPart.Size = Vector3.new(2, 2, 1) end)
+        ChonBoss = name
+        for _,b in pairs(Frame:GetChildren()) do
+            if b:IsA("TextButton") and b.Text ~= "BẮT ĐẦU AUTO" then
+                b.BackgroundColor3 = Color3.fromRGB(50,50,50)
             end
         end
-    end
+        Btn.BackgroundColor3 = Color3.fromRGB(0,200,0)
+    end)
+end
+
+local StartBtn = Instance.new("TextButton", Frame)
+StartBtn.Size = UDim2.new(1,-10,0,28)
+StartBtn.Text = "BẮT ĐẦU AUTO"
+StartBtn.BackgroundColor3 = Color3.fromRGB(200,0,0)
+StartBtn.TextColor3 = Color3.fromRGB(255,255,255)
+StartBtn.TextScaled = true
+StartBtn.Font = Enum.Font.SourceSansBold
+StartBtn.LayoutOrder = 10
+StartBtn.MouseButton1Click:Connect(function()
+    getgenv().AutoQ = not getgenv().AutoQ
+    StartBtn.Text = getgenv().AutoQ and "ĐANG CHẠY..." or "BẮT ĐẦU AUTO"
+    StartBtn.BackgroundColor3 = getgenv().AutoQ and Color3.fromRGB(0,200,0) or Color3.fromRGB(200,0,0)
 end)
 
--- 3. AUTO SKILL E - CÓ KHÓA CHỐNG CRASH
-createBtn("Auto Skill E + Godmode", function(on)
-    if on then
-        return task.spawn(function()
-            while on and task.wait(0.5) do -- Delay 0.5s cho chắc
-                pcall(function()
-                    if not Char or Hum.Health <= 0 or isAttacking then return end
-                    isAttacking = true
-                    Hum.Health = Hum.MaxHealth
-                    VIM:SendKeyEvent(true, Enum.KeyCode.E, false, game)
-                    task.wait(0.2)
-                    VIM:SendKeyEvent(false, Enum.KeyCode.E, false, game)
-                    task.wait(0.5) -- Đợi skill ra hết
-                    isAttacking = false
-                end)
-            end)
-        end)
-    end
-end)
-
--- 4. AUTO KILL BOSS ĐỨNG XA
-createBtn("Auto Kill Boss - Đứng xa", function(on)
-    if on then
-        return RS.RenderStepped:Connect(function()
-            pcall(function()
-                if isAttacking then return end
-                for _, boss in pairs(workspace:GetChildren()) do
-                    local hum = boss:FindFirstChild("Humanoid")
-                    local hrp = boss:FindFirstChild("HumanoidRootPart")
-                    if boss:IsA("Model") and hum and hrp then
-                        if hum.MaxHealth > 50000 and hum.Health > 0 then
-                            HRP.CFrame = CFrame.lookAt(HRP.Position, hrp.Position)
-                        end
+-- HÀM NHẬN Q TỪ XA
+function NhanQuestTuXa(tenBoss)
+    pcall(function()
+        -- Cách 1: Fire remote nhận Q nếu game có
+        for _,v in pairs(RS:GetDescendants()) do
+            if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then
+                if string.find(v.Name:lower(), "quest") or string.find(v.Name:lower(), "mission") or string.find(v.Name:lower(), "accept") then
+                    if v:IsA("RemoteEvent") then
+                        v:FireServer(tenBoss) -- Thử gửi tên boss
+                        v:FireServer("Strax") -- Thử gửi tên NPC
+                        v:FireServer("Map3") -- Thử gửi map
+                    else
+                        v:InvokeServer(tenBoss)
                     end
                 end
-            end)
-        end)
-    end
-end)
+            end
+        end
 
--- 5. GODMODE RIÊNG
-createBtn("Godmode", function(on)
-    if on then
-        return RS.Heartbeat:Connect(function()
-            pcall(function() if Hum then Hum.Health = Hum.MaxHealth end end)
-        end)
-    end
-end)
-
--- 6. AUTO PHÊ PHA GIỮ C
-local dangSacKi = false
-createBtn("Auto Phê Pha <20% >90%", function(on)
-    if on then
-        return RS.Heartbeat:Connect(function()
-            pcall(function()
-                if not Char or isAttacking then return end
-                local kiPercent = getKiPercent()
-                if kiPercent < 20 and not dangSacKi then
-                    VIM:SendKeyEvent(true, Enum.KeyCode.C, false, game)
-                    dangSacKi = true
-                elseif kiPercent >= 90 and dangSacKi then
-                    VIM:SendKeyEvent(false, Enum.KeyCode.C, false, game)
-                    dangSacKi = false
+        -- Cách 2: Bấm GUI nếu nó load sẵn
+        task.wait(0.5)
+        for _,gui in pairs(Plr.PlayerGui:GetDescendants()) do
+            if gui:IsA("TextButton") and gui.Visible then
+                if string.find(gui.Text:lower(), "chấp nhận") or string.find(gui.Text:lower(), "accept") then
+                    firesignal(gui.MouseButton1Click)
                 end
+            end
+        end
+    end)
+end
+
+-- AUTO LOOP
+task.spawn(function()
+    while task.wait(1) do
+        if getgenv().AutoQ then
+            pcall(function()
+                -- 1. NHẬN Q TỪ XA, KHỎI TP TỚI STRAX
+                NhanQuestTuXa(ChonBoss)
+                task.wait(1)
+
+                -- 2. TP THẲNG TỚI BOSS
+                Plr.Character.HumanoidRootPart.CFrame = BossList[ChonBoss] * CFrame.new(0,5,0)
+                game.StarterGui:SetCore("SendNotification",{Title="Auto Q Remote",Text="Đã nhận Q + TP: "..ChonBoss,Duration=3})
+                task.wait(6)
             end)
-        end)
-    else
-        if dangSacKi then
-            VIM:SendKeyEvent(false, Enum.KeyCode.C, false, game)
-            dangSacKi = false
         end
     end
 end)
 
--- 7. AUTO FORM CHỐNG SPAM
-local formCooldown = false
-createBtn("Auto Form - Check Form", function(on)
-    if on then
-        return task.spawn(function()
-            while on and task.wait(0.5) do
-                pcall(function()
-                    if not Char or isAttacking then return end
-                    local stats = Char:FindFirstChild("Stats")
-                    if not stats or not stats:FindFirstChild("Form") then return end
-                    
-                    local dangForm = stats.Form.Value ~= "Base"
-                    
-                    if not dangForm and not formCooldown then
-                        formCooldown = true
-                        isAttacking = true
-                        VIM:SendKeyEvent(true, Enum.KeyCode.Y, false, game)
-                        task.wait(0.2)
-                        VIM:SendKeyEvent(false, Enum.KeyCode.Y, false, game)
-                        task.wait(3)
-                        isAttacking = false
-                        formCooldown = false
-                    end
-                end)
-            end)
-        end)
-    end
-end)
-
--- 8. AUTO NHẶT KI
-createBtn("Auto Nhặt Ki", function(on)
-    if on then
-        return RS.Heartbeat:Connect(function()
-            pcall(function()
-                for _, v in pairs(workspace:GetChildren()) do
-                    if v.Name == "Ki" and v:IsA("Part") then
-                        v.CFrame = HRP.CFrame
-                    end
-                end
-            end)
-        end)
-    end
-end)
-
--- 9. AUTO DUNGEON
-createBtn("Auto Vào Dungeon", function(on)
-    if on then
-        return RS.Heartbeat:Connect(function()
-            pcall(function()
-                for _, v in pairs(workspace:GetChildren()) do
-                    if v.Name == "DungeonStart" and v:IsA("Part") then
-                        HRP.CFrame = v.CFrame
-                    end
-                end
-            end)
-        end)
-    end
-end)
-
-local Toggle = Instance.new("TextButton", Gui)
-Toggle.Size = UDim2.new(0, 100, 0, 30)
-Toggle.Position = UDim2.new(0, 10, 0, 10)
-Toggle.Text = "Ẩn/Hiện"
-Toggle.BackgroundColor3 = Color3.fromRGB(90, 45, 130)
-Toggle.TextColor3 = Color3.new(1,1,1)
-Toggle.MouseButton1Click:Connect(function()
-    Main.Visible = not Main.Visible
-end)
-
-Plr.CharacterAdded:Connect(function(newChar)
-    Char = newChar
-    HRP = newChar:WaitForChild("HumanoidRootPart")
-    Hum = newChar:WaitForChild("Humanoid")
-end)
-
-print("Dragon Blox V3 - ANTI CRASH LOADED")
+print("BẢN REMOTE Q: KHỎI TP TỚI STRAX")
