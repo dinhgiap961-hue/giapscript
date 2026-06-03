@@ -1,4 +1,4 @@
--- AUTO DUNGEON V3 + AUTO PUNCH FIX V2
+-- AUTO DUNGEON V3 + AUTO PUNCH FINAL V2 - CLICK THẬT
 local Plr = game.Players.LocalPlayer
 local RS = game:GetService("ReplicatedStorage")
 local VIM = game:GetService("VirtualInputManager")
@@ -64,7 +64,7 @@ Btn.MouseButton1Click:Connect(function()
     Btn.Text = "AUTO DUNGEON V3"
 end)
 
--- FIX AUTO PUNCH V2 - TRUYỀN CFrame
+-- AUTO PUNCH FINAL V2 - FAKE CLICK CHUỘT THẬT
 local AutoPunch = false
 local PunchBtn = Instance.new("TextButton", Gui)
 PunchBtn.Size = UDim2.new(0, 180, 0, 40)
@@ -75,8 +75,6 @@ PunchBtn.TextColor3 = Color3.fromRGB(255,255,255)
 PunchBtn.TextScaled = true
 PunchBtn.Font = Enum.Font.SourceSansBold
 
-local PunchRemote = RS:WaitForChild("Packages"):WaitForChild("_Index"):WaitForChild("sleitnick_knit@1.4.7"):WaitForChild("knit"):WaitForChild("Services"):WaitForChild("CombatService"):WaitForChild("RF"):WaitForChild("Punch")
-
 PunchBtn.MouseButton1Click:Connect(function()
     AutoPunch = not AutoPunch
     if AutoPunch then
@@ -84,21 +82,30 @@ PunchBtn.MouseButton1Click:Connect(function()
         PunchBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
         task.spawn(function()
             while AutoPunch do
-                local char = Plr.Character
-                local hrp = char and char:FindFirstChild("HumanoidRootPart")
-                if hrp then
+                local punchButton = Plr.PlayerGui:FindFirstChild("Mobile") 
+                    and Plr.PlayerGui.Mobile:FindFirstChild("Mobile") 
+                    and Plr.PlayerGui.Mobile.Mobile:FindFirstChild("RA")
+                
+                if punchButton and punchButton.Visible then
                     pcall(function()
-                        -- Chốt: Truyền CFrame của m vào, hết lỗi nil Position
-                        local args = {
-                            [1] = 1, -- 1 = tay trái, 2 = tay phải
-                            [2] = hrp.CFrame -- Fake vị trí chuột = vị trí m đứng
-                        }
-                        PunchRemote:InvokeServer(unpack(args))
+                        -- FAKE CLICK CHUỘT THẬT VÀO TỌA ĐỘ NÚT
+                        local pos = punchButton.AbsolutePosition
+                        local size = punchButton.AbsoluteSize
+                        local x = pos.X + size.X / 2 -- click giữa nút
+                        local y = pos.Y + size.Y / 2
+                        
+                        VIM:SendMouseButtonEvent(x, y, 0, true, game, 1)
+                        task.wait(0.05)
+                        VIM:SendMouseButtonEvent(x, y, 0, false, game, 1)
                     end)
                 end
-                task.wait(0.2) -- Để 0.2s cho đỡ lag, game này spam nhanh nó kick
+                task.wait(0.15)
             end
         end)
     else
         PunchBtn.Text = "AUTO PUNCH: OFF"
-        PunchBtn.BackgroundColor3 = Color3.fromRGB(200
+        PunchBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+    end
+end)
+
+print("V3 FINAL V2: Fake click chuột thật vào nút RA")
