@@ -1,111 +1,108 @@
--- AUTO DUNGEON V3 + AUTO PUNCH FINAL V2 - CLICK THẬT
-local Plr = game.Players.LocalPlayer
-local RS = game:GetService("ReplicatedStorage")
-local VIM = game:GetService("VirtualInputManager")
+local Player = game:GetService("Players").LocalPlayer
+local RunService = game:GetService("RunService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 
-local function VaoDungeon()
-    pcall(function()
-        RS:WaitForChild("Packages"):WaitForChild("_Index"):WaitForChild("sleitnick_knit@1.4.7"):WaitForChild("knit"):WaitForChild("Services"):WaitForChild("DungeonLobbyService"):WaitForChild("RF"):WaitForChild("StartDungeon"):InvokeServer()
-    end)
-end
+-- Reset GUI cũ
+local oldGui = Player:WaitForChild("PlayerGui"):FindFirstChild("AutoBossGui")
+if oldGui then oldGui:Destroy() end
 
-local function BamBatDau()
-    task.wait(4)
-    for _,prompt in pairs(workspace:GetDescendants()) do
-        if prompt:IsA("ProximityPrompt") and prompt.Enabled then
-            local text = string.lower(prompt.ActionText..prompt.ObjectText..prompt.Name)
-            if string.find(text, "bắt") or string.find(text, "start") then
-                if prompt.Parent and prompt.Parent:IsA("BasePart") then
-                    local hrp = Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart")
-                    if hrp then hrp.CFrame = prompt.Parent.CFrame end
-                    task.wait(0.5)
-                end
-                prompt.HoldDuration = 0
-                prompt.RequiresLineOfSight = false
-                fireproximityprompt(prompt)
-                return true
-            end
-        end
-    end
-    for _,gui in pairs(Plr.PlayerGui:GetDescendants()) do
-        if gui:IsA("TextLabel") and string.lower(gui.Text) == "bắt đầu" then
-            local btn = gui:FindFirstAncestorWhichIsA("GuiButton")
-            if btn and btn.Visible then firesignal(btn.MouseButton1Click) return true end
-        end
-        if gui:IsA("TextButton") and string.lower(gui.Text) == "bắt đầu" then firesignal(gui.MouseButton1Click) return true end
-    end
-    VIM:SendKeyEvent(true, "E", false, game)
-    task.wait(0.1)
-    VIM:SendKeyEvent(false, "E", false, game)
-    return true
-end
+local Screen = Instance.new("ScreenGui", Player:WaitForChild("PlayerGui"))
+Screen.Name = "AutoBossGui"
+Screen.ResetOnSpawn = false
 
--- GUI
-if game.CoreGui:FindFirstChild("AutoDungeonV3") then game.CoreGui.AutoDungeonV3:Destroy() end
-local Gui = Instance.new("ScreenGui", game.CoreGui)
-Gui.Name = "AutoDungeonV3"
-
-local Btn = Instance.new("TextButton", Gui)
-Btn.Size = UDim2.new(0, 180, 0, 40)
-Btn.Position = UDim2.new(0, 10, 0.5, -20)
-Btn.Text = "AUTO DUNGEON V3"
-Btn.BackgroundColor3 = Color3.fromRGB(255, 100, 0)
-Btn.TextColor3 = Color3.fromRGB(255,255,255)
-Btn.TextScaled = true
+local Btn = Instance.new("TextButton", Screen)
+Btn.Size = UDim2.new(0, 160, 0, 50)
+Btn.Position = UDim2.new(0.8, 0, 0.4, 0)
+Btn.Text = "AUTO BOSS: OFF"
+Btn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
 Btn.Font = Enum.Font.SourceSansBold
+Btn.TextSize = 16
 
-Btn.MouseButton1Click:Connect(function()
-    Btn.Text = "1. VÀO LOBBY..."
-    VaoDungeon()
-    Btn.Text = "2. BẤM BẮT ĐẦU..."
-    local done = BamBatDau()
-    if done then game.StarterGui:SetCore("SendNotification",{Title="OK",Text="Đã bấm Bắt đầu",Duration=2}) end
-    task.wait(1)
-    Btn.Text = "AUTO DUNGEON V3"
+-- Hệ thống kéo thả nút
+local UserInputService = game:GetService("UserInputService")
+local dragging, dragInput, dragStart, startPos
+Btn.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true; dragStart = input.Position; startPos = Btn.Position
+    end
+end)
+Btn.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        Btn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+Btn.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end
 end)
 
--- AUTO PUNCH FINAL V2 - FAKE CLICK CHUỘT THẬT
-local AutoPunch = false
-local PunchBtn = Instance.new("TextButton", Gui)
-PunchBtn.Size = UDim2.new(0, 180, 0, 40)
-PunchBtn.Position = UDim2.new(0, 10, 0.5, 25)
-PunchBtn.Text = "AUTO PUNCH: OFF"
-PunchBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-PunchBtn.TextColor3 = Color3.fromRGB(255,255,255)
-PunchBtn.TextScaled = true
-PunchBtn.Font = Enum.Font.SourceSansBold
+local Active = false
+Btn.MouseButton1Click:Connect(function()
+    Active = not Active
+    Btn.Text = Active and "AUTO BOSS: ON" or "AUTO BOSS: OFF"
+    Btn.BackgroundColor3 = Active and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 0, 0)
+end)
 
-PunchBtn.MouseButton1Click:Connect(function()
-    AutoPunch = not AutoPunch
-    if AutoPunch then
-        PunchBtn.Text = "AUTO PUNCH: ON"
-        PunchBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-        task.spawn(function()
-            while AutoPunch do
-                local punchButton = Plr.PlayerGui:FindFirstChild("Mobile") 
-                    and Plr.PlayerGui.Mobile:FindFirstChild("Mobile") 
-                    and Plr.PlayerGui.Mobile.Mobile:FindFirstChild("RA")
-                
-                if punchButton and punchButton.Visible then
-                    pcall(function()
-                        -- FAKE CLICK CHUỘT THẬT VÀO TỌA ĐỘ NÚT
-                        local pos = punchButton.AbsolutePosition
-                        local size = punchButton.AbsoluteSize
-                        local x = pos.X + size.X / 2 -- click giữa nút
-                        local y = pos.Y + size.Y / 2
-                        
-                        VIM:SendMouseButtonEvent(x, y, 0, true, game, 1)
-                        task.wait(0.05)
-                        VIM:SendMouseButtonEvent(x, y, 0, false, game, 1)
-                    end)
-                end
-                task.wait(0.15)
+-- HÀM QUÉT SÂU (Tìm Boss ở TẤT CẢ các thư mục ẩn)
+local function FindBossDeep()
+    -- Quét toàn bộ mọi ngóc ngách trong Workspace
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v:IsA("Model") and v:FindFirstChild("HumanoidRootPart") then
+            local nameLower = string.lower(v.Name)
+            -- Kiểm tra xem tên có chứa chữ "atom" hoặc "max" không
+            if string.find(nameLower, "atom") or string.find(nameLower, "max") then
+                return v
             end
-        end)
-    else
-        PunchBtn.Text = "AUTO PUNCH: OFF"
-        PunchBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+        end
+    end
+    return nil
+end
+
+-- Vòng lặp Dịch Chuyển & Ghim Đầu
+RunService.Heartbeat:Connect(function()
+    if Active then
+        local Char = Player.Character
+        local Boss = FindBossDeep()
+        
+        if Boss and Char and Char:FindFirstChild("HumanoidRootPart") then
+            local Humanoid = Char:FindFirstChildOfClass("Humanoid")
+            if Humanoid then
+                -- Giúp nhân vật không bị vấp ngã khi đứng trên không
+                Humanoid.PlatformStand = true 
+            end
+            
+            -- Ghim vị trí trên đầu Boss 15 gốc tọa độ
+            local TargetPos = Boss.HumanoidRootPart.Position + Vector3.new(0, 15, 0)
+            Char.HumanoidRootPart.CFrame = CFrame.new(TargetPos, Boss.HumanoidRootPart.Position)
+            
+            -- Đóng băng vận tốc (Tránh bị đẩy lùi hoặc rớt)
+            Char.HumanoidRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+        else
+            -- Nếu tắt Auto hoặc không thấy Boss, trả lại trạng thái đứng bình thường
+            local Char = Player.Character
+            if Char then
+                local Humanoid = Char:FindFirstChildOfClass("Humanoid")
+                if Humanoid then Humanoid.PlatformStand = false end
+            end
+        end
     end
 end)
 
-print("V3 FINAL V2: Fake click chuột thật vào nút RA")
+-- Vòng lặp Spam Phím E
+task.spawn(function()
+    while true do
+        if Active then
+            local Boss = FindBossDeep()
+            if Boss then
+                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+                task.wait(0.05)
+                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+            end
+        end
+        task.wait(0.2)
+    end
+end)
