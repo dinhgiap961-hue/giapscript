@@ -1,4 +1,4 @@
--- AUTO DUNGEON V3 - QUÉT SẠCH + GIẢ LẬP E + AUTO ĐẤM
+-- AUTO DUNGEON V3 + AUTO PUNCH FIX NIL ERROR
 local Plr = game.Players.LocalPlayer 
 local RS = game:GetService("ReplicatedStorage") 
 local VIM = game:GetService("VirtualInputManager") 
@@ -10,13 +10,11 @@ local function VaoDungeon()
 end 
 
 local function BamBatDau() 
-    task.wait(4) -- Đợi 4s cho load hết 
-    -- CÁCH 1: FIRE PROXIMITYPROMPT 
+    task.wait(4)
     for _,prompt in pairs(workspace:GetDescendants()) do 
         if prompt:IsA("ProximityPrompt") and prompt.Enabled then 
             local text = string.lower(prompt.ActionText..prompt.ObjectText..prompt.Name) 
             if string.find(text, "bắt") or string.find(text, "start") then 
-                -- TP tới sát prompt 
                 if prompt.Parent and prompt.Parent:IsA("BasePart") then 
                     local hrp = Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart")
                     if hrp then hrp.CFrame = prompt.Parent.CFrame end
@@ -30,7 +28,6 @@ local function BamBatDau()
             end 
         end 
     end 
-    -- CÁCH 2: BẤM GUI BUTTON 
     for _,gui in pairs(Plr.PlayerGui:GetDescendants()) do 
         if gui:IsA("TextLabel") and string.lower(gui.Text) == "bắt đầu" then 
             local btn = gui:FindFirstAncestorWhichIsA("GuiButton") 
@@ -46,7 +43,6 @@ local function BamBatDau()
             return true 
         end 
     end 
-    -- CÁCH 3: GIẢ LẬP BẤM E - CHỐT HẠ 
     print("Không thấy prompt, giả lập bấm E") 
     VIM:SendKeyEvent(true, "E", false, game) 
     task.wait(0.1) 
@@ -59,7 +55,6 @@ if game.CoreGui:FindFirstChild("AutoDungeonV3") then game.CoreGui.AutoDungeonV3:
 local Gui = Instance.new("ScreenGui", game.CoreGui) 
 Gui.Name = "AutoDungeonV3" 
 
--- NÚT DUNGEON
 local Btn = Instance.new("TextButton", Gui) 
 Btn.Size = UDim2.new(0, 180, 0, 40) 
 Btn.Position = UDim2.new(0, 10, 0.5, -20) 
@@ -81,34 +76,16 @@ Btn.MouseButton1Click:Connect(function()
     Btn.Text = "AUTO DUNGEON V3" 
 end) 
 
--- THÊM NÚT AUTO ĐẤM
+-- FIX AUTO PUNCH - DÙNG REMOTE THAY VÌ TOOL
 local AutoPunch = false
 local PunchBtn = Instance.new("TextButton", Gui)
 PunchBtn.Size = UDim2.new(0, 180, 0, 40)
-PunchBtn.Position = UDim2.new(0, 10, 0.5, 25) -- Nằm dưới nút dungeon
+PunchBtn.Position = UDim2.new(0, 10, 0.5, 25)
 PunchBtn.Text = "AUTO PUNCH: OFF"
 PunchBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
 PunchBtn.TextColor3 = Color3.fromRGB(255,255,255)
 PunchBtn.TextScaled = true
 PunchBtn.Font = Enum.Font.SourceSansBold
 
-PunchBtn.MouseButton1Click:Connect(function()
-    AutoPunch = not AutoPunch
-    if AutoPunch then
-        PunchBtn.Text = "AUTO PUNCH: ON"
-        PunchBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-        task.spawn(function()
-            while AutoPunch do
-                VIM:SendMouseButtonEvent(0, 0, 0, true, game, 0)
-                task.wait()
-                VIM:SendMouseButtonEvent(0, 0, 0, false, game, 0)
-                task.wait(0.08) -- Tốc độ đấm, 0.08 là nhanh
-            end
-        end)
-    else
-        PunchBtn.Text = "AUTO PUNCH: OFF"
-        PunchBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-    end
-end)
-
-print("V3: Thử 3 cách - Prompt -> GUI -> Giả lập E + Auto Punch")
+-- Lấy remote đấm của Dragon Blox
+local PunchRemote = RS:WaitForChild("Packages"):WaitForChild("_Index"):WaitForChild("sleitnick_knit@1.4.7"):WaitForChild("knit"):WaitForChild("
