@@ -1,8 +1,8 @@
 local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local window = library.CreateLib("Dragon Blox - Fix Lock Skill", "DarkTheme")
+local window = library.CreateLib("Dragon Blox - Auto Gộp v8", "DarkTheme")
 
 local tab = window:NewTab("Auto Farm Boss")
-local section = tab:NewSection("Cấu Hình Farm Boss")
+local section = tab:NewSection("Cấu Hình Treo Máy")
 
 local RunService = game:GetService("RunService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
@@ -42,7 +42,7 @@ local function findLivingBoss()
     return targetHrp
 end
 
--- 1. VÒNG LẶP CHÍNH: TỰ ĐỘNG TELEPORT & SPAM E
+-- VÒNG LẶP CHÍNH: TELEPORT + SPAM E + TỰ ĐỘNG XÓA HOẠT ẢNH
 local function startFarmLoop()
     if mainConnection then mainConnection:Disconnect() end
     
@@ -54,12 +54,14 @@ local function startFarmLoop()
         
         local character = LocalPlayer.Character
         local myHrp = character and character:FindFirstChild("HumanoidRootPart")
+        local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+        
         if not myHrp or not myHrp.Parent then return end
         
         local bossHrp = findLivingBoss()
         
         if bossHrp then
-            -- Ghim chặt theo vị trí di chuyển của Boss ở độ cao 9.5 studs
+            -- 1. Ghim chặt theo vị trí di chuyển của Boss ở độ cao 9.5 studs
             myHrp.CFrame = bossHrp.CFrame * CFrame.new(0, HEIGHT_ABOVE, 0)
             myHrp.Velocity = Vector3.new(0, 0, 0)
         else
@@ -68,7 +70,20 @@ local function startFarmLoop()
             myHrp.Velocity = Vector3.new(0, 0, 0)
         end
         
-        -- Spam Chuột trái + Phím E cực nhanh
+        -- 2. TỰ ĐỘNG XÓA HOẠT ẢNH SKILL NGẦM (Chạy trực tiếp bên trong vòng lặp farm)
+        if humanoid then
+            local animator = humanoid:FindFirstChildOfClass("Animator") or humanoid
+            if animator then
+                for _, track in pairs(animator:GetPlayingAnimationTracks()) do
+                    -- Chặn đứng mọi hoạt ảnh gồng chiêu/đấm đá để giảm tải cho game
+                    if track.Name ~= "Idle" and track.Name ~= "Animate" then
+                        track:Stop(0)
+                    end
+                end
+            end
+        end
+        
+        -- 3. Spam Chuột trái + Phím E cực nhanh
         local currentTime = tick()
         if currentTime - lastActionTime >= 0.15 then
             lastActionTime = currentTime
@@ -86,14 +101,13 @@ local function startFarmLoop()
     end)
 end
 
--- 2. VÒNG LẶP RIÊNG: KHÓA CAMERA (LOCK SKILL)
+-- VÒNG LẶP RIÊNG: KHÓA CAMERA (LOCK SKILL)
 local function startLockLoop()
     if lockConnection then lockConnection:Disconnect() end
     
     lockConnection = RunService.RenderStepped:Connect(function()
         if not LockSkillActive then
             if lockConnection then lockConnection:Disconnect() end
-            -- Trả lại xoay người tự do khi tắt nút lock
             local character = LocalPlayer.Character
             if character and character:FindFirstChildOfClass("Humanoid") then
                 character.Humanoid.AutoRotate = true
@@ -106,7 +120,6 @@ local function startLockLoop()
         local bossHrp = findLivingBoss()
         
         if myHrp and bossHrp then
-            -- Khóa hướng nhân vật và Camera nhìn thẳng vào Boss
             character.Humanoid.AutoRotate = false
             myHrp.CFrame = CFrame.new(myHrp.Position, Vector3.new(bossHrp.Position.X, myHrp.Position.Y, bossHrp.Position.Z))
             Camera.CFrame = CFrame.new(Camera.CFrame.Position, bossHrp.Position)
@@ -118,10 +131,12 @@ local function startLockLoop()
     end)
 end
 
--- GIAO DIỆN MENU KAVO UI TRÊN DELTA
+-- ==========================================
+-- GIAO DIỆN MENU KAVO UI SAU KHI ĐÃ GỘP TỐI GIẢN
+-- ==========================================
 
--- Nút Tự động Farm (Tách biệt)
-section:NewToggle("Auto Lock & Spam E (9.5 Studs)", "Ghim theo Boss cách 9.5 studs và liên tục spam E + Đấm", function(state)
+-- Bật nút này là tự động bay, tự động spam E và tự động ẩn hoạt ảnh chống lag luôn
+section:NewToggle("Auto Lock & Spam E (9.5 Studs)", "Ghim Boss cách 9.5 studs, tự spam E và ẩn hoạt ảnh lag", function(state)
     AutoFarmBoss = state
     if state then
         startFarmLoop()
@@ -130,14 +145,13 @@ section:NewToggle("Auto Lock & Spam E (9.5 Studs)", "Ghim theo Boss cách 9.5 st
     end
 end)
 
--- NÚT BẤM RIÊNG BIỆT CHO LOCK SKILL
+-- Nút Khóa mục tiêu (Giữ nguyên làm nút phụ để tùy chọn hướng camera)
 section:NewToggle("Lock Skill (Khóa Mục Tiêu)", "Khóa camera hướng chiêu E trực diện vào Boss", function(state)
     LockSkillActive = state
     if state then
         startLockLoop()
     else
         if lockConnection then lockConnection:Disconnect() end
-        -- Reset trạng thái xoay nhân vật khi tắt nút
         local character = LocalPlayer.Character
         if character and character:FindFirstChildOfClass("Humanoid") then
             character.Humanoid.AutoRotate = true
