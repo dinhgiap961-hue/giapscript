@@ -1,25 +1,26 @@
 local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
--- Lưu lại đối tượng Window để điều khiển ẩn/hiện
-local window = library.CreateLib("Dragon Blox - Premium Hub", "DarkTheme")
+local window = library.CreateLib("Dragon Blox - Fix Lock Skill", "DarkTheme")
 
 local tab = window:NewTab("Auto Farm Boss")
-local section = tab:NewSection("Cấu Hình Ghim Theo Boss")
+local section = tab:NewSection("Cấu Hình Farm Boss")
 
 local RunService = game:GetService("RunService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
 
--- CẤU HÌNH TỌA ĐỘ VÀ CHIỀU CAO (11 Studs)
+-- CẤU HÌNH TỌA ĐỘ VÀ CHIỀU CAO
 local BOSS_SPAWN_POS = Vector3.new(-431.7525939941406, 1352.32275390625, 93.17485046386719)
-local HEIGHT_ABOVE = 11
+local HEIGHT_ABOVE = 9.5 
 
 local AutoFarmBoss = false
-local skillKeys = {Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three, Enum.KeyCode.Four}
+local LockSkillActive = false
 local lastActionTime = 0
 local mainConnection
+local lockConnection
 
--- Hàm quét tìm Boss gần tọa độ để ghim vị trí liên tục
+-- Hàm quét tìm Boss gần tọa độ spawn để ghim vị trí
 local function findLivingBoss()
     local targetHrp = nil
     local minDistance = 150
@@ -41,7 +42,7 @@ local function findLivingBoss()
     return targetHrp
 end
 
--- Vòng lặp core xử lý bám đuôi Boss và xả chiêu thức
+-- 1. VÒNG LẶP CHÍNH: TỰ ĐỘNG TELEPORT & SPAM E
 local function startFarmLoop()
     if mainConnection then mainConnection:Disconnect() end
     
@@ -58,18 +59,18 @@ local function startFarmLoop()
         local bossHrp = findLivingBoss()
         
         if bossHrp then
-            -- Ghim chặt theo vị trí di chuyển thực tế của Boss
+            -- Ghim chặt theo vị trí di chuyển của Boss ở độ cao 9.5 studs
             myHrp.CFrame = bossHrp.CFrame * CFrame.new(0, HEIGHT_ABOVE, 0)
             myHrp.Velocity = Vector3.new(0, 0, 0)
         else
-            -- Đứng chờ lơ lửng tại điểm Spawn khi Boss chưa xuất hiện
+            -- Đứng chờ tại điểm Spawn khi Boss chưa xuất hiện
             myHrp.CFrame = CFrame.new(BOSS_SPAWN_POS.X, BOSS_SPAWN_POS.Y + HEIGHT_ABOVE, BOSS_SPAWN_POS.Z)
             myHrp.Velocity = Vector3.new(0, 0, 0)
         end
         
-        -- Auto Đấm thường & Xả chiêu thức
+        -- Spam Chuột trái + Phím E cực nhanh
         local currentTime = tick()
-        if currentTime - lastActionTime >= 0.25 then
+        if currentTime - lastActionTime >= 0.15 then
             lastActionTime = currentTime
             
             task.spawn(function()
@@ -77,43 +78,69 @@ local function startFarmLoop()
                 task.wait(0.01)
                 VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
                 
-                for _, key in ipairs(skillKeys) do
-                    if not AutoFarmBoss then break end
-                    VirtualInputManager:SendKeyEvent(true, key, false, game)
-                    task.wait(0.01)
-                    VirtualInputManager:SendKeyEvent(false, key, false, game)
-                end
+                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+                task.wait(0.01)
+                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
             end)
         end
     end)
 end
 
--- =========================================================
--- NÚT BẤM THU NHỎ GIAO DIỆN MANG TÊN "DinhGiap"
--- =========================================================
-section:NewToggle("DinhGiap", "Bật để THU NHỎ / Ẩn menu giao diện", function(state)
-    -- Thư viện Kavo UI hỗ trợ hàm đóng/mở UI bằng cách giả lập bấm nút đóng menu
-    local coreGui = game:GetService("CoreGui")
-    local kavoGui = coreGui:FindFirstChild("Kavo") or LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("Kavo")
+-- 2. VÒNG LẶP RIÊNG: KHÓA CAMERA (LOCK SKILL)
+local function startLockLoop()
+    if lockConnection then lockConnection:Disconnect() end
     
-    if kavoGui then
-        -- Tìm đến khung giao diện chính của menu và ẩn/hiện nó đi
-        local mainFrame = kavoGui:FindFirstChild("Main")
-        if mainFrame then
-            mainFrame.Visible = not state -- Nếu bật nút gạt thì ẩn Frame (Visible = false) và ngược lại
+    lockConnection = RunService.RenderStepped:Connect(function()
+        if not LockSkillActive then
+            if lockConnection then lockConnection:Disconnect() end
+            -- Trả lại xoay người tự do khi tắt nút lock
+            local character = LocalPlayer.Character
+            if character and character:FindFirstChildOfClass("Humanoid") then
+                character.Humanoid.AutoRotate = true
+            end
+            return
         end
-    end
-end)
+        
+        local character = LocalPlayer.Character
+        local myHrp = character and character:FindFirstChild("HumanoidRootPart")
+        local bossHrp = findLivingBoss()
+        
+        if myHrp and bossHrp then
+            -- Khóa hướng nhân vật và Camera nhìn thẳng vào Boss
+            character.Humanoid.AutoRotate = false
+            myHrp.CFrame = CFrame.new(myHrp.Position, Vector3.new(bossHrp.Position.X, myHrp.Position.Y, bossHrp.Position.Z))
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, bossHrp.Position)
+        else
+            if character and character:FindFirstChildOfClass("Humanoid") then
+                character.Humanoid.AutoRotate = true
+            end
+        end
+    end)
+end
 
--- Nút Bật/Tắt tính năng Auto Farm chính
-section:NewToggle("Auto Lock & Farm Boss (11 Studs)", "Ghim theo Boss và xả chiêu", function(state)
+-- GIAO DIỆN MENU KAVO UI TRÊN DELTA
+
+-- Nút Tự động Farm (Tách biệt)
+section:NewToggle("Auto Lock & Spam E (9.5 Studs)", "Ghim theo Boss cách 9.5 studs và liên tục spam E + Đấm", function(state)
     AutoFarmBoss = state
     if state then
         startFarmLoop()
     else
-        if mainConnection then
-            mainConnection:Disconnect()
-            mainConnection = nil
+        if mainConnection then mainConnection:Disconnect() end
+    end
+end)
+
+-- NÚT BẤM RIÊNG BIỆT CHO LOCK SKILL
+section:NewToggle("Lock Skill (Khóa Mục Tiêu)", "Khóa camera hướng chiêu E trực diện vào Boss", function(state)
+    LockSkillActive = state
+    if state then
+        startLockLoop()
+    else
+        if lockConnection then lockConnection:Disconnect() end
+        -- Reset trạng thái xoay nhân vật khi tắt nút
+        local character = LocalPlayer.Character
+        if character and character:FindFirstChildOfClass("Humanoid") then
+            character.Humanoid.AutoRotate = true
         end
     end
 end)
