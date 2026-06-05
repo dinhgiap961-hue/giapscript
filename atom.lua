@@ -1,11 +1,11 @@
 local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local window = library.CreateLib("Dragon Blox - Auto Gộp v8", "DarkTheme")
+-- Đổi tên tiêu đề cửa sổ chính thành DinhGiap Hub cho đồng bộ
+local window = library.CreateLib("Dragon Blox - DinhGiap Hub v13", "DarkTheme")
 
 local tab = window:NewTab("Auto Farm Boss")
 local section = tab:NewSection("Cấu Hình Treo Máy")
 
 local RunService = game:GetService("RunService")
-local VirtualInputManager = game:GetService("VirtualInputManager")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
@@ -19,6 +19,50 @@ local LockSkillActive = false
 local lastActionTime = 0
 local mainConnection
 local lockConnection
+
+-- ĐƯỜNG DẪN REMOTE VÀ CÁC THAM SỐ LẤY TỪ REMOTE SPY
+local SkillRemote = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("SkillRemote")
+local SKILL_NAME = "fushi"  -- Chiêu thức tấn công của bạn
+local FORM_NAME = "Form"    -- Trạng thái biến hình tăng sức mạnh
+
+-- =========================================================================
+-- TẠO NÚT BẤM TRÒN "DinhGiap" TRÊN MÀN HÌNH ĐỂ THU NHỎ / MỞ LẠI MENU KAVO
+-- =========================================================================
+-- Thiết lập phím tắt ẩn/hiện mặc định của Kavo là nút này
+library:ToggleKey(Enum.KeyCode.RightControl) 
+
+local ScreenGui = Instance.new("ScreenGui")
+local MenuButton = Instance.new("TextButton")
+local UICorner = Instance.new("UICorner")
+
+-- Đặt tên cho GUI tránh bị game quét
+ScreenGui.Name = "DinhGiap_Gui_Protected"
+ScreenGui.Parent = game:GetService("CoreGui") or LocalPlayer:WaitForChild("PlayerGui")
+
+-- Cấu hình thuộc tính nút bấm DinhGiap
+MenuButton.Name = "DinhGiapButton"
+MenuButton.Parent = ScreenGui
+MenuButton.Size = UDim2.new(0, 80, 0, 35) -- Kích thước nút bấm
+MenuButton.Position = UDim2.new(0, 15, 0, 15) -- Vị trí nút ở góc trên bên trái màn hình
+MenuButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30) -- Màu nền xám đen cực ngầu
+MenuButton.Text = "DinhGiap"
+MenuButton.TextColor3 = Color3.fromRGB(255, 170, 0) -- Màu chữ vàng cam nổi bật
+MenuButton.Font = Enum.Font.SourceSansBold
+MenuButton.TextSize = 16
+MenuButton.Active = true
+MenuButton.Draggable = true -- Bạn có thể dùng tay kéo nút này đi bất kỳ đâu trên màn hình cho đỡ vướng
+
+UICorner.CornerRadius = UDim.new(0, 8) -- Bo tròn góc nút bấm cho đẹp
+UICorner.Parent = MenuButton
+
+-- Xử lý hành động khi ấn vào nút DinhGiap trên màn hình
+MenuButton.MouseButton1Click:Connect(function()
+    -- Giả lập nhấn phím ẩn/hiện của thư viện Kavo UI để thu nhỏ hoặc mở menu
+    game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode.RightControl, false, game)
+    task.wait(0.01)
+    game:GetService("VirtualInputManager"):SendKeyEvent(false, Enum.KeyCode.RightControl, false, game)
+end)
+-- =========================================================================
 
 -- Hàm quét tìm Boss gần tọa độ spawn để ghim vị trí
 local function findLivingBoss()
@@ -42,7 +86,7 @@ local function findLivingBoss()
     return targetHrp
 end
 
--- VÒNG LẶP CHÍNH: TELEPORT + SPAM E + TỰ ĐỘNG XÓA HOẠT ẢNH
+-- VÒNG LẶP CHÍNH: TELEPORT + KHÓA ANIMATION + SPAM REMOTE (SKILL & FORM)
 local function startFarmLoop()
     if mainConnection then mainConnection:Disconnect() end
     
@@ -61,21 +105,18 @@ local function startFarmLoop()
         local bossHrp = findLivingBoss()
         
         if bossHrp then
-            -- 1. Ghim chặt theo vị trí di chuyển của Boss ở độ cao 9.5 studs
             myHrp.CFrame = bossHrp.CFrame * CFrame.new(0, HEIGHT_ABOVE, 0)
             myHrp.Velocity = Vector3.new(0, 0, 0)
         else
-            -- Đứng chờ tại điểm Spawn khi Boss chưa xuất hiện
             myHrp.CFrame = CFrame.new(BOSS_SPAWN_POS.X, BOSS_SPAWN_POS.Y + HEIGHT_ABOVE, BOSS_SPAWN_POS.Z)
             myHrp.Velocity = Vector3.new(0, 0, 0)
         end
         
-        -- 2. TỰ ĐỘNG XÓA HOẠT ẢNH SKILL NGẦM (Chạy trực tiếp bên trong vòng lặp farm)
+        -- TỰ ĐỘNG KHÓA HOẠT ẢNH CHỐNG LAG VÀ TRÀN BỘ NHỚ
         if humanoid then
             local animator = humanoid:FindFirstChildOfClass("Animator") or humanoid
             if animator then
                 for _, track in pairs(animator:GetPlayingAnimationTracks()) do
-                    -- Chặn đứng mọi hoạt ảnh gồng chiêu/đấm đá để giảm tải cho game
                     if track.Name ~= "Idle" and track.Name ~= "Animate" then
                         track:Stop(0)
                     end
@@ -83,19 +124,17 @@ local function startFarmLoop()
             end
         end
         
-        -- 3. Spam Chuột trái + Phím E cực nhanh
+        -- XẢ HÀM REMOTE SIÊU TỐC ĐỘ (0.05 GIÂY / LẦN)
         local currentTime = tick()
-        if currentTime - lastActionTime >= 0.15 then
+        if currentTime - lastActionTime >= 0.05 then 
             lastActionTime = currentTime
             
             task.spawn(function()
-                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
-                task.wait(0.01)
-                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+                -- 1. Kích hoạt chiêu thức "fushi" đấm Boss liên tục ngầm
+                SkillRemote:FireServer(SKILL_NAME)
                 
-                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
-                task.wait(0.01)
-                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+                -- 2. Kích hoạt trạng thái "Form" tự động vận sức biến hình ngầm
+                SkillRemote:FireServer(FORM_NAME)
             end)
         end
     end)
@@ -131,12 +170,8 @@ local function startLockLoop()
     end)
 end
 
--- ==========================================
--- GIAO DIỆN MENU KAVO UI SAU KHI ĐÃ GỘP TỐI GIẢN
--- ==========================================
-
--- Bật nút này là tự động bay, tự động spam E và tự động ẩn hoạt ảnh chống lag luôn
-section:NewToggle("Auto Lock & Spam E (9.5 Studs)", "Ghim Boss cách 9.5 studs, tự spam E và ẩn hoạt ảnh lag", function(state)
+-- MENU KAVO UI TRÊN DELTA MOBILE
+section:NewToggle("Auto Farm Boss Remote Ultimate", "Teleport ghim Boss, tự động hóa 100% chiêu fushi & Form biến hình ngầm", function(state)
     AutoFarmBoss = state
     if state then
         startFarmLoop()
@@ -145,8 +180,7 @@ section:NewToggle("Auto Lock & Spam E (9.5 Studs)", "Ghim Boss cách 9.5 studs, 
     end
 end)
 
--- Nút Khóa mục tiêu (Giữ nguyên làm nút phụ để tùy chọn hướng camera)
-section:NewToggle("Lock Skill (Khóa Mục Tiêu)", "Khóa camera hướng chiêu E trực diện vào Boss", function(state)
+section:NewToggle("Lock Skill (Khóa Mục Tiêu)", "Khóa hướng nhìn nhân vật trực diện vào Boss", function(state)
     LockSkillActive = state
     if state then
         startLockLoop()
