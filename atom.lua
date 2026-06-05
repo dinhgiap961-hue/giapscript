@@ -1,21 +1,26 @@
--- XÓA CÁC GUI CŨ NẾU CÓ ĐỂ TRÁNH TRÙNG LẶP NÚT BẤM
-if game:GetService("CoreGui"):FindFirstChild("DinhGiap_System_Gui") then
-    game:GetService("CoreGui")["DinhGiap_System_Gui"]:Destroy()
+-- XÓA MENU CŨ NẾU CÓ ĐỂ TRÁNH XUNG ĐỘT
+if game:GetService("CoreGui"):FindFirstChild("Orion") then
+    game:GetService("CoreGui")["Orion"]:Destroy()
 end
 
-local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local window = library.CreateLib("Dragon Blox - DinhGiap Hub v14", "DarkTheme")
+-- KHỞI CHẠY THƯ VIỆN ORION UI CHUYÊN DỤNG CHO MOBILE
+local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
 
--- SỬA LỖI HIỂN THỊ: Khởi tạo chính xác Tab và Section để không bị trống menu
-local MainTab = window:NewTab("Auto Farm Boss")
-local MainSection = MainTab:NewSection("Cấu Hình Treo Máy")
+-- Tạo Cửa Sổ Menu Chính
+local Window = OrionLib:MakeWindow({
+    Name = "DinhGiap Hub - Dragon Blox v15", 
+    HidePremium = false, 
+    SaveConfig = false, 
+    IntroText = "Loading DinhGiap Hub...",
+    ConfigFolder = "OrionConfig"
+})
 
+-- HỆ THỐNG BIẾN CHẠY NGẦM
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
--- CẤU HÌNH TỌA ĐỘ VÀ CHIỀU CAO Ghim Boss
 local BOSS_SPAWN_POS = Vector3.new(-431.7525939941406, 1352.32275390625, 93.17485046386719)
 local HEIGHT_ABOVE = 9.5 
 
@@ -25,59 +30,12 @@ local lastActionTime = 0
 local mainConnection
 local lockConnection
 
--- ĐƯỜNG DẪN REMOTE ĐÃ TÌM ĐƯỢC
+-- ĐƯỜNG DẪN GÓI TIN REMOTE TỪ REMOTE SPY
 local SkillRemote = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("SkillRemote")
 local SKILL_NAME = "fushi"
 local FORM_NAME = "Form"
 
--- =========================================================================
--- HỆ THỐNG NÚT BẤM NỔI "DinhGiap" CHUYÊN NGHIỆP TRÊN DI ĐỘNG
--- =========================================================================
-library:ToggleKey(Enum.KeyCode.RightControl) -- Đặt phím gốc ẩn hiện menu
-
-local DinhGiapGui = Instance.new("ScreenGui")
-local ToggleButton = Instance.new("TextButton")
-local CornerEffect = Instance.new("UICorner")
-local StrokeEffect = Instance.new("UIStroke")
-
-DinhGiapGui.Name = "DinhGiap_System_Gui"
-DinhGiapGui.Parent = game:GetService("CoreGui")
-DinhGiapGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-
--- Thiết lập ngoại hình nút bấm nổi DinhGiap
-ToggleButton.Name = "MainToggleButton"
-ToggleButton.Parent = DinhGiapGui
-ToggleButton.Size = UDim2.new(0, 90, 0, 40)
-ToggleButton.Position = UDim2.new(0.05, 0, 0.15, 0) -- Xuất hiện ở phía trên góc trái, vừa tầm tay
-ToggleButton.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-ToggleButton.Text = "DinhGiap"
-ToggleButton.TextColor3 = Color3.fromRGB(255, 170, 0) -- Chữ màu vàng cam rực rỡ
-ToggleButton.Font = Enum.Font.SourceSansBold
-ToggleButton.TextSize = 16
-ToggleButton.Active = true
-ToggleButton.Draggable = true -- Hỗ trợ giữ ngón tay kéo đi mọi vị trí trên màn hình
-
-CornerEffect.CornerRadius = UDim.new(0, 10) -- Bo tròn viền góc cực đẹp
-CornerEffect.Parent = ToggleButton
-
-StrokeEffect.Thickness = 1.5
-StrokeEffect.Color = Color3.fromRGB(255, 170, 0) -- Đường viền neon vàng cam bao quanh nút
-StrokeEffect.Parent = ToggleButton
-
--- Tạo hiệu ứng chuyển màu khi chạm vào nút
-ToggleButton.MouseButton1Click:Connect(function()
-    ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    task.wait(0.05)
-    ToggleButton.TextColor3 = Color3.fromRGB(255, 170, 0)
-    
-    -- Gọi lệnh đóng/mở giao diện Kavo UI ngầm
-    game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode.RightControl, false, game)
-    task.wait(0.01)
-    game:GetService("VirtualInputManager"):SendKeyEvent(false, Enum.KeyCode.RightControl, false, game)
-end)
--- =========================================================================
-
--- Hàm quét tìm Boss
+-- Hàm quét tìm vị trí Boss gần tọa độ chỉ định
 local function findLivingBoss()
     local targetHrp = nil
     local minDistance = 150
@@ -97,7 +55,7 @@ local function findLivingBoss()
     return targetHrp
 end
 
--- VÒNG LẶP CHÍNH KHÓA POSITION & XẢ REMOTE
+-- VÒNG LẶP TELEPORT GHIM POSITION VÀ XẢ CHIÊU REMOTE NGẦM
 local function startFarmLoop()
     if mainConnection then mainConnection:Disconnect() end
     mainConnection = RunService.Heartbeat:Connect(function()
@@ -119,7 +77,7 @@ local function startFarmLoop()
             myHrp.Velocity = Vector3.new(0, 0, 0)
         end
         
-        -- Chống lag hoạt ảnh ngầm
+        -- Chặn đứng hoạt ảnh thừa chống giật khung hình
         if humanoid then
             local animator = humanoid:FindFirstChildOfClass("Animator") or humanoid
             if animator then
@@ -131,7 +89,7 @@ local function startFarmLoop()
             end
         end
         
-        -- Tốc độ xả chiêu ngầm 0.05 giây
+        -- Gọi lệnh Remote xả chiêu thức trực tiếp lên Server (0.05 giây/lần)
         local currentTime = tick()
         if currentTime - lastActionTime >= 0.05 then 
             lastActionTime = currentTime
@@ -143,7 +101,7 @@ local function startFarmLoop()
     end)
 end
 
--- VÒNG LẶP LOCK CAMERA HƯỚNG BOSS
+-- VÒNG LẶP KHÓA CAMERA XOAY THẲNG VÀO BOSS
 local function startLockLoop()
     if lockConnection then lockConnection:Disconnect() end
     lockConnection = RunService.RenderStepped:Connect(function()
@@ -170,25 +128,43 @@ local function startLockLoop()
     end)
 end
 
--- ĐƯA CHỨC NĂNG VÀO ĐÚNG ĐỊA CHỈ TAB/SECTION ĐỂ HIỂN THỊ
-MainSection:NewToggle("Auto Farm Boss Remote Ultimate", "Teleport ghim Boss, tự động hóa 100% chiêu fushi & Form biến hình ngầm", function(state)
-    AutoFarmBoss = state
-    if state then
-        startFarmLoop()
-    else
-        if mainConnection then mainConnection:Disconnect() end
-    end
-end)
+-- TẠO CÁC NÚT CHỨC NĂNG TRÊN LỚP UI MỚI
+local FarmTab = Window:NewTab({
+    Name = "Auto Farm Boss",
+    Icon = "rbxassetid://4483345998"
+})
 
-MainSection:NewToggle("Lock Skill (Khóa Mục Tiêu)", "Khóa hướng nhìn nhân vật trực diện vào Boss", function(state)
-    LockSkillActive = state
-    if state then
-        startLockLoop()
-    else
-        if lockConnection then lockConnection:Disconnect() end
-        local character = LocalPlayer.Character
-        if character and character:FindFirstChildOfClass("Humanoid") then
-            character.Humanoid.AutoRotate = true
+FarmTab:NewToggle({
+    Name = "Auto Farm Pure Remote (9.5 Studs)",
+    Info = "Teleport ghim vị trí Boss + Xả chiêu fushi và Form ngầm",
+    Default = false,
+    Callback = function(state)
+        AutoFarmBoss = state
+        if state then
+            startFarmLoop()
+        else
+            if mainConnection then mainConnection:Disconnect() end
         end
     end
-end)
+})
+
+FarmTab:NewToggle({
+    Name = "Lock Skill (Khóa Góc Nhìn)",
+    Info = "Giữ hướng nhân vật và Camera luôn nhìn thẳng vào Boss",
+    Default = false,
+    Callback = function(state)
+        LockSkillActive = state
+        if state then
+            startLockLoop()
+        else
+            if lockConnection then lockConnection:Disconnect() end
+            local character = LocalPlayer.Character
+            if character and character:FindFirstChildOfClass("Humanoid") then
+                character.Humanoid.AutoRotate = true
+            end
+        end
+    end
+})
+
+-- Khởi tạo Menu thành công
+OrionLib:Init()
