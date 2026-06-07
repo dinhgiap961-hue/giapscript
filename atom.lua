@@ -79,7 +79,7 @@ RunService.Heartbeat:Connect(function()
                     -- Gửi lệnh tung chiêu thức 101
                     -- Nhiều game cần phải có thông số 'Began' là false ngay từ đầu để tránh gồng
                     SkillRemote:FireServer({
-                        ["SkillId"] = "101",
+                        ["SkillId"] = "1",
                         ["Began"] = false,  -- Đổi từ true sang false để bỏ qua gồng
                         ["CFrame"] = LocalPlayer.Character.HumanoidRootPart.CFrame,
                         ["Aim"] = hrp.Position,
