@@ -46,94 +46,103 @@ oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
 end)
 
 -- =======================================================
--- LUỒNG THỨ 1: TỰ ĐỘNG START VÀ VÀO RAID/DUNGEON LIÊN TỤC
+-- LUỒNG THỨ 1: THẦN TỐC TỰ ĐỘNG CHUYỂN RAID LIÊN TỤC (KHÔNG HOÃN)
 -- =======================================================
 task.spawn(function()
+    -- Bật cái là ép qua màn/vào trận mới ngay lập tức
     while true do
         pcall(function()
-            -- Tự động gọi lệnh Start màn chơi mới bằng Knit
+            -- Spam lệnh bắt đầu Raid trực tiếp lên Server Knit (Bypas thời gian chờ UI)
             StartDungeonRF:InvokeServer()
             
-            -- Tự động gửi lệnh tương tác 'true' qua màn/nhặt rương khi hết màn
+            -- Đồng thời spam lệnh tương tác để nhặt rương / qua màn nhanh khi Boss chết
             if InteractRemote then
                 InteractRemote:FireServer(true)
             end
         end)
-        task.wait(1.5) -- Tốc độ bấm nút chuyển màn cực nhanh
+        task.wait(0.5) -- Tốc độ quét 0.5 giây/lần. Cứ hở ra là game tự động ném ông vào Raid mới!
     end
 end)
 
 -- =======================================================
--- LUỒNG THỨ 2: GHIM MẶT BOSS & GIỚI HẠN TẦM QUÉT CHỐNG BAY LỖI
+-- LUỒNG THỨ 2: GHIM MẶT BOSS VÀ XẢ SKILL KHÔNG LAG
 -- =======================================================
-RunService.Heartbeat:Connect(function()
-    local currentCharacter = LocalPlayer.Character
-    if not currentCharacter or not currentCharacter:FindFirstChild("HumanoidRootPart") then return end
-    
-    local myHumanoid = currentCharacter:FindFirstChildOfClass("Humanoid")
-    local myPos = currentCharacter.HumanoidRootPart.Position
-    local targetFound = false
-    
-    for _, obj in pairs(workspace:GetDescendants()) do
-        -- Lọc tìm Model sinh vật hợp lệ
-        if obj:IsA("Model") and obj ~= currentCharacter and obj.Name ~= "Terrain" then
+task.spawn(function()
+    while true do
+        local currentCharacter = LocalPlayer.Character
+        if currentCharacter and currentCharacter:FindFirstChild("HumanoidRootPart") then
             
-            local targetHumanoid = obj:FindFirstChildOfClass("Humanoid")
-            if targetHumanoid and targetHumanoid.Health > 0 and not Players:GetPlayerFromCharacter(obj) then
+            local myHumanoid = currentCharacter:FindFirstChildOfClass("Humanoid")
+            local myPos = currentCharacter.HumanoidRootPart.Position
+            local targetFound = false
+            
+            -- Quét nhanh thực thể động trong trận
+            local allObjects = workspace:GetDescendants()
+            for i = 1, #allObjects do
+                local obj = allObjects[i]
                 
-                local hrp = obj:FindFirstChild("HumanoidRootPart")
-                if hrp then
-                    -- FIX LỖI NPC NỀN: Chỉ nhắm mục tiêu nếu quái ở khoảng cách gần hơn 150 studs
-                    local distance = (myPos - hrp.Position).Magnitude
-                    if distance <= 150 and targetHumanoid.MaxHealth > 100 then
-                        
-                        targetFound = true -- Xác nhận quái thực tế trong sàn đấu
-                        
-                        -- Khóa trạng thái lơ lửng khi có quái để thực hiện đấm
-                        if myHumanoid then 
-                            myHumanoid.PlatformStand = true 
-                        end
-                        
-                        -- Vị trí ghim trên mắt Boss chuẩn xác (Cao hơn 4.5 studs, cách mặt 3.5 studs)
-                        local targetFacePos = hrp.Position + (hrp.CFrame.LookVector * 3.5) + Vector3.new(0, 4.5, 0)
-                        
-                        currentCharacter.HumanoidRootPart.CFrame = CFrame.new(targetFacePos, hrp.Position)
-                        currentCharacter.HumanoidRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0) 
-                        
-                        -- Đồng bộ dữ liệu Aim & Camera từ SimpleSpy
-                        local camCFrame = CurrentCamera.CFrame
-                        local targetPos = hrp.Position
-                        local customAim = vector.create(targetPos.X, targetPos.Y, targetPos.Z)
-                        
-                        -- Xả skill song song tốc độ cao không delay
-                        task.spawn(function()
-                            for _, id in pairs({"1", "101"}) do 
-                                SkillRemote:FireServer({
-                                    ["Camera"] = camCFrame,  
-                                    ["SkillId"] = id,
-                                    ["Began"] = true,
-                                    ["CFrame"] = hrp.CFrame, 
-                                    ["Aim"] = customAim,  
-                                    ["Target"] = obj,        
-                                    ["Typ\208\181"] = 1
-                                })
+                if obj:IsA("Model") and obj ~= currentCharacter and obj.Name ~= "Terrain" then
+                    local targetHumanoid = obj:FindFirstChildOfClass("Humanoid")
+                    
+                    if targetHumanoid and targetHumanoid.Health > 0 and not Players:GetPlayerFromCharacter(obj) then
+                        local hrp = obj:FindFirstChild("HumanoidRootPart")
+                        if hrp then
+                            -- Đo khoảng cách thực tế (Bỏ qua những con rồng trang trí nền ở quá xa)
+                            local distance = (myPos - hrp.Position).Magnitude
+                            if distance <= 150 and targetHumanoid.MaxHealth > 100 then
+                                
+                                targetFound = true
+                                
+                                if myHumanoid then 
+                                    myHumanoid.PlatformStand = true 
+                                end
+                                
+                                -- Đưa vị trí lên tầm trán/mắt Boss cố định
+                                local targetFacePos = hrp.Position + (hrp.CFrame.LookVector * 3.5) + Vector3.new(0, 4.5, 0)
+                                currentCharacter.HumanoidRootPart.CFrame = CFrame.new(targetFacePos, hrp.Position)
+                                currentCharacter.HumanoidRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0) 
+                                
+                                -- Đồng bộ gói tin SimpleSpy
+                                local camCFrame = CurrentCamera.CFrame
+                                local targetPos = hrp.Position
+                                local customAim = vector.create(targetPos.X, targetPos.Y, targetPos.Z)
+                                
+                                -- Xả combo đấm + energy bàn thờ không delay
+                                task.spawn(function()
+                                    SkillRemote:FireServer({
+                                        ["Camera"] = camCFrame,  
+                                        ["SkillId"] = "1",
+                                        ["Began"] = true,
+                                        ["CFrame"] = hrp.CFrame, 
+                                        ["Aim"] = customAim,  
+                                        ["Target"] = obj,        
+                                        ["Typ\208\181"] = 1
+                                    })
+                                    SkillRemote:FireServer({
+                                        ["Camera"] = camCFrame,  
+                                        ["SkillId"] = "101",
+                                        ["Began"] = true,
+                                        ["CFrame"] = hrp.CFrame, 
+                                        ["Aim"] = customAim,  
+                                        ["Target"] = obj,        
+                                        ["Typ\208\181"] = 1
+                                    })
+                                end)
+                                break 
                             end
-                        end)
-                        break 
+                        end
                     end
                 end
             end
+            
+            -- Hạ cánh an toàn dưới sàn đấu nếu hết sạch quái để chờ game chuyển màn
+            if not targetFound then
+                if myHumanoid then
+                    myHumanoid.PlatformStand = false
+                end
+                currentCharacter.HumanoidRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+            end
         end
+        RunService.Heartbeat:Wait()
     end
-    
-    -- XỬ LÝ KHI HẾT SẠCH QUÁI HOẶC CHỈ CÒN NPC NỀN Ở QUÁ XA
-    if not targetFound then
-        if myHumanoid then
-            myHumanoid.PlatformStand = false -- Hạ cánh, đứng bình thường trên mặt đất để bấm Start
-        end
-        -- Triệt tiêu hoàn toàn mọi lực quán tính đẩy
-        currentCharacter.HumanoidRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-    end
-    
-    task.wait(0.1)
 end)
