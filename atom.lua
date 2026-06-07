@@ -27,6 +27,17 @@ local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild("Humanoid")
 local Animator = Humanoid:FindFirstChild("Animator")
 
+-- DANH SÁCH CÁC VẬT THỂ BỊ CẤM QUÉT TRÚNG (Bổ sung các thứ gây bay lỗi ngoài map)
+local BlacklistNames = {
+    ["Terrain"] = true,
+    ["Dragon"] = true, -- Con rồng khổng lồ ở nền map
+    ["Lobby"] = true,
+    ["Map"] = true,
+    ["Stage"] = true,
+    ["Effect"] = true,
+    ["VFX"] = true
+}
+
 -- 1. Vô hiệu hóa hoạt ảnh triệt để (Bỏ delay vung tay)
 if Animator then Animator.Parent = nil end
 
@@ -51,7 +62,7 @@ end)
 task.spawn(function()
     while true do
         pcall(function()
-            -- Tự động gọi lệnh Start màn chơi mới công cụ Knit
+            -- Tự động gọi lệnh Start màn chơi mới bằng Knit
             StartDungeonRF:InvokeServer()
             
             -- Tự động gửi lệnh tương tác 'true' qua màn/nhặt rương khi hết màn
@@ -59,69 +70,75 @@ task.spawn(function()
                 InteractRemote:FireServer(true)
             end
         end)
-        task.wait(1.5) -- Tăng tốc độ check bấm nút lên 1.5 giây để qua màn nhanh hơn
+        task.wait(1.5) -- Tốc độ bấm nút chuyển màn cực nhanh
     end
 end)
 
 -- =======================================================
--- LUỒNG THỨ 2: GHIM MẶT BOSS VÀ FIX LỖI TỰ BAY KHI HẾT BOSS
+-- LUỒNG THỨ 2: GHIM MẶT BOSS & KHÓA CHỐNG BAY RA KHỎI MAP
 -- =======================================================
 RunService.Heartbeat:Connect(function()
     local currentCharacter = LocalPlayer.Character
     if not currentCharacter or not currentCharacter:FindFirstChild("HumanoidRootPart") then return end
     
     local myHumanoid = currentCharacter:FindFirstChildOfClass("Humanoid")
-    local targetFound = false -- Biến đánh dấu xem có quái hay không
+    local targetFound = false
     
     for _, obj in pairs(workspace:GetDescendants()) do
-        -- Lọc tìm quái vật/Boss hợp lệ (Bỏ qua các Model rác hoặc rồng cảnh nền khổng lồ)
-        if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj ~= currentCharacter and obj.Name ~= "Terrain" and not obj:FindFirstChild("Part") then
-            local hrp = obj:FindFirstChild("HumanoidRootPart")
-            if hrp and obj.Humanoid.Health > 0 and not Players:GetPlayerFromCharacter(obj) then
+        -- LỌC QUÁI SIÊU CHẶT CHẼ: Loại bỏ hoàn toàn vật thể thuộc Blacklist
+        if obj:IsA("Model") and obj ~= currentCharacter and not BlacklistNames[obj.Name] then
+            
+            local targetHumanoid = obj:FindFirstChildOfClass("Humanoid")
+            if targetHumanoid and targetHumanoid.Health > 0 and not Players:GetPlayerFromCharacter(obj) then
                 
-                targetFound = true -- Xác nhận đã tìm thấy quái vật thật sự
-                
-                -- Khóa trạng thái PlatformStand để lơ lửng khi chiến đấu
-                if myHumanoid then 
-                    myHumanoid.PlatformStand = true 
-                end
-                
-                -- Vị trí ghim trên mắt Boss chuẩn xác (Cao hơn 4.5 studs, cách mặt 3.5 studs)
-                local targetFacePos = hrp.Position + (hrp.CFrame.LookVector * 3.5) + Vector3.new(0, 4.5, 0)
-                
-                currentCharacter.HumanoidRootPart.CFrame = CFrame.new(targetFacePos, hrp.Position)
-                currentCharacter.HumanoidRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0) 
-                
-                -- Đồng bộ dữ liệu Aim & Camera từ SimpleSpy
-                local camCFrame = CurrentCamera.CFrame
-                local targetPos = hrp.Position
-                local customAim = vector.create(targetPos.X, targetPos.Y, targetPos.Z)
-                
-                -- Xả skill song song tốc độ cao không delay
-                task.spawn(function()
-                    for _, id in pairs({"1", "101"}) do 
-                        SkillRemote:FireServer({
-                            ["Camera"] = camCFrame,  
-                            ["SkillId"] = id,
-                            ["Began"] = true,
-                            ["CFrame"] = hrp.CFrame, 
-                            ["Aim"] = customAim,  
-                            ["Target"] = obj,        
-                            ["Typ\208\181"] = 1
-                        })
+                local hrp = obj:FindFirstChild("HumanoidRootPart")
+                -- QUY TRÌNH CHỐNG QUÁI ẢO: Quái thật bắt buộc phải có MaxHealth lớn hơn 100 (để tránh các vùng hitbox ẩn của game)
+                if hrp and targetHumanoid.MaxHealth > 100 then
+                    
+                    targetFound = true -- Tìm thấy quái thực thể thật sự hiển thị
+                    
+                    -- Khóa trạng thái lơ lửng khi có quái để thực hiện đấm
+                    if myHumanoid then 
+                        myHumanoid.PlatformStand = true 
                     end
-                end)
-                break 
+                    
+                    -- Vị trí ghim trên mắt Boss chuẩn xác (Cao hơn 4.5 studs, cách mặt 3.5 studs)
+                    local targetFacePos = hrp.Position + (hrp.CFrame.LookVector * 3.5) + Vector3.new(0, 4.5, 0)
+                    
+                    currentCharacter.HumanoidRootPart.CFrame = CFrame.new(targetFacePos, hrp.Position)
+                    currentCharacter.HumanoidRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0) 
+                    
+                    -- Đồng bộ dữ liệu Aim & Camera từ SimpleSpy
+                    local camCFrame = CurrentCamera.CFrame
+                    local targetPos = hrp.Position
+                    local customAim = vector.create(targetPos.X, targetPos.Y, targetPos.Z)
+                    
+                    -- Xả skill song song tốc độ cao không delay
+                    task.spawn(function()
+                        for _, id in pairs({"1", "101"}) do 
+                            SkillRemote:FireServer({
+                                ["Camera"] = camCFrame,  
+                                ["SkillId"] = id,
+                                ["Began"] = true,
+                                ["CFrame"] = hrp.CFrame, 
+                                ["Aim"] = customAim,  
+                                ["Target"] = obj,        
+                                ["Typ\208\181"] = 1
+                            })
+                        end
+                    end)
+                    break 
+                end
             end
         end
     end
     
-    -- TRƯỜNG HỢP FIX LỖI: Hết sạch quái trong phòng
+    -- XỬ LÝ KHI HẾT SẠCH QUÁI (HẠ CÁNH AN TOÀN ĐỂ ẤN NÚT START)
     if not targetFound then
         if myHumanoid then
-            myHumanoid.PlatformStand = false -- Trả nhân vật về trạng thái đứng bình thường trên sàn
+            myHumanoid.PlatformStand = false -- Trả nhân vật về trạng thái đi đứng bình thường trên mặt đất
         end
-        -- Triệt tiêu hoàn toàn vận tốc thừa để không bị lực đẩy đẩy vọt lên trời
+        -- Triệt tiêu hoàn toàn mọi lực quán tính đẩy để nhân vật rơi thẳng xuống sàn sảnh
         currentCharacter.HumanoidRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
     end
     
