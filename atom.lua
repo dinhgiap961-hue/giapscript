@@ -1,9 +1,31 @@
-local Player = game:GetService("Players").LocalPlayer
+local Players = game:GetService("Players")
+local Player = Players.LocalPlayer
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- Khử GUI cũ
+-- Khởi tạo Remote từ code của bạn
+local SkillRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("SkillRemote")
+
+-- =======================================================
+-- HOOK METHOD (BỎ QUA COOLDOWN & KIỂM TRA HỢP LỆ)
+-- =======================================================
+local oldNamecall
+oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+    local args = {...}
+    local method = getnamecallmethod()
+    if self == SkillRemote and method == "FireServer" then
+        if args[1] and type(args[1]) == "table" then
+            args[1]["Time"] = 0
+            args[1]["IsValid"] = true
+        end
+        return oldNamecall(self, unpack(args))
+    end
+    return oldNamecall(self, ...)
+end)
+
+-- Khử GUI cũ nếu có
 local oldGui = Player:WaitForChild("PlayerGui"):FindFirstChild("PremiumAutoBossGui")
 if oldGui then oldGui:Destroy() end
 
@@ -13,20 +35,20 @@ Screen.Name = "PremiumAutoBossGui"
 Screen.ResetOnSpawn = false
 
 -- =======================================================
--- GIAO DIỆN CHÍNH (MAIN FRAME)
+-- GIAO DIỆN CHÍNH (MAIN FRAME - DARK NEON)
 -- =======================================================
 local MainFrame = Instance.new("Frame", Screen)
 MainFrame.Size = UDim2.new(0, 220, 0, 240)
 MainFrame.Position = UDim2.new(0.8, 0, 0.3, 0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20) -- Màu nền tối sâu
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 MainFrame.BorderSizePixel = 0
 MainFrame.ClipsDescendants = true
 
 local MainCorner = Instance.new("UICorner", MainFrame)
-MainCorner.CornerRadius = UDim.new(0, 12) -- Bo góc mịn
+MainCorner.CornerRadius = UDim.new(0, 12)
 
 local MainStroke = Instance.new("UIStroke", MainFrame)
-MainStroke.Color = Color3.fromRGB(0, 170, 255) -- Viền sáng Neon Xanh dương
+MainStroke.Color = Color3.fromRGB(0, 170, 255) -- Viền Neon Xanh
 MainStroke.Thickness = 1.5
 
 -- Thanh Tiêu Đề (Title Bar)
@@ -41,14 +63,14 @@ TitleBarCorner.CornerRadius = UDim.new(0, 12)
 local TitleText = Instance.new("TextLabel", TitleBar)
 TitleText.Size = UDim2.new(0.7, 0, 1, 0)
 TitleText.Position = UDim2.new(0.05, 0, 0, 0)
-TitleText.Text = "PREMIUM HUB"
+TitleText.Text = "PREMIUM HUB VIP"
 TitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
 TitleText.Font = Enum.Font.GothamBold
-TitleText.TextSize = 15
+TitleText.TextSize = 14
 TitleText.TextXAlignment = Enum.TextXAlignment.Left
 TitleText.BackgroundTransparency = 1
 
--- Nút Thu Nhỏ (Minimize Button)
+-- Nút Thu Nhỏ (Minimize)
 local MinBtn = Instance.new("TextButton", TitleBar)
 MinBtn.Size = UDim2.new(0, 30, 0, 30)
 MinBtn.Position = UDim2.new(0.83, 0, 0.12, 0)
@@ -58,13 +80,13 @@ MinBtn.Font = Enum.Font.GothamBold
 MinBtn.TextSize = 18
 MinBtn.BackgroundTransparency = 1
 
--- Khu vực chứa các nút chức năng (Container)
+-- Container chứa các nút
 local Container = Instance.new("Frame", MainFrame)
 Container.Size = UDim2.new(1, -20, 1, -50)
 Container.Position = UDim2.new(0, 10, 0, 50)
 Container.BackgroundTransparency = 1
 
--- Hàm tạo Nút bấm Đẹp mắt (Custom Button Creator)
+-- Hàm tạo nút custom
 local function CreatePremiumButton(name, text, pos, color)
     local Btn = Instance.new("TextButton", Container)
     Btn.Name = name
@@ -80,7 +102,6 @@ local function CreatePremiumButton(name, text, pos, color)
     local btnCorner = Instance.new("UICorner", Btn)
     btnCorner.CornerRadius = UDim.new(0, 8)
     
-    -- Hiệu ứng Hover chuột
     Btn.MouseEnter:Connect(function()
         TweenService:Create(Btn, TweenInfo.new(0.2), {BackgroundTransparency = 0.15}):Play()
     end)
@@ -91,14 +112,12 @@ local function CreatePremiumButton(name, text, pos, color)
     return Btn
 end
 
--- Khởi tạo 3 nút bấm cực chất
-local AutoBtn = CreatePremiumButton("AutoBtn", "🔴 AUTO BOSS: OFF", UDim2.new(0, 0, 0, 0), Color3.fromRGB(230, 50, 50))
-local LockBtn = CreatePremiumButton("LockBtn", "🎯 LOCK: ALL (ATOM/MAX)", UDim2.new(0, 0, 0, 55), Color3.fromRGB(45, 45, 60))
-local AuraBtn = CreatePremiumButton("AuraBtn", "⚡ KILL AURA: OFF", UDim2.new(0, 0, 0, 110), Color3.fromRGB(230, 50, 50))
+-- Menu 3 Chức Năng Mới
+local AutoBtn = CreatePremiumButton("AutoBtn", "🔴 AUTO TELE BOSS: OFF", UDim2.new(0, 0, 0, 0), Color3.fromRGB(230, 50, 50))
+local SkillBtn = CreatePremiumButton("SkillBtn", "🔥 AUTO SKILL 101: OFF", UDim2.new(0, 0, 0, 55), Color3.fromRGB(230, 50, 50))
+local AuraBtn = CreatePremiumButton("AuraBtn", "⚡ KILL AURA TOOL: OFF", UDim2.new(0, 0, 0, 110), Color3.fromRGB(230, 50, 50))
 
--- =======================================================
--- HỆ THỐNG KÉO THẢ MENU (SMOOTH DRAG)
--- =======================================================
+-- System Kéo Thả Menu (Smooth Drag)
 local dragging, dragInput, dragStart, startPos
 TitleBar.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -117,7 +136,7 @@ UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end
 end)
 
--- Thu nhỏ / Mở rộng mượt mà
+-- Thu nhỏ/Mở rộng
 local IsMinimized = false
 MinBtn.MouseButton1Click:Connect(function()
     IsMinimized = not IsMinimized
@@ -127,58 +146,52 @@ MinBtn.MouseButton1Click:Connect(function()
 end)
 
 -- =======================================================
--- LOGIC HOẠT ĐỘNG (LOGIC CODES)
+-- TRẠNG THÁI & THÔNG SỐ HOẠT ĐỘNG
 -- =======================================================
 local Active = false
-local LockMode = "ALL" -- ALL, ATOM, MAX
+local SkillActive = false
 local AuraActive = false
 local KillAuraRange = 25
 
--- Bật/Tắt Auto Boss
+-- Event Bật/Tắt Auto Tele Boss
 AutoBtn.MouseButton1Click:Connect(function()
     Active = not Active
-    AutoBtn.Text = Active and "🟢 AUTO BOSS: ON" or "🔴 AUTO BOSS: OFF"
+    AutoBtn.Text = Active and "🟢 AUTO TELE BOSS: ON" or "🔴 AUTO TELE BOSS: OFF"
     TweenService:Create(AutoBtn, TweenInfo.new(0.3), {BackgroundColor3 = Active and Color3.fromRGB(40, 180, 100) or Color3.fromRGB(230, 50, 50)}):Play()
 end)
 
--- Bật/Tắt Kill Aura độc lập
+-- Event Bật/Tắt Auto Skill 101
+SkillBtn.MouseButton1Click:Connect(function()
+    SkillActive = not SkillActive
+    SkillBtn.Text = SkillActive and "🔥 AUTO SKILL 101: ON" or "🔥 AUTO SKILL 101: OFF"
+    TweenService:Create(SkillBtn, TweenInfo.new(0.3), {BackgroundColor3 = SkillActive and Color3.fromRGB(40, 180, 100) or Color3.fromRGB(230, 50, 50)}):Play()
+end)
+
+-- Event Bật/Tắt Kill Aura Gần
 AuraBtn.MouseButton1Click:Connect(function()
     AuraActive = not AuraActive
-    AuraBtn.Text = AuraActive and "⚡ KILL AURA: ON" or "⚡ KILL AURA: OFF"
+    AuraBtn.Text = AuraActive and "⚡ KILL AURA TOOL: ON" or "⚡ KILL AURA TOOL: OFF"
     TweenService:Create(AuraBtn, TweenInfo.new(0.3), {BackgroundColor3 = AuraActive and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(230, 50, 50)}):Play()
 end)
 
--- Đổi chế độ Khóa mục tiêu
-LockBtn.MouseButton1Click:Connect(function()
-    if LockMode == "ALL" then
-        LockMode = "ATOM"
-        LockBtn.Text = "⚛️ LOCK: ATOM ONLY"
-        TweenService:Create(LockBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(0, 100, 220)}):Play()
-    elseif LockMode == "ATOM" then
-        LockMode = "MAX"
-        LockBtn.Text = "🚀 LOCK: MAX ONLY"
-        TweenService:Create(LockBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(130, 0, 180)}):Play()
-    else
-        LockMode = "ALL"
-        LockBtn.Text = "🎯 LOCK: ALL (ATOM/MAX)"
-        TweenService:Create(LockBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(45, 45, 60)}):Play()
-    end
-end)
-
--- Hàm quét sâu tìm Boss
+-- Hàm quét tìm Boss mục tiêu mặc định (quét cả atom và max)
 local function FindBossDeep()
     for _, v in pairs(workspace:GetDescendants()) do
         if v:IsA("Model") and v:FindFirstChild("HumanoidRootPart") then
             local nameLower = string.lower(v.Name)
-            if LockMode == "ATOM" and string.find(nameLower, "atom") then return v
-            elseif LockMode == "MAX" and string.find(nameLower, "max") then return v
-            elseif LockMode == "ALL" and (string.find(nameLower, "atom") or string.find(nameLower, "max")) then return v end
+            if string.find(nameLower, "atom") or string.find(nameLower, "max") then 
+                return v 
+            end
         end
     end
     return nil
 end
 
--- Vòng lặp Dịch Chuyển Gầm Đầu
+-- =======================================================
+-- CÁC VÒNG LẶP HOẠT ĐỘNG (LOOP SYSTEMS)
+-- =======================================================
+
+-- 1. Vòng lặp Dịch Chuyển Gầm Đầu Boss
 RunService.Heartbeat:Connect(function()
     local Char = Player.Character
     if Active and Char and Char:FindFirstChild("HumanoidRootPart") then
@@ -194,14 +207,54 @@ RunService.Heartbeat:Connect(function()
         end
     end
     
-    -- Trả lại trạng thái đứng bình thường nếu tắt hoặc không có boss
     if Char then
         local Humanoid = Char:FindFirstChildOfClass("Humanoid")
         if Humanoid then Humanoid.PlatformStand = false end
     end
 end)
 
--- Vòng lặp Kill Aura (Chém tự động siêu mượt)
+-- 2. VÒNG LẶP SPAM SKILL REMOTE (Mã mới của bạn)
+task.spawn(function()
+    while true do
+        if SkillActive then
+            local Char = Player.Character
+            if Char and Char:FindFirstChild("HumanoidRootPart") then
+                for _, obj in pairs(workspace:GetDescendants()) do
+                    if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj ~= Char then
+                        if obj.Humanoid.Health > 0 and not Players:GetPlayerFromCharacter(obj) then
+                            local hrp = obj:FindFirstChild("HumanoidRootPart")
+                            if hrp then
+                                -- Thực hiện chuỗi gọi Remote Skill 101 chuẩn của bạn
+                                SkillRemote:FireServer({
+                                    ["SkillId"] = "101",
+                                    ["Began"] = false,
+                                    ["CFrame"] = Char.HumanoidRootPart.CFrame,
+                                    ["Aim"] = hrp.Position,
+                                    ["Target"] = obj,
+                                    ["Type"] = 1
+                                })
+                                
+                                SkillRemote:FireServer({
+                                    ["SkillId"] = "101",
+                                    ["Began"] = true,
+                                    ["CFrame"] = Char.HumanoidRootPart.CFrame,
+                                    ["Aim"] = hrp.Position,
+                                    ["Target"] = obj,
+                                    ["Type"] = 1
+                                })
+                            end
+                        end
+                    end
+                end
+            end
+            task.wait(0.3) -- Giữ khoảng delay tối ưu để chống lag/giật packet
+        else
+            task.wait(0.5)
+        end
+    end
+end)
+
+-- 3. Vòng lặp Kill Aura (Tự vung Tool cận chiến nếu có bật)
 task.spawn(function()
     while true do
         if AuraActive then
