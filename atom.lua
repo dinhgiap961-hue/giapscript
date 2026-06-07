@@ -48,7 +48,7 @@ local MainCorner = Instance.new("UICorner", MainFrame)
 MainCorner.CornerRadius = UDim.new(0, 12)
 
 local MainStroke = Instance.new("UIStroke", MainFrame)
-MainStroke.Color = Color3.fromRGB(0, 170, 255) -- Viền Neon Xanh
+MainStroke.Color = Color3.fromRGB(0, 170, 255)
 MainStroke.Thickness = 1.5
 
 -- Thanh Tiêu Đề (Title Bar)
@@ -112,8 +112,8 @@ local function CreatePremiumButton(name, text, pos, color)
     return Btn
 end
 
--- Menu 3 Chức Năng Mới
-local AutoBtn = CreatePremiumButton("AutoBtn", "🔴 AUTO TELE BOSS: OFF", UDim2.new(0, 0, 0, 0), Color3.fromRGB(230, 50, 50))
+-- Menu 3 Chức Năng Đã Đồng Bộ Logic Mới
+local AutoBtn = CreatePremiumButton("AutoBtn", "🔴 AUTO TELE MONSTER: OFF", UDim2.new(0, 0, 0, 0), Color3.fromRGB(230, 50, 50))
 local SkillBtn = CreatePremiumButton("SkillBtn", "🔥 AUTO SKILL 101: OFF", UDim2.new(0, 0, 0, 55), Color3.fromRGB(230, 50, 50))
 local AuraBtn = CreatePremiumButton("AuraBtn", "⚡ KILL AURA TOOL: OFF", UDim2.new(0, 0, 0, 110), Color3.fromRGB(230, 50, 50))
 
@@ -153,10 +153,10 @@ local SkillActive = false
 local AuraActive = false
 local KillAuraRange = 25
 
--- Event Bật/Tắt Auto Tele Boss
+-- Event Bật/Tắt Auto Tele Boss/Quái
 AutoBtn.MouseButton1Click:Connect(function()
     Active = not Active
-    AutoBtn.Text = Active and "🟢 AUTO TELE BOSS: ON" or "🔴 AUTO TELE BOSS: OFF"
+    AutoBtn.Text = Active and "🟢 AUTO TELE MONSTER: ON" or "🔴 AUTO TELE MONSTER: OFF"
     TweenService:Create(AutoBtn, TweenInfo.new(0.3), {BackgroundColor3 = Active and Color3.fromRGB(40, 180, 100) or Color3.fromRGB(230, 50, 50)}):Play()
 end)
 
@@ -174,13 +174,15 @@ AuraBtn.MouseButton1Click:Connect(function()
     TweenService:Create(AuraBtn, TweenInfo.new(0.3), {BackgroundColor3 = AuraActive and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(230, 50, 50)}):Play()
 end)
 
--- Hàm quét tìm Boss mục tiêu mặc định (quét cả atom và max)
-local function FindBossDeep()
-    for _, v in pairs(workspace:GetDescendants()) do
-        if v:IsA("Model") and v:FindFirstChild("HumanoidRootPart") then
-            local nameLower = string.lower(v.Name)
-            if string.find(nameLower, "atom") or string.find(nameLower, "max") then 
-                return v 
+-- HÀM TÌM QUÁI MỚI (Đã thay thế toàn bộ code lọc Atom/Max bằng code của bạn cung cấp)
+local function FindTargetMonster()
+    local Char = Player.Character
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj ~= Char then
+            if obj.Humanoid.Health > 0 and not Players:GetPlayerFromCharacter(obj) then
+                if obj:FindFirstChild("HumanoidRootPart") then
+                    return obj -- Trả về quái hợp lệ đầu tiên tìm thấy
+                end
             end
         end
     end
@@ -191,17 +193,17 @@ end
 -- CÁC VÒNG LẶP HOẠT ĐỘNG (LOOP SYSTEMS)
 -- =======================================================
 
--- 1. Vòng lặp Dịch Chuyển Gầm Đầu Boss
+-- 1. Vòng lặp Dịch Chuyển Gầm Đầu (Theo logic tìm quái diện rộng mới)
 RunService.Heartbeat:Connect(function()
     local Char = Player.Character
     if Active and Char and Char:FindFirstChild("HumanoidRootPart") then
-        local Boss = FindBossDeep()
-        if Boss and Boss:FindFirstChild("HumanoidRootPart") then
+        local Monster = FindTargetMonster()
+        if Monster then
             local Humanoid = Char:FindFirstChildOfClass("Humanoid")
             if Humanoid then Humanoid.PlatformStand = true end
             
-            local TargetPos = Boss.HumanoidRootPart.Position + Vector3.new(0, 13, 0)
-            Char.HumanoidRootPart.CFrame = CFrame.new(TargetPos, Boss.HumanoidRootPart.Position)
+            local TargetPos = Monster.HumanoidRootPart.Position + Vector3.new(0, 13, 0)
+            Char.HumanoidRootPart.CFrame = CFrame.new(TargetPos, Monster.HumanoidRootPart.Position)
             Char.HumanoidRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
             return
         end
@@ -213,18 +215,18 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- 2. VÒNG LẶP SPAM SKILL REMOTE (Mã mới của bạn)
+-- 2. VÒNG LẶP SPAM SKILL REMOTE TỰ ĐỘNG THEO YÊU CẦU
 task.spawn(function()
     while true do
         if SkillActive then
             local Char = Player.Character
             if Char and Char:FindFirstChild("HumanoidRootPart") then
+                -- Quét và xả skill thẳng vào toàn bộ quái trong workspace theo code của bạn
                 for _, obj in pairs(workspace:GetDescendants()) do
                     if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj ~= Char then
                         if obj.Humanoid.Health > 0 and not Players:GetPlayerFromCharacter(obj) then
                             local hrp = obj:FindFirstChild("HumanoidRootPart")
                             if hrp then
-                                -- Thực hiện chuỗi gọi Remote Skill 101 chuẩn của bạn
                                 SkillRemote:FireServer({
                                     ["SkillId"] = "101",
                                     ["Began"] = false,
@@ -247,14 +249,14 @@ task.spawn(function()
                     end
                 end
             end
-            task.wait(0.3) -- Giữ khoảng delay tối ưu để chống lag/giật packet
+            task.wait(0.5) -- Delay 0.5 giây chuẩn từ code gốc của bạn để tránh crash game
         else
-            task.wait(0.5)
+            task.wait(0.2)
         end
     end
 end)
 
--- 3. Vòng lặp Kill Aura (Tự vung Tool cận chiến nếu có bật)
+-- 3. Vòng lặp Kill Aura Tool (Hỗ trợ chém thêm bằng vũ khí khi đứng gần quái đang Tele)
 task.spawn(function()
     while true do
         if AuraActive then
@@ -262,9 +264,9 @@ task.spawn(function()
             if Char and Char:FindFirstChild("HumanoidRootPart") then
                 local Tool = Char:FindFirstChildOfClass("Tool")
                 if Tool then
-                    local Boss = FindBossDeep()
-                    if Boss and Boss:FindFirstChild("HumanoidRootPart") then
-                        local Distance = (Char.HumanoidRootPart.Position - Boss.HumanoidRootPart.Position).Magnitude
+                    local Monster = FindTargetMonster()
+                    if Monster then
+                        local Distance = (Char.HumanoidRootPart.Position - Monster.HumanoidRootPart.Position).Magnitude
                         if Distance <= KillAuraRange then
                             Tool:Activate()
                         end
