@@ -1,4 +1,4 @@
-local Players = game:GetService("Players")
+llocal Players = game:GetService("Players")
 local Player = Players.LocalPlayer
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -112,10 +112,10 @@ local function CreatePremiumButton(name, text, pos, color)
     return Btn
 end
 
--- Menu 3 Chức Năng Đã Đồng Bộ Logic Mới
+-- Danh sách Menu Chức Năng Mới
 local AutoBtn = CreatePremiumButton("AutoBtn", "🔴 AUTO TELE MONSTER: OFF", UDim2.new(0, 0, 0, 0), Color3.fromRGB(230, 50, 50))
 local SkillBtn = CreatePremiumButton("SkillBtn", "🔥 AUTO SKILL 101: OFF", UDim2.new(0, 0, 0, 55), Color3.fromRGB(230, 50, 50))
-local AuraBtn = CreatePremiumButton("AuraBtn", "⚡ KILL AURA TOOL: OFF", UDim2.new(0, 0, 0, 110), Color3.fromRGB(230, 50, 50))
+local FarmBtn = CreatePremiumButton("FarmBtn", "🌾 AUTO FARM: OFF", UDim2.new(0, 0, 0, 110), Color3.fromRGB(230, 50, 50))
 
 -- System Kéo Thả Menu (Smooth Drag)
 local dragging, dragInput, dragStart, startPos
@@ -146,14 +146,13 @@ MinBtn.MouseButton1Click:Connect(function()
 end)
 
 -- =======================================================
--- TRẠNG THÁI & THÔNG SỐ HOẠT ĐỘNG
+-- TRẠNG THÁI HOẠT ĐỘNG
 -- =======================================================
 local Active = false
 local SkillActive = false
-local AuraActive = false
-local KillAuraRange = 25
+local FarmActive = false
 
--- Event Bật/Tắt Auto Tele Boss/Quái
+-- Event Bật/Tắt Auto Tele Quái
 AutoBtn.MouseButton1Click:Connect(function()
     Active = not Active
     AutoBtn.Text = Active and "🟢 AUTO TELE MONSTER: ON" or "🔴 AUTO TELE MONSTER: OFF"
@@ -167,22 +166,38 @@ SkillBtn.MouseButton1Click:Connect(function()
     TweenService:Create(SkillBtn, TweenInfo.new(0.3), {BackgroundColor3 = SkillActive and Color3.fromRGB(40, 180, 100) or Color3.fromRGB(230, 50, 50)}):Play()
 end)
 
--- Event Bật/Tắt Kill Aura Gần
-AuraBtn.MouseButton1Click:Connect(function()
-    AuraActive = not AuraActive
-    AuraBtn.Text = AuraActive and "⚡ KILL AURA TOOL: ON" or "⚡ KILL AURA TOOL: OFF"
-    TweenService:Create(AuraBtn, TweenInfo.new(0.3), {BackgroundColor3 = AuraActive and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(230, 50, 50)}):Play()
+-- Event Bật/Tắt Auto Farm
+FarmBtn.MouseButton1Click:Connect(function()
+    FarmActive = not FarmActive
+    FarmBtn.Text = FarmActive and "🟢 AUTO FARM: ON" or "🔴 AUTO FARM: OFF"
+    TweenService:Create(FarmBtn, TweenInfo.new(0.3), {BackgroundColor3 = FarmActive and Color3.fromRGB(40, 180, 100) or Color3.fromRGB(230, 50, 50)}):Play()
 end)
 
--- HÀM TÌM QUÁI MỚI (Đã thay thế toàn bộ code lọc Atom/Max bằng code của bạn cung cấp)
+-- HÀM TÌM QUÁI DIỆN RỘNG (Bỏ hoàn toàn Lock Atom/Max)
 local function FindTargetMonster()
     local Char = Player.Character
     for _, obj in pairs(workspace:GetDescendants()) do
         if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj ~= Char then
             if obj.Humanoid.Health > 0 and not Players:GetPlayerFromCharacter(obj) then
                 if obj:FindFirstChild("HumanoidRootPart") then
-                    return obj -- Trả về quái hợp lệ đầu tiên tìm thấy
+                    return obj
                 end
+            end
+        end
+    end
+    return nil
+end
+
+-- HÀM TÌM TÀI NGUYÊN ĐỂ FARM (Cây/Đá/Quặng...)
+local function FindFarmResource()
+    for _, obj in pairs(workspace:GetDescendants()) do
+        -- Tìm các object có tên chứa Wood, Stone, Ore hoặc Resource (Tùy thuộc vào game của bạn)
+        if obj:IsA("Model") or obj:IsA("Part") then
+            local nameLower = string.lower(obj.Name)
+            if string.find(nameLower, "wood") or string.find(nameLower, "stone") or string.find(nameLower, "ore") or string.find(nameLower, "tree") then
+                -- Đảm bảo object có phần thân để dịch chuyển tới
+                if obj:IsA("Model") and obj.PrimaryPart then return obj.PrimaryPart end
+                if obj:IsA("Part") then return obj end
             end
         end
     end
@@ -193,10 +208,10 @@ end
 -- CÁC VÒNG LẶP HOẠT ĐỘNG (LOOP SYSTEMS)
 -- =======================================================
 
--- 1. Vòng lặp Dịch Chuyển Gầm Đầu (Theo logic tìm quái diện rộng mới)
+-- 1. Vòng lặp Dịch Chuyển Gầm Đầu Quái
 RunService.Heartbeat:Connect(function()
     local Char = Player.Character
-    if Active and Char and Char:FindFirstChild("HumanoidRootPart") then
+    if Active and not FarmActive and Char and Char:FindFirstChild("HumanoidRootPart") then
         local Monster = FindTargetMonster()
         if Monster then
             local Humanoid = Char:FindFirstChildOfClass("Humanoid")
@@ -209,19 +224,21 @@ RunService.Heartbeat:Connect(function()
         end
     end
     
-    if Char then
-        local Humanoid = Char:FindFirstChildOfClass("Humanoid")
-        if Humanoid then Humanoid.PlatformStand = false end
+    -- Nếu không bật Tele Monster hoặc đang bật Farm thì reset PlatformStand
+    if not Active or FarmActive then
+        if Char then
+            local Humanoid = Char:FindFirstChildOfClass("Humanoid")
+            if Humanoid then Humanoid.PlatformStand = false end
+        end
     end
 end)
 
--- 2. VÒNG LẶP SPAM SKILL REMOTE TỰ ĐỘNG THEO YÊU CẦU
+-- 2. VÒNG LẶP SPAM SKILL 101 BỎ COOLDOWN
 task.spawn(function()
     while true do
         if SkillActive then
             local Char = Player.Character
             if Char and Char:FindFirstChild("HumanoidRootPart") then
-                -- Quét và xả skill thẳng vào toàn bộ quái trong workspace theo code của bạn
                 for _, obj in pairs(workspace:GetDescendants()) do
                     if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj ~= Char then
                         if obj.Humanoid.Health > 0 and not Players:GetPlayerFromCharacter(obj) then
@@ -249,31 +266,34 @@ task.spawn(function()
                     end
                 end
             end
-            task.wait(0.5) -- Delay 0.5 giây chuẩn từ code gốc của bạn để tránh crash game
+            task.wait(0.5)
         else
             task.wait(0.2)
         end
     end
 end)
 
--- 3. Vòng lặp Kill Aura Tool (Hỗ trợ chém thêm bằng vũ khí khi đứng gần quái đang Tele)
+-- 3. VÒNG LẶP TỰ ĐỘNG TELE VÀ FARM TÀI NGUYÊN (Thay thế hoàn toàn Kill Aura)
 task.spawn(function()
     while true do
-        if AuraActive then
+        if FarmActive then
             local Char = Player.Character
             if Char and Char:FindFirstChild("HumanoidRootPart") then
-                local Tool = Char:FindFirstChildOfClass("Tool")
-                if Tool then
-                    local Monster = FindTargetMonster()
-                    if Monster then
-                        local Distance = (Char.HumanoidRootPart.Position - Monster.HumanoidRootPart.Position).Magnitude
-                        if Distance <= KillAuraRange then
-                            Tool:Activate()
-                        end
+                local TargetResource = FindFarmResource()
+                if TargetResource then
+                    -- Dịch chuyển nhân vật đến sát vị trí của Tài nguyên cần farm
+                    Char.HumanoidRootPart.CFrame = TargetResource.CFrame + Vector3.new(0, 5, 0)
+                    
+                    -- Tự động kích hoạt công cụ (Rìu/Cúp) nếu người chơi đang cầm trên tay
+                    local Tool = Char:FindFirstChildOfClass("Tool")
+                    if Tool then
+                        Tool:Activate()
                     end
                 end
             end
+            task.wait(0.1) -- Tốc độ đập/chặt tài nguyên
+        else
+            task.wait(0.5)
         end
-        task.wait(0.01)
     end
 end)
